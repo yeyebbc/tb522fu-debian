@@ -13,10 +13,12 @@ configuration hash and compiler version. Its source bundle contains the exact
 patched tree used to build it. The touch import and board adaptation remain separate patches and preserve
 their upstream notices. They are included in the RAM desktop build, with
 identification, firmware loading and physical finger input verified on one unit.
-Orientation correction and display-power ownership still need hardware validation.
+Orientation correction and display-power ownership passed the ci11 RAM hardware test, including normal clock-provider synchronization and physical GUI interaction.
 
 The framebuffer power-domain declaration uses the existing mainline SM8750
 MMCX/NOM_L1 definitions. Its 575 MHz/level 320 mapping was cross-checked
 against the owner’s stock display driver; no proprietary code or binary is
 included. Touch rotation comes from physical corner taps captured on the
 owner’s device and uses standard touchscreen properties.
+
+The staged UFS probe reuses the pinned board wiring after comparison with the owner’s stock device tree. No stock binary or dump is distributed. Storage validation is pending.

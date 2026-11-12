@@ -1,0 +1,24 @@
+Subject: [PATCH] arm64: dts: qcom: enable explicitly loaded TB522FU UFS probe
+
+The initramfs contains no modules and does not auto-mount filesystems.
+Load only the verified UFS modules after the USB recovery path is armed;
+protect every discovered block device before reading partition tables.
+Do not attach to the disabled inline-encryption provider.
+
+--- a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
++++ b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+@@ -506,3 +506,14 @@
+ 	power-domains = <&rpmhpd RPMHPD_MMCX>;
+ 	required-opps = <&rpmhpd_opp_nom_l1>;
+ };
++
++/* Staged read-only UFS probe: both drivers stay modular and are loaded
++ * explicitly from initramfs after USB and the return timer are verified.
++ * Stock wiring/rails above match the captured board FDT. Inline encryption
++ * is out of scope; do not depend on the disabled ICE device.
++ */
++&ufs_mem_hc {
++	/delete-property/ qcom,ice;
++	status = "okay";
++};
++&ufs_mem_phy { status = "okay"; };

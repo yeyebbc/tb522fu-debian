@@ -8,7 +8,7 @@ GitHub Actions builds two independent artifacts on native ARM64 runners:
 
 - A kernel, device tree and matching modules for a bounded RAM desktop test.
   Its BusyBox initramfs exposes USB NCM/ACM, protects block devices, and keeps
-  UFS disabled. An opt-in kernel timer requests EDL after 600 seconds from
+  UFS modules unloaded until explicitly requested. An opt-in kernel timer requests EDL after 600 seconds from
   SCM readiness, allowing the attached host to restore Android. SimpleDRM
   borrows the firmware framebuffer. Native display and GPU remain disabled.
   The USB host can supply a hash-verified SquashFS root, matching modules and
@@ -16,41 +16,36 @@ GitHub Actions builds two independent artifacts on native ARM64 runners:
 - A Debian 13 GNOME root filesystem from authenticated Debian archives,
   including security updates and the Mesa stack from trixie-backports.
 
-RAM Linux and RAM Debian have **booted on one TB522FU**. Recipe
-`17999716963c27620325e943a802a98b0880989a` from
-[CI run 43240203020](https://github.com/yeyebbc/tb522fu-debian/actions/runs/43240203020)
-produced Linux `7.3.0-tb522fu-probe-ci10+`. USB networking remained usable
-through Debian startup and beyond seven minutes. The GPI/SPI correction
-identified the touchscreen, loaded its firmware and captured real finger
-input with moving coordinates and clean down/release events. Orientation,
-pen input and the display/touch power lifecycle remain unverified.
+RAM Debian and the **physical GNOME welcome screen with correctly aligned
+finger input** are verified on one TB522FU using recipe
+`a4727557d10818f2872fdd4e9bd9e45a08e81e21` from
+[CI run 43247675167](https://github.com/yeyebbc/tb522fu-debian/actions/runs/43247675167).
+Linux `7.3.0-tb522fu-probe-ci11+` kept the display visible through normal
+multimedia clock-driver loading, RPMh provider synchronization, GNOME startup
+and touch firmware loading. The framebuffer holds MMCX at NOM_L1 (320),
+matching the stock display driver's 575 MHz vote. Native touch X is inverted
+before the axes are swapped; the user verified Next and Previous under the
+finger. GNOME also works at 200% interface scale in this RAM session.
 
-A follow-up RAM control showed the **physical GNOME welcome screen** with
-working finger input when `camcc_sm8750`, `videocc_sm8750` and
-`cambistmclkcc_sm8750` were initially kept unloaded. Touch is rotated by
-90 degrees: physical upper-left activates the upper-right menu. The corner
-capture and camera confirm that this needs a coordinate correction.
+The prior ci10 control isolated the blackout to the final clock provider
+allowing RPMh synchronization without a framebuffer power-domain consumer.
+Both ci10 tests returned on the kernel timer and restored verified stock
+Android. The explicit power vote fixes that failure in ci11 without a clock
+module blacklist. GPI/SPI/touch loading remains manual during these probes.
+Pen input and display/touch suspend lifecycle have not been tested.
 
-Loading the first two clock modules preserved visible GNOME and left RPMh
-`state_synced=0`. Loading the last one changed it to `1`; the camera then
-recorded a black screen before GNOME was stopped. This points to the borrowed
-framebuffer lacking an explicit multimedia power-domain consumer. Both tests
-returned to EDL on the kernel timer, restored the original stock image with
-full readback, and booted Android slot B successfully.
+The next candidate enables the stock-matched UFS nodes while keeping both
+host and PHY drivers modular. After RAM payload preparation,
+`ram-storage-probe` runs only in the BusyBox initramfs: it loads the verified
+modules, enumerates the six UFS LUNs, sets every disk and partition read-only,
+and reports their identity. It does not mount filesystems or write disk
+contents. Controller initialization can change UFS device attributes.
+The disabled inline-encryption provider is omitted from this probe.
+**Storage hardware validation is pending.**
 
-The next candidate declares the framebuffer's MMCX power domain at NOM_L1
-(level 320), matching the stock display driver's 575 MHz maximum-rate vote,
-and rotates native touch coordinates using inversion followed by axis swap.
-The device tree compiles and its resolved properties have been checked;
-these corrections still require hardware validation. Clock drivers will load
-normally for that test, without the temporary three-module blacklist.
-
-No repartitioning or installation has occurred. Native display/GPU, Wi-Fi,
-audio, charging, suspend and installed Android/Linux switching remain
-unverified. These artifacts are development components, not a flashable
-installer. The ci10 test corrected `qcom_gpi` to the actual module name `gpi`
-in the disposable RAM blacklist before Debian startup; that correction is
-now included in the preparation script. GNOME and touch remain manual starts.
+No repartitioning or persistent installation has occurred. Native display/GPU,
+Wi-Fi, audio, charging, suspend and installed Android/Linux switching remain
+unverified. These artifacts are development components, not an installer.
 
 Own-kernel recovery images trigger a firmware CrashDump on the tested Lenovo
 firmware. A standalone normal-boot entry test successfully returned to EDL,

@@ -1,0 +1,66 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-only
+# Explicit initramfs-only enumeration. No filesystem mounts or disk writes.
+set -eu
+export PATH=/bin:/sbin
+[ "$#" = 0 ]
+[ "$(cat /sys/module/qcom_scm/parameters/probe_edl_ready)" = Y ]
+[ "$(readlink /proc/1/exe)" = /bin/busybox ]
+[ ! -e /run/start-desktop ]
+[ ! -e /run/storage-readonly-verified ]
+[ -e /newroot/run-desktop-ready ]
+[ "$(($(cat /sys/module/qcom_scm/parameters/probe_seconds) - $(cut -d. -f1 /proc/uptime)))" -gt 180 ]
+for node in /sys/class/block/*; do
+    [ -e "$node" ] || continue
+    case "${node##*/}" in loop[0-9]*) ;; *) echo "Unexpected pre-existing disk: $node"; exit 1;; esac
+    [ "$(blockdev --getro "/dev/${node##*/}")" = 1 ]
+done
+# ram-desktop-prepare already verified the full module archive hash.
+[ ! -e /lib/modules ]
+mkdir -p /lib
+ln -s /newroot/usr/lib/modules /lib/modules
+[ -s "/lib/modules/$(uname -r)/modules.dep" ]
+modprobe -v phy_qcom_qmp_ufs
+modprobe -v ufshcd_qcom
+
+# There is no udev/systemd/automounter in this initramfs. Protect devices as
+# they appear, including partitions, and require all six stock UFS LUNs.
+complete=
+for attempt in $(seq 1 60); do
+    mdev -s
+    disks=0
+    for node in /sys/class/block/*; do
+        [ -e "$node" ] || continue
+        disk="/dev/${node##*/}"
+        [ -b "$disk" ]
+        blockdev --setro "$disk"
+        [ "$(blockdev --getro "$disk")" = 1 ]
+        case "${node##*/}" in
+            loop[0-9]*) continue;;
+            sd*) ;;
+            *) echo "Unexpected block device: $node"; exit 1;;
+        esac
+        [ ! -e "$node/partition" ] || continue
+        case "$(readlink -f "$node/device")" in
+            */1d84000.ufs/*) ;;
+            *) echo "Wrong storage controller: $node"; exit 1;;
+        esac
+        disks=$((disks + 1))
+    done
+    [ "$disks" -le 6 ]
+    if [ "$disks" = 6 ]; then complete=1; break; fi
+    sleep 1
+done
+[ "$complete" = 1 ] || { echo 'UFS enumeration incomplete'; exit 1; }
+for node in /sys/class/block/sd*; do
+    [ -e "$node" ] || continue
+    [ "$(blockdev --getro "/dev/${node##*/}")" = 1 ]
+    [ ! -e "$node/partition" ] || continue
+    printf '%s device=%s sectors512=%s logical_sector=%s\n' \
+        "${node##*/}" "$(readlink -f "$node/device")" \
+        "$(cat "$node/size")" "$(cat "$node/queue/logical_block_size")"
+    cat "$node/device/vendor" "$node/device/model" "$node/device/rev"
+done
+touch /run/storage-readonly-verified
+echo 'TB522FU_UFS_READONLY: six LUNs protected; no filesystems mounted'
+cat /proc/partitions

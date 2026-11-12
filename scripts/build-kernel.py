@@ -79,9 +79,9 @@ def main():
     applets = set(capture(launcher + [args.busybox, '--list']).split())
     required = {'sh', 'mount', 'mkdir', 'mdev', 'blockdev', 'ip', 'udhcpd', 'telnetd',
                 'setsid', 'sleep', 'seq', 'cat', 'ls', 'ln', 'reboot', 'poweroff', 'dmesg', 'stty',
-                'wget', 'sha256sum', 'tar', 'losetup', 'switch_root', 'cut', 'awk', 'mv', 'killall', 'touch'}
+                'wget', 'sha256sum', 'tar', 'losetup', 'switch_root', 'cut', 'awk', 'mv', 'killall', 'touch', 'readlink', 'modprobe'}
     assert required <= applets, required - applets
-    for script in ['ram-probe-init', 'ram-desktop-prepare']:
+    for script in ['ram-probe-init', 'ram-desktop-prepare', 'ram-storage-probe']:
         run(launcher + [args.busybox, 'sh', '-n', ROOT / 'configs' / script])
     init = (ROOT / 'configs/ram-probe-init').read_text()
     assert [s.strip() for s in init.splitlines() if s.strip().startswith('reboot ')] == ['reboot -f -n']
@@ -93,6 +93,7 @@ def main():
                  f'file /bin/busybox {args.busybox.resolve()} 0755 0 0',
                  f'file /init {ROOT / "configs/ram-probe-init"} 0755 0 0',
                  f'file /bin/ram-desktop-prepare {ROOT / "configs/ram-desktop-prepare"} 0755 0 0',
+                 f'file /bin/ram-storage-probe {ROOT / "configs/ram-storage-probe"} 0755 0 0',
                  f'file /etc/udhcpd.conf {ROOT / "configs/udhcpd.conf"} 0644 0 0',
                  f'file /etc/port-device-id {identity} 0644 0 0']
     cpio_spec += [f'slink /bin/{a} busybox 0777 0 0' for a in sorted(applets) if a != 'busybox']
@@ -114,6 +115,7 @@ def main():
                     'CONFIG_DEBUG_INFO_NONE=y', 'CONFIG_USB_CONFIGFS=y',
                     'CONFIG_DRM_SIMPLEDRM=y', 'CONFIG_DRM=y', 'CONFIG_FONT_TER16x32=y', 'CONFIG_DEBUG_FS=y',
                     'CONFIG_OVERLAY_FS=y', 'CONFIG_SQUASHFS=y', 'CONFIG_SQUASHFS_ZLIB=y',
+                    'CONFIG_SCSI_UFS_QCOM=m', 'CONFIG_PHY_QCOM_QMP_UFS=m',
                     'CONFIG_SPI_QCOM_GENI=m', 'CONFIG_QCOM_GPI_DMA=m', 'CONFIG_TOUCHSCREEN_NT36536_SPI=m',
                     'CONFIG_DETECT_HUNG_TASK=y', 'CONFIG_SOFTLOCKUP_DETECTOR=y',
                     'CONFIG_USB_CONFIGFS_NCM=y', 'CONFIG_USB_CONFIGFS_ACM=y',
@@ -154,7 +156,7 @@ def main():
     manifest = {'source': spec, 'compiler': capture([compiler, '--version']).splitlines()[0],
                 'recipe_commit': recipe_commit,
                 'recipe_sha256': {p: sha(ROOT / p) for p in ['configs/ram-probe-init',
-                    'configs/ram-probe.fragment', 'configs/ram-desktop-prepare', 'configs/udhcpd.conf', 'scripts/build-kernel.py']},
+                    'configs/ram-probe.fragment', 'configs/ram-desktop-prepare', 'configs/ram-storage-probe', 'configs/udhcpd.conf', 'scripts/build-kernel.py']},
                 'source_date_epoch': int(epoch), 'gadget_serial': identity.read_text().strip(),
                 'busybox_sha256': sha(args.busybox),
                 'patch_sha256': {p: sha(ROOT / p) for p in spec['applied_patches']},
