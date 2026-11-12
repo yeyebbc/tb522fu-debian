@@ -1,0 +1,13 @@
+[Unit]
+Description=Load the verified TB522FU touch drivers
+After=systemd-udev-trigger.service
+Before=display-manager.service
+ConditionPathExists=/usr/lib/firmware/novatek_ts_38_new_fw.bin
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/sbin/modprobe gpi
+ExecStart=/sbin/modprobe spi_geni_qcom
+ExecStart=/sbin/modprobe nt36536_ts
+[Install]
+WantedBy=multi-user.target

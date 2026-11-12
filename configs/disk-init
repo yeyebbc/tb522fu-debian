@@ -80,10 +80,13 @@ if [ "$debug" = 1 ]; then
     ip addr add 172.26.52.1/30 dev usb0 || fail 'USB address'
     ip link set usb0 up || fail 'USB link'
     udhcpd /etc/udhcpd.conf
-    # Temporary isolated maintenance shells. Installed userland uses key SSH.
-    telnetd -b 172.26.52.1:23 -l /bin/sh
-    setsid sh -c 'exec sh -i </dev/ttyGS0 >/dev/ttyGS0 2>&1' &
-    serial_shell_pid=$!
+    # Unauthenticated shells exist only in the bounded maintenance profile.
+    # Installed debugging starts key-authenticated SSH after switch_root.
+    if [ "$profile" = disk-test ]; then
+        telnetd -b 172.26.52.1:23 -l /bin/sh
+        setsid sh -c 'exec sh -i </dev/ttyGS0 >/dev/ttyGS0 2>&1' &
+        serial_shell_pid=$!
+    fi
     echo 'TB522FU_PROBE_READY: USB 172.26.52.1, serial ttyGS0' >/dev/kmsg
 fi
 if [ "$status" = 2 ]; then
@@ -93,8 +96,11 @@ if [ "$status" = 2 ]; then
 fi
 [ -e /run/disk-root-verified ] || fail 'root marker'
 if [ "$debug" = 1 ]; then
-    killall telnetd udhcpd || true
-    kill "$serial_shell_pid" || true
+    killall udhcpd || true
+    if [ "$profile" = disk-test ]; then
+        killall telnetd || true
+        kill "$serial_shell_pid" || true
+    fi
 fi
 mount --move /dev /newroot/dev || fail 'move dev'
 mount --move /proc /newroot/proc || fail 'move proc'

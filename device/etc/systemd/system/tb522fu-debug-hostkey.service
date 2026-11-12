@@ -1,0 +1,7 @@
+[Unit]
+Description=Create SSH host keys on this tablet
+ConditionPathExists=/etc/tb522fu/usb-debug-enabled
+ConditionPathExists=!/etc/ssh/ssh_host_ed25519_key
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/ssh-keygen -A

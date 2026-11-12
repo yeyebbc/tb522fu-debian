@@ -1,0 +1,10 @@
+HostKey /etc/ssh/ssh_host_ed25519_key
+AuthorizedKeysFile /etc/tb522fu/authorized_keys
+PermitRootLogin prohibit-password
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+AuthenticationMethods publickey
+UsePAM yes
+AllowUsers root@172.26.52.2
+AllowTcpForwarding no
+X11Forwarding no

@@ -1,0 +1,11 @@
+[Unit]
+Description=Authenticated tablet USB debug session
+ConditionPathExists=/etc/tb522fu/usb-debug-enabled
+[Service]
+ExecStart=-/usr/sbin/sshd -i -f /etc/ssh/sshd_config_tb522fu
+StandardInput=socket
+RuntimeDirectory=sshd
+RuntimeDirectoryPreserve=yes
+RuntimeDirectoryMode=0755
+IPAddressDeny=any
+IPAddressAllow=172.26.52.2/32

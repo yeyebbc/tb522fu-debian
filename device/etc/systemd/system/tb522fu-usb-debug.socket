@@ -1,0 +1,11 @@
+[Unit]
+Description=Optional SSH on the tablet USB link
+ConditionPathExists=/etc/tb522fu/usb-debug-enabled
+Wants=tb522fu-debug-hostkey.service
+After=tb522fu-debug-hostkey.service
+[Socket]
+ListenStream=172.26.52.1:22
+FreeBind=yes
+Accept=yes
+[Install]
+WantedBy=sockets.target

@@ -92,6 +92,16 @@ apt-get install mmdebstrap debian-archive-keyring ca-certificates zstd
 python3 scripts/build-rootfs.py
 ```
 
+## Device userspace layer
+
+`device/` contains the pending installation overlay: ordered touch loading,
+200% GNOME scale, sleep disabled while power management is unverified, and
+optional SSH restricted to the USB peer with public-key authentication.
+The installer must supply this tablet's firmware, root PARTUUID and authorized
+key privately. Debugging is off unless `/etc/tb522fu/usb-debug-enabled` exists.
+Default SSH services are masked; no credentials or firmware are in the overlay.
+These files have passed syntax/unit checks, not persistent hardware validation.
+
 ## Sources and patches
 
 The exact-device kernel is pinned in [kernel/source.json](kernel/source.json)
