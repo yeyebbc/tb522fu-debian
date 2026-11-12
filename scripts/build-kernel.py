@@ -61,7 +61,9 @@ def main():
     make = ['make', '-C', source, f'O={out}', 'ARCH=arm64', f'CROSS_COMPILE={cross}',
             f'CC=ccache {compiler}', f'-j{args.jobs}']
     run(make + ['defconfig'])
-    run(make + ['usr/gen_init_cpio'])
+    # gen_init_cpio is a standalone host program, not a top-level make target.
+    gen_cpio = work / 'gen_init_cpio'
+    run(['cc', '-O2', '-Wall', source / 'usr/gen_init_cpio.c', '-o', gen_cpio])
 
     binary = args.busybox.read_bytes()
     assert binary[:4] == b'\x7fELF' and struct.unpack_from('<H', binary, 18)[0] == 183, 'BusyBox must be ARM64'
@@ -87,7 +89,7 @@ def main():
     (work / 'cpio.spec').write_text('\n'.join(cpio_spec) + '\n')
     cpio = work / 'initramfs.cpio'
     with cpio.open('wb') as stream:
-        run([out / 'usr/gen_init_cpio', '-t', epoch, work / 'cpio.spec'], stdout=stream)
+        run([gen_cpio, '-t', epoch, work / 'cpio.spec'], stdout=stream)
     run([source / 'scripts/kconfig/merge_config.sh', '-m', '-O', out, out / '.config',
          source / 'arch/arm64/configs/y900-display.fragment', ROOT / 'configs/ram-probe.fragment'], cwd=source)
     run([source / 'scripts/config', '--file', out / '.config', '--set-str', 'INITRAMFS_SOURCE', cpio])
