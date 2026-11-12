@@ -1,0 +1,44 @@
+From: TB522FU Debian port contributors
+Subject: [PATCH] arm64: dts: qcom: keep TB522FU firmware display power
+
+The borrowed framebuffer had no power-domain consumer. RAM controls kept
+GNOME visible while multimedia clock providers remained unbound. Binding
+the last provider completed RPMh sync_state and the physical panel went
+black while the compositor continued rendering.
+
+Declare MMCX at NOM_L1. The stock display driver maps its maximum 575 MHz
+MDP clock to level 320, matching the upstream SoC OPP. Native display/GPU
+remain disabled; no clock rate or panel command changes. Allow the generic
+required-opps property in the simple-framebuffer binding.
+
+Hardware verification of this correction is pending.
+
+diff --git a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+--- a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
++++ b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+@@ -494,3 +494,12 @@
+ 
+ /* Stock GPI1 mask 0x1e, SE4, stream ID 0xb6; no other serial engines enabled. */
+ &gpi_dma1 { status = "okay"; };
++
++/* Borrowed scanout must own MMCX before provider sync drops boot votes.
++ * Stock maximum MDP rate 575 MHz requires RPMh level 320 (NOM_L1).
++ * This keeps power only; it does not program display clocks or the panel.
++ */
++&{/framebuffer@fc800000} {
++	power-domains = <&rpmhpd RPMHPD_MMCX>;
++	required-opps = <&rpmhpd_opp_nom_l1>;
++};
+diff --git a/Documentation/devicetree/bindings/display/simple-framebuffer.yaml b/Documentation/devicetree/bindings/display/simple-framebuffer.yaml
+--- a/Documentation/devicetree/bindings/display/simple-framebuffer.yaml
++++ b/Documentation/devicetree/bindings/display/simple-framebuffer.yaml
+@@ -78,6 +78,9 @@
+ 
+   power-domains:
+     description: List of power domains used by the framebuffer.
++
++  required-opps:
++    description: Performance states needed by the framebuffer power domains.
+ 
+   width:
+     $ref: /schemas/types.yaml#/definitions/uint32

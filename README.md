@@ -25,12 +25,25 @@ identified the touchscreen, loaded its firmware and captured real finger
 input with moving coordinates and clean down/release events. Orientation,
 pen input and the display/touch power lifecycle remain unverified.
 
-GNOME renders the Debian welcome screen in its framebuffer, but **the physical
-screen goes black** during Debian startup, before the touchscreen module or
-GNOME is started. Visible GNOME has therefore not passed. Camera/video clock
-providers loaded during coldplug share multimedia power domains; their effect
-is under investigation. The host uses a manual USB address because the
-initramfs DHCP server exits at switch_root.
+A follow-up RAM control showed the **physical GNOME welcome screen** with
+working finger input when `camcc_sm8750`, `videocc_sm8750` and
+`cambistmclkcc_sm8750` were initially kept unloaded. Touch is rotated by
+90 degrees: physical upper-left activates the upper-right menu. The corner
+capture and camera confirm that this needs a coordinate correction.
+
+Loading the first two clock modules preserved visible GNOME and left RPMh
+`state_synced=0`. Loading the last one changed it to `1`; the camera then
+recorded a black screen before GNOME was stopped. This points to the borrowed
+framebuffer lacking an explicit multimedia power-domain consumer. Both tests
+returned to EDL on the kernel timer, restored the original stock image with
+full readback, and booted Android slot B successfully.
+
+The next candidate declares the framebuffer's MMCX power domain at NOM_L1
+(level 320), matching the stock display driver's 575 MHz maximum-rate vote,
+and rotates native touch coordinates using inversion followed by axis swap.
+The device tree compiles and its resolved properties have been checked;
+these corrections still require hardware validation. Clock drivers will load
+normally for that test, without the temporary three-module blacklist.
 
 No repartitioning or installation has occurred. Native display/GPU, Wi-Fi,
 audio, charging, suspend and installed Android/Linux switching remain

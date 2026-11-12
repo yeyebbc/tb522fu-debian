@@ -13,6 +13,8 @@
     "patches/0102-tb522fu-ram-touch-board.patch",
     "patches/0103-tb522fu-touch-gpi-dma.patch",
     "patches/0104-geni-dma-message-status.patch",
-    "patches/0105-nt36536-stop-on-transport-failure.patch"
+    "patches/0105-nt36536-stop-on-transport-failure.patch",
+    "patches/0106-tb522fu-framebuffer-power-domain.patch",
+    "patches/0107-tb522fu-touch-landscape.patch"
   ]
 }

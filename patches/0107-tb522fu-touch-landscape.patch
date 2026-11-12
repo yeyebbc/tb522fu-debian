@@ -1,0 +1,22 @@
+From: TB522FU Debian port contributors
+Subject: [PATCH] arm64: dts: qcom: rotate TB522FU touch into landscape
+
+Physical upper-left and upper-right taps map to native coordinates near
+(maxX,0) and (maxX,maxY). Invert native X, then swap axes through the
+standard touchscreen helpers already used by finger and pen reporting.
+The display frame becomes 3840x2560. Real-input validation of the corrected
+mapping remains required.
+
+diff --git a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+--- a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
++++ b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+@@ -454,6 +454,9 @@
+ 		firmware-name = "novatek_ts_38_new_fw.bin";
+ 		touchscreen-size-x = <2560>;
+ 		touchscreen-size-y = <3840>;
++		/* Native TL=(maxX,0), TR=(maxX,maxY): invert X before swap. */
++		touchscreen-inverted-x;
++		touchscreen-swapped-x-y;
+ 
+ 		novatek,pen-support;
+ 		novatek,spi-rd-fast-addr = <0>;
