@@ -32,6 +32,10 @@ def main():
     parser.add_argument('--busybox', type=Path, default=Path('/usr/bin/busybox'))
     parser.add_argument('--jobs', type=int, default=os.cpu_count() or 2)
     args = parser.parse_args()
+    # Actions containers can mount the checkout with a different owner. Trust
+    # only this explicitly selected recipe checkout, and validate before build.
+    recipe_commit = capture(['git', '-c', f'safe.directory={ROOT}', '-C', ROOT,
+                             'rev-parse', 'HEAD'])
     spec = json.loads((ROOT / 'kernel/source.json').read_text())
     work = ROOT / 'work'
     source = work / 'kernel'
@@ -122,7 +126,7 @@ def main():
     (target / 'initramfs.cpio.gz').write_bytes(gzip.compress(cpio.read_bytes(), mtime=0))
     shutil.copy2(ROOT / 'kernel/source.json', target / 'source.json')
     manifest = {'source': spec, 'compiler': capture([compiler, '--version']).splitlines()[0],
-                'recipe_commit': capture(['git', '-C', ROOT, 'rev-parse', 'HEAD']),
+                'recipe_commit': recipe_commit,
                 'recipe_sha256': {p: sha(ROOT / p) for p in ['configs/ram-probe-init',
                     'configs/ram-probe.fragment', 'configs/udhcpd.conf', 'scripts/build-kernel.py']},
                 'source_date_epoch': int(epoch), 'gadget_serial': identity.read_text().strip(),
