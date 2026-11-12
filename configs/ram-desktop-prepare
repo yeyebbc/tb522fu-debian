@@ -15,10 +15,14 @@ uptime=$(cut -d. -f1 /proc/uptime)
 [ "$((duration - uptime))" -gt 180 ]
 [ "$(awk '/MemAvailable:/{print $2}' /proc/meminfo)" -gt 6291456 ]
 [ ! -e /newroot ]
-# No persistent device is allowed in this candidate, even read-only.
+# Storage is permitted only in the verified read-only maintenance profile.
 for node in /sys/class/block/*; do
     [ -e "$node" ] || continue
-    case "${node##*/}" in loop[0-9]*) ;; *) echo "Unexpected block device: $node"; exit 1;; esac
+    case "${node##*/}" in
+        loop[0-9]*) ;;
+        sd*) [ -e /run/storage-readonly-verified ] && [ "$(cat /etc/boot-profile)" = disk-test ];;
+        *) echo "Unexpected block device: $node"; exit 1;;
+    esac
     [ "$(blockdev --getro "/dev/${node##*/}")" = 1 ]
 done
 mkdir -p /run/desktop/payload /run/desktop/lower /run/desktop/rw /newroot

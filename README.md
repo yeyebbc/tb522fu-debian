@@ -4,17 +4,20 @@ Experimental native Linux port for the Lenovo Legion Y900 13 / TB522FU
 (SM8750, Snapdragon 8 Elite). The intended installation is Debian 13 ARM64
 with GNOME and 256 GiB of storage, preserving Android for dual boot.
 
-GitHub Actions builds two independent artifacts on native ARM64 runners:
+GitHub Actions builds two kernel profiles on native ARM64 runners:
 
-- A kernel, device tree and matching modules for a bounded RAM desktop test.
-  Its BusyBox initramfs exposes USB NCM/ACM, protects block devices, and keeps
-  UFS modules unloaded until explicitly requested. An opt-in kernel timer requests EDL after 600 seconds from
-  SCM readiness, allowing the attached host to restore Android. SimpleDRM
-  borrows the firmware framebuffer. Native display and GPU remain disabled.
-  The USB host can supply a hash-verified SquashFS root, matching modules and
-  private touch firmware to a disposable RAM overlay before starting Debian.
-- A Debian 13 GNOME root filesystem from authenticated Debian archives,
-  including security updates and the Mesa stack from trixie-backports.
+- `disk-test`: an embedded BusyBox maintenance/boot environment with matching
+  modules, e2fsck and a900-second independent EDL return for host restoration.
+- `installed`: the same device support with normal reboot semantics and no
+  test timer. USB debugging is opt-in. This profile is not hardware-tested yet.
+
+Both locate Debian by GPT label, verify its256GiB geometry and installation
+marker, check ext4 and load the matching root. They never create partitions or
+format filesystems automatically. Before installation, disk-test remains in a
+read-only maintenance shell. SimpleDRM borrows the firmware framebuffer;
+native display and GPU remain disabled. A separate, optional workflow job builds
+Debian13 GNOME from authenticated Debian archives. The original RAM-only
+profile remains available with `scripts/build-kernel.py --profile ram`.
 
 RAM Debian and the **physical GNOME welcome screen with correctly aligned
 finger input** are verified on one TB522FU using recipe
@@ -34,14 +37,15 @@ Android. The explicit power vote fixes that failure in ci11 without a clock
 module blacklist. GPI/SPI/touch loading remains manual during these probes.
 Pen input and display/touch suspend lifecycle have not been tested.
 
-The next candidate enables the stock-matched UFS nodes while keeping both
-host and PHY drivers modular. After RAM payload preparation,
-`ram-storage-probe` runs only in the BusyBox initramfs: it loads the verified
-modules, enumerates the six UFS LUNs, sets every disk and partition read-only,
-and reports their identity. It does not mount filesystems or write disk
-contents. Controller initialization can change UFS device attributes.
-The disabled inline-encryption provider is omitted from this probe.
-**Storage hardware validation is pending.**
+Read-only UFS hardware validation passed with recipe
+`20e462f1290cbe9f1824d96bfcc948a6c54d182c` from
+[CI run43252153700](https://github.com/yeyebbc/tb522fu-debian/actions/runs/43252153700).
+All six LUNs enumerated; both GPT copies matched stock identity and geometry.
+Complete boot/recovery/init_boot reads matched their expected hashes, including
+a successful recovery read after UFS runtime suspend. No UFS filesystem was
+mounted or written. Timed EDL return, stock boot restoration and Android boot
+all passed. The module name is `ufs_qcom`; explicit module names are now checked
+against build outputs. Controller initialization can change UFS attributes.
 
 No repartitioning or persistent installation has occurred. Native display/GPU,
 Wi-Fi, audio, charging, suspend and installed Android/Linux switching remain
@@ -61,8 +65,9 @@ are not stored here or sent to CI.
 ## Build
 
 Push a source/configuration change to `main`, or use **Actions → Build ARM64
-artifacts → Run workflow**. Download `kernel-usb-probe` and
-`debian13-arm64-gnome` from that workflow run. Each contains SHA-256 checksums
+artifacts → Run workflow**. Download `kernel-disk-test` and
+`kernel-installed`. Enable `build_rootfs` only when rebuilding the Debian base;
+that optional job produces `debian13-arm64-gnome`. Each contains SHA-256 checksums
 and a source or package manifest. Artifacts expire after seven days.
 
 The jobs use Debian 13 containers on `ubuntu-24.04-arm`. The kernel build uses
@@ -73,12 +78,13 @@ To build the kernel locally on Debian 13 ARM64:
 
 ```sh
 sudo apt-get install build-essential bc bison flex libssl-dev libelf-dev \
-  ccache device-tree-compiler busybox-static cpio python3 git zstd kmod
-python3 scripts/build-kernel.py
+  ccache device-tree-compiler busybox-static cpio python3 git zstd kmod e2fsprogs
+python3 scripts/build-kernel.py --profile disk-test
 ```
 
 For an x86_64 Debian build host, also install `gcc-aarch64-linux-gnu` and
-provide an ARM64 static BusyBox with `--busybox /path/to/arm64/busybox`.
+provide an ARM64 static BusyBox with `--busybox /path/to/arm64/busybox`
+for the RAM profile. Disk profiles require native ARM64 for e2fsck libraries.
 Build the root filesystem on ARM64 as root with:
 
 ```sh
@@ -103,7 +109,7 @@ The NT36536 patches now build as a module for explicit loading after USB
 logging is available. The DMA correction has passed identification, firmware loading and real finger input on one unit. Its
 source is [yzddmr6/linux-sm8750-erhai](https://github.com/yzddmr6/linux-sm8750-erhai/tree/958a2b4654196bb52dfa0217a0f65ffeaa919f81/drivers/input/touchscreen/nt36536).
 The TB522FU adaptation uses the stock driver's CRC-command lengths, report
-length and pen pressure range. Display orientation, pen and power lifecycle validation remain pending. Native panel takeover must establish the panel-follower relationship
+length and pen pressure range. Finger orientation passed; pen and power lifecycle validation remain pending. Native panel takeover must establish the panel-follower relationship
 before display power management can be tested. Firmware is supplied privately
 on the USB link and is never uploaded to this repository or CI.
 

@@ -1,0 +1,103 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-only
+export PATH=/bin:/sbin
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t devtmpfs devtmpfs /dev
+mkdir -p /dev/pts /run /sys/kernel/config /sys/kernel/debug
+mount -t devpts devpts /dev/pts
+mount -t tmpfs tmpfs /run
+mount -t debugfs debugfs /sys/kernel/debug
+profile=$(cat /etc/boot-profile)
+fail() {
+    echo "TB522FU_DISK_FAIL: $*" >/dev/console
+    echo "TB522FU_DISK_FAIL: $*" >/dev/kmsg
+    sync
+    [ ! -e /run/disk-root-verified ] || mount -o remount,ro /newroot
+    if [ "$profile" = disk-test ]; then
+        sleep 10
+        reboot -f -n
+    else
+        # No automatic reboot loop when a production root cannot be mounted.
+        sleep 30
+        poweroff -f
+    fi
+    while :; do sleep 1; done
+}
+if [ "$profile" = disk-test ]; then
+    ready=
+    for attempt in $(seq 1 20); do
+        [ "$(cat /sys/module/qcom_scm/parameters/probe_edl_ready 2>/dev/null)" = Y ] && ready=1 && break
+        sleep 1
+    done
+    if [ "$ready" != 1 ]; then
+        echo 'EDL return unavailable; powering off' >/dev/console
+        poweroff -f -n
+        while :; do sleep 1; done
+    fi
+    [ "$(cat /sys/module/qcom_scm/parameters/probe_seconds)" = 900 ] || fail timer
+else
+    [ "$profile" = installed ] || fail profile
+    [ "$(cat /sys/module/qcom_scm/parameters/probe_edl_return)" = N ] || fail 'test restart handler enabled'
+fi
+tar -xzf /modules.tar.gz -C / || fail modules
+status=0
+/bin/disk-root-prepare || status=$?
+[ "$status" = 0 ] || { [ "$profile" = disk-test ] && [ "$status" = 2 ]; } || fail 'root verification'
+
+debug=
+[ "$profile" != disk-test ] || debug=1
+[ ! -e /newroot/etc/tb522fu/usb-debug-enabled ] || debug=1
+if [ "$debug" = 1 ]; then
+    mount -t configfs configfs /sys/kernel/config || fail configfs
+    g=/sys/kernel/config/usb_gadget/tb522fu_probe
+    mkdir "$g" || fail gadget
+    echo 0x1d6b >"$g/idVendor"
+    echo 0x0104 >"$g/idProduct"
+    echo 0x0200 >"$g/bcdUSB"
+    mkdir -p "$g/strings/0x409" "$g/configs/c.1/strings/0x409"
+    cat /etc/port-device-id >"$g/strings/0x409/serialnumber"
+    echo 'TB522FU development' >"$g/strings/0x409/manufacturer"
+    echo "Debian $profile" >"$g/strings/0x409/product"
+    echo 'USB NCM and serial' >"$g/configs/c.1/strings/0x409/configuration"
+    echo 250 >"$g/configs/c.1/MaxPower"
+    mkdir "$g/functions/ncm.usb0" "$g/functions/acm.usb0" || fail functions
+    echo 02:52:2f:00:00:01 >"$g/functions/ncm.usb0/dev_addr"
+    echo 02:52:2f:00:00:02 >"$g/functions/ncm.usb0/host_addr"
+    ln -s "$g/functions/ncm.usb0" "$g/configs/c.1/"
+    ln -s "$g/functions/acm.usb0" "$g/configs/c.1/"
+    controller=
+    for attempt in $(seq 1 30); do
+        for path in /sys/class/udc/*; do
+            [ -e "$path" ] && controller="${path##*/}" && break
+        done
+        [ -n "$controller" ] && break
+        sleep 1
+    done
+    [ -n "$controller" ] || fail 'no USB controller'
+    echo "$controller" >"$g/UDC" || fail 'UDC binding'
+    ip link set lo up
+    ip addr add 172.26.52.1/30 dev usb0 || fail 'USB address'
+    ip link set usb0 up || fail 'USB link'
+    udhcpd /etc/udhcpd.conf
+    # Temporary isolated maintenance shells. Installed userland uses key SSH.
+    telnetd -b 172.26.52.1:23 -l /bin/sh
+    setsid sh -c 'exec sh -i </dev/ttyGS0 >/dev/ttyGS0 2>&1' &
+    serial_shell_pid=$!
+    echo 'TB522FU_PROBE_READY: USB 172.26.52.1, serial ttyGS0' >/dev/kmsg
+fi
+if [ "$status" = 2 ]; then
+    echo 'TB522FU_MAINTENANCE: no root partition, all storage read-only' >/dev/console
+    # Installation is explicit over USB. Never auto-format or auto-switch_root.
+    while :; do sleep 1; done
+fi
+[ -e /run/disk-root-verified ] || fail 'root marker'
+if [ "$debug" = 1 ]; then
+    killall telnetd udhcpd || true
+    kill "$serial_shell_pid" || true
+fi
+mount --move /dev /newroot/dev || fail 'move dev'
+mount --move /proc /newroot/proc || fail 'move proc'
+mount --move /sys /newroot/sys || fail 'move sys'
+mount --move /run /newroot/run || { reboot -f; exit 1; }
+exec switch_root -c /dev/console /newroot /sbin/init

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-2.0-only
-"""Build the pinned RAM desktop kernel without accessing a device."""
+"""Build the pinned RAM, disk-test or installed kernel without device access."""
 from pathlib import Path
 import argparse
 import gzip
@@ -31,8 +31,10 @@ def sha(path):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--busybox', type=Path, default=Path('/usr/bin/busybox'))
+    parser.add_argument('--profile', choices=['ram', 'disk-test', 'installed'], default='ram')
     parser.add_argument('--jobs', type=int, default=os.cpu_count() or 2)
     args = parser.parse_args()
+    disk = args.profile != 'ram'
     # Actions containers can mount the checkout with a different owner. Trust
     # only this explicitly selected recipe checkout, and validate before build.
     recipe_commit = capture(['git', '-c', f'safe.directory={ROOT}', '-C', ROOT,
@@ -78,26 +80,50 @@ def main():
         assert emulator, 'qemu-user is needed to validate ARM64 BusyBox on x86_64'
         launcher = [emulator]
     applets = set(capture(launcher + [args.busybox, '--list']).split())
-    required = {'sh', 'mount', 'mkdir', 'mdev', 'blockdev', 'ip', 'udhcpd', 'telnetd',
+    required = {'grep', 'sed', 'dirname', 'umount', 'sync', 'sh', 'mount', 'mkdir', 'mdev', 'blockdev', 'ip', 'udhcpd', 'telnetd',
                 'setsid', 'sleep', 'seq', 'cat', 'ls', 'ln', 'reboot', 'poweroff', 'dmesg', 'stty',
                 'wget', 'sha256sum', 'tar', 'losetup', 'switch_root', 'cut', 'awk', 'mv', 'killall', 'touch', 'readlink', 'modprobe'}
     assert required <= applets, required - applets
-    for script in ['ram-probe-init', 'ram-desktop-prepare', 'ram-storage-probe']:
+    scripts = ['ram-probe-init', 'ram-desktop-prepare', 'ram-storage-probe']
+    if disk:
+        scripts += ['disk-init', 'disk-root-prepare']
+    for script in scripts:
         run(launcher + [args.busybox, 'sh', '-n', ROOT / 'configs' / script])
     init = (ROOT / 'configs/ram-probe-init').read_text()
     assert [s.strip() for s in init.splitlines() if s.strip().startswith('reboot ')] == ['reboot -f -n']
     assert 'poweroff -f -n' in init and 'probe_edl_ready' in init
+    init_script = 'disk-init' if disk else 'ram-probe-init'
     identity = work / 'probe-id'
     identity.write_text('tb522fu-ci-ram-probe\n')
     cpio_spec = [f'dir /{d} 0755 0 0' for d in ['bin','sbin','dev','proc','sys','etc','run','tmp','root']]
     cpio_spec += ['nod /dev/console 0600 0 0 c 5 1', 'nod /dev/null 0666 0 0 c 1 3',
                  f'file /bin/busybox {args.busybox.resolve()} 0755 0 0',
-                 f'file /init {ROOT / "configs/ram-probe-init"} 0755 0 0',
+                 f'file /init {ROOT / "configs" / init_script} 0755 0 0',
                  f'file /bin/ram-desktop-prepare {ROOT / "configs/ram-desktop-prepare"} 0755 0 0',
                  f'file /bin/ram-storage-probe {ROOT / "configs/ram-storage-probe"} 0755 0 0',
                  f'file /etc/udhcpd.conf {ROOT / "configs/udhcpd.conf"} 0644 0 0',
                  f'file /etc/port-device-id {identity} 0644 0 0']
     cpio_spec += [f'slink /bin/{a} busybox 0777 0 0' for a in sorted(applets) if a != 'busybox']
+    if disk:
+        profile_file = work / 'boot-profile'
+        profile_file.write_text(args.profile + '\n')
+        cpio_spec += [f'dir /{d} 0755 0 0' for d in ['lib', 'usr', 'usr/lib']]
+        cpio_spec += [f'file /etc/boot-profile {profile_file} 0644 0 0',
+                      f'file /bin/disk-root-prepare {ROOT / "configs/disk-root-prepare"} 0755 0 0',
+                      'slink /lib/modules /usr/lib/modules 0777 0 0']
+        assert not cross, 'Disk profiles require native ARM64 CI for e2fsck libraries'
+        checker = Path(capture(['sh', '-c', 'command -v e2fsck'])).resolve()
+        libraries = re.findall(r'(/[^\s()]+)', capture(['ldd', checker]))
+        copied_dirs = {'/lib', '/usr', '/usr/lib', '/sbin'}
+        for library in sorted(set(libraries)):
+            lib = Path(library)
+            for parent in reversed(lib.parents):
+                if str(parent) == '/' or str(parent) in copied_dirs:
+                    continue
+                cpio_spec.append(f'dir {parent} 0755 0 0')
+                copied_dirs.add(str(parent))
+            cpio_spec.append(f'file {lib} {lib.resolve()} 0755 0 0')
+        cpio_spec.append(f'file /sbin/e2fsck {checker} 0755 0 0')
     (work / 'cpio.spec').write_text('\n'.join(cpio_spec) + '\n')
     cpio = work / 'initramfs.cpio'
     with cpio.open('wb') as stream:
@@ -107,8 +133,20 @@ def main():
     run([source / 'scripts/config', '--file', out / '.config', '--set-str', 'INITRAMFS_SOURCE', cpio])
     number = os.environ.get('GITHUB_RUN_NUMBER', '0')
     assert number.isdigit()
+    # A stable config avoids invalidating every ccache direct-mode key. The
+    # command-line suffix keeps each build/profile ABI uniquely identifiable.
     run([source / 'scripts/config', '--file', out / '.config', '--set-str', 'LOCALVERSION',
-         '-tb522fu-probe-ci' + number])
+         '-tb522fu'])
+    make.append('LOCALVERSION=-' + args.profile + '-ci' + number)
+    if disk:
+        fragment = (ROOT / 'configs/ram-probe.fragment').read_text()
+        cmdline = re.search(r'^CONFIG_CMDLINE="(.*)"$', fragment, re.M)[1]
+        if args.profile == 'disk-test':
+            cmdline = cmdline.replace('probe_seconds=600', 'probe_seconds=900')
+        else:
+            cmdline = cmdline.replace(' qcom_scm.probe_edl_return=1', '')
+            cmdline = cmdline.replace(' qcom_scm.probe_seconds=600', '')
+        run([source / 'scripts/config', '--file', out / '.config', '--set-str', 'CMDLINE', cmdline])
     run(make + ['olddefconfig'])
     config = (out / '.config').read_text().splitlines()
     for setting in ['CONFIG_Y900_ACM_DIAG_DTB=y', 'CONFIG_INITRAMFS_FORCE=y',
@@ -130,12 +168,16 @@ def main():
                     'CONFIG_INTERCONNECT_QCOM_SM8750=y', 'CONFIG_USB_DWC3_QCOM=y']:
         assert setting in config, setting
     assert 'CONFIG_QCOM_SCM=y' in config
-    assert any(s.startswith('CONFIG_CMDLINE=') and 'qcom_scm.probe_edl_return=1' in s for s in config)
+    cmdline = next(s for s in config if s.startswith('CONFIG_CMDLINE='))
+    assert ('qcom_scm.probe_edl_return=1' in cmdline) == (args.profile != 'installed')
+    if disk:
+        assert 'CONFIG_EXT4_FS=y' in config
     run(make + [spec['board_dtb']])
     run(make + ['Image', 'modules'])
     modules = work / 'modules'
     run(make + ['modules_install', f'INSTALL_MOD_PATH={modules}', 'INSTALL_MOD_STRIP=1'])
     release = (out / 'include/config/kernel.release').read_text().strip()
+    assert release.endswith('-' + args.profile + '-ci' + number) and '+' not in release
     installed = modules / 'lib/modules' / release
     # Check names against the built modules; Kconfig symbols are not filenames.
     explicit = set(re.findall(r'^blacklist ([\w-]+)$',
@@ -151,9 +193,17 @@ def main():
     (modules / 'usr/lib').mkdir(parents=True)
     (modules / 'lib/modules').rename(modules / 'usr/lib/modules')
     run(['tar', '-czf', target / 'modules.tar.gz', '-C', modules, 'usr/lib/modules'])
+    if disk:
+        cpio_spec.append(f'file /modules.tar.gz {target / "modules.tar.gz"} 0644 0 0')
+        (work / 'cpio.spec').write_text('\n'.join(cpio_spec) + '\n')
+        with cpio.open('wb') as stream:
+            run([gen_cpio, '-t', epoch, work / 'cpio.spec'], stdout=stream)
+        # Only initramfs and final link change; module ABI/config are unchanged.
+        run(make + ['Image'])
     image = out / 'arch/arm64/boot/Image'
     dtb = out / 'arch/arm64/boot/dts' / spec['board_dtb']
     data = image.read_bytes()
+    assert len(data) < 94 * 1024**2, 'Kernel/initramfs must leave room in boot_b'
     assert data[0x38:0x3c] == b'ARMd' and dtb.read_bytes() in data
     for path, name in [(image, 'Image'), (dtb, 'mainline-board.dtb'),
                        (out / '.config', 'kernel.config'),
@@ -162,16 +212,19 @@ def main():
         shutil.copy2(path, target / name)
     (target / 'initramfs.cpio.gz').write_bytes(gzip.compress(cpio.read_bytes(), mtime=0))
     shutil.copy2(ROOT / 'kernel/source.json', target / 'source.json')
-    manifest = {'source': spec, 'compiler': capture([compiler, '--version']).splitlines()[0],
+    recipe_files = ['configs/' + s for s in scripts] + [
+        'configs/ram-probe.fragment', 'configs/udhcpd.conf', 'scripts/build-kernel.py']
+    seconds = 900 if args.profile == 'disk-test' else 600
+    manifest = {'profile': args.profile, 'source': spec, 'compiler': capture([compiler, '--version']).splitlines()[0],
                 'recipe_commit': recipe_commit,
-                'recipe_sha256': {p: sha(ROOT / p) for p in ['configs/ram-probe-init',
-                    'configs/ram-probe.fragment', 'configs/ram-desktop-prepare', 'configs/ram-storage-probe', 'configs/udhcpd.conf', 'scripts/build-kernel.py']},
+                'recipe_sha256': {p: sha(ROOT / p) for p in recipe_files},
                 'source_date_epoch': int(epoch), 'gadget_serial': identity.read_text().strip(),
                 'busybox_sha256': sha(args.busybox),
                 'patch_sha256': {p: sha(ROOT / p) for p in spec['applied_patches']},
                 'hardware_tested': False,
-                'return_mode': 'EDL; kernel timer 600 seconds from SCM readiness; host stock restore required',
-                'test_stage': 'ram-desktop',
+                'return_mode': ('normal restart; no test timer' if args.profile == 'installed' else
+                    f'EDL; kernel timer {seconds} seconds from SCM readiness; host stock restore required'),
+                'test_stage': 'ram-desktop' if args.profile == 'ram' else args.profile,
                 'files': {p.name: {'bytes': p.stat().st_size, 'sha256': sha(p)}
                           for p in target.iterdir() if p.is_file()}}
     (target / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')

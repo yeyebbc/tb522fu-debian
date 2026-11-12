@@ -1,0 +1,66 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-only
+# Locate and validate the installed root. All other partitions remain read-only.
+set -eu
+export PATH=/bin:/sbin
+[ "$(readlink /proc/1/exe)" = /bin/busybox ]
+[ -s "/lib/modules/$(uname -r)/modules.dep" ]
+modprobe -v phy_qcom_qmp_ufs
+modprobe -v ufs_qcom
+complete=
+for attempt in $(seq 1 60); do
+    mdev -s
+    disks=0
+    for node in /sys/class/block/*; do
+        [ -e "$node" ] || continue
+        dev="/dev/${node##*/}"
+        [ -b "$dev" ]
+        blockdev --setro "$dev"
+        [ "$(blockdev --getro "$dev")" = 1 ]
+        case "${node##*/}" in loop[0-9]*) continue;; sd*) ;; *) exit 1;; esac
+        [ ! -e "$node/partition" ] || continue
+        case "$(readlink -f "$node/device")" in */1d84000.ufs/*) ;; *) exit 1;; esac
+        disks=$((disks + 1))
+    done
+    [ "$disks" -le 6 ]
+    if [ "$disks" = 6 ]; then complete=1; break; fi
+    sleep 1
+done
+[ "$complete" = 1 ]
+touch /run/storage-readonly-verified
+root=
+for node in /sys/class/block/sd*; do
+    [ -f "$node/partition" ] || continue
+    grep -qx 'PARTNAME=debian' "$node/uevent" || continue
+    [ -z "$root" ] || { echo 'Duplicate Debian partition'; exit 1; }
+    root="$node"
+done
+# The bounded profile also serves as a maintenance environment before install.
+[ -n "$root" ] || { echo 'No Debian partition; maintenance only'; exit 2; }
+parent=$(dirname "$(readlink -f "$root")")
+case "$(readlink -f "$parent/device")" in */1d84000.ufs/*:0:0:0) ;; *) exit 1;; esac
+[ "$(cat "$parent/queue/logical_block_size")" = 4096 ]
+[ "$(cat "$root/start")" = 454096896 ]
+[ "$(cat "$root/size")" = 536870912 ]
+partuuid=$(sed -n 's/^PARTUUID=//p' "$root/uevent")
+[ "${#partuuid}" = 36 ]
+dev="/dev/${root##*/}"
+disk="/dev/${parent##*/}"
+mkdir -p /newroot
+# noload prevents even journal replay before identity checks complete.
+mount -t ext4 -o ro,noload "$dev" /newroot
+[ "$(cat /newroot/etc/tb522fu/board)" = lenovo-tb522fu ]
+[ "$(cat /newroot/etc/tb522fu/root-partuuid)" = "$partuuid" ]
+[ -x /newroot/sbin/init ]
+[ -s "/newroot/usr/lib/modules/$(uname -r)/modules.dep" ]
+umount /newroot
+blockdev --setrw "$disk"
+blockdev --setrw "$dev"
+[ "$(blockdev --getro "$dev")" = 0 ]
+status=0
+/sbin/e2fsck -p "$dev" || status=$?
+# e2fsck: 0=clean, 1=corrected. Any other result requires intervention.
+[ "$status" -le 1 ]
+mount -t ext4 -o rw "$dev" /newroot
+printf '%s\n' "$partuuid" >/run/disk-root-verified
+echo 'TB522FU_DISK_ROOT_READY: checked ext4 root, other partitions read-only'
