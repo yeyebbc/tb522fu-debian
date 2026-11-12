@@ -22,4 +22,4 @@ index 4e104978e0a9..1c02f165491c 100644
 +&qupv3_2 { status = "disabled"; };
 +&i2c10 { status = "disabled"; };
 +&i2c11 { status = "disabled"; };
-+&{/framebuffer@fc800000} { status = "disabled"; };
++&{/framebuffer@fc800000} { status = "okay"; }; /* Firmware text console only. */

@@ -9,7 +9,9 @@ GitHub Actions builds two independent artifacts on native ARM64 runners:
 - A mainline kernel and device tree for a USB-only RAM probe. Its BusyBox
   initramfs exposes USB NCM/ACM and makes block devices read-only. An opt-in
   kernel timer requests EDL after 180 seconds from SCM readiness, allowing
-  the attached host to restore the original Android boot image.
+  the attached host to restore the original Android boot image. A temporary
+  firmware framebuffer console shows startup errors; native display remains
+  disabled in this diagnostic configuration.
 - A Debian 13 GNOME root filesystem from authenticated Debian archives,
   including security updates and the Mesa stack from trixie-backports.
 
@@ -18,8 +20,10 @@ touch, Wi-Fi, audio, charging, suspend and Android/Linux switching remain
 unverified. The artifacts are development components, not a flashable installer.
 Own-kernel recovery images trigger a firmware CrashDump on the tested Lenovo
 firmware. A standalone normal-boot entry test successfully returned to EDL,
-followed by verified stock restoration and Android boot. Linux execution
-through that route is still unverified. Packaging and testing require the
+followed by verified stock restoration and Android boot. The first Linux
+candidate returned to EDL early, without exposing its USB shell; no kernel
+log was captured. The next candidate adds a text console and a bounded
+error-display pause. Packaging and testing require the
 owner's matching stock images and a prepared EDL restoration tool.
 Firmware, device identifiers, partition dumps and keys
 are not stored here or sent to CI.

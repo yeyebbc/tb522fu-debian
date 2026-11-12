@@ -78,7 +78,7 @@ def main():
         launcher = [emulator]
     applets = set(capture(launcher + [args.busybox, '--list']).split())
     required = {'sh', 'mount', 'mkdir', 'mdev', 'blockdev', 'ip', 'udhcpd', 'telnetd',
-                'setsid', 'cttyhack', 'sleep', 'seq', 'cat', 'ln', 'reboot', 'poweroff', 'dmesg', 'stty'}
+                'setsid', 'cttyhack', 'sleep', 'seq', 'cat', 'ls', 'ln', 'reboot', 'poweroff', 'dmesg', 'stty'}
     assert required <= applets, required - applets
     run(launcher + [args.busybox, 'sh', '-n', ROOT / 'configs/ram-probe-init'])
     init = (ROOT / 'configs/ram-probe-init').read_text()
@@ -109,6 +109,7 @@ def main():
     for setting in ['CONFIG_Y900_ACM_DIAG_DTB=y', 'CONFIG_INITRAMFS_FORCE=y',
                     'CONFIG_CMDLINE_FORCE=y', 'CONFIG_PANIC_TIMEOUT=5',
                     'CONFIG_DEBUG_INFO_NONE=y', 'CONFIG_USB_CONFIGFS=y',
+                    'CONFIG_FB_SIMPLE=y', 'CONFIG_FONT_TER16x32=y', 'CONFIG_DEBUG_FS=y',
                     'CONFIG_DETECT_HUNG_TASK=y', 'CONFIG_SOFTLOCKUP_DETECTOR=y',
                     'CONFIG_USB_CONFIGFS_NCM=y', 'CONFIG_USB_CONFIGFS_ACM=y',
                     'CONFIG_PHY_QCOM_M31_EUSB=y', 'CONFIG_PHY_QCOM_EUSB2_REPEATER=y']:

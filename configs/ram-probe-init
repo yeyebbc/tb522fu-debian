@@ -27,9 +27,22 @@ if [ -z "$ready" ]; then
     while :; do sleep 1; done
 fi
 echo 'TB522FU_PROBE_INIT: kernel EDL return timer is armed' > /dev/kmsg
+mkdir -p /sys/kernel/debug
+mount -t debugfs debugfs /sys/kernel/debug
 
 fail() {
     echo "TB522FU_PROBE_FAIL: $*" > /dev/kmsg
+    # The independent kernel return timer stays armed during this photo pause.
+    {
+        echo
+        echo "TB522FU USB PROBE FAILED: $*"
+        echo 'Deferred drivers:'
+        cat /sys/kernel/debug/devices_deferred
+        echo 'USB device controllers:'
+        ls -l /sys/class/udc
+        echo 'Returning to EDL in 30 seconds; stock restoration is prepared.'
+    } >/dev/console 2>&1
+    sleep 30
     reboot -f -n
     echo b > /proc/sysrq-trigger
     while :; do sleep 1; done
