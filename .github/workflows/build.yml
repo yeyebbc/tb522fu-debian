@@ -41,6 +41,8 @@ jobs:
           key: arm64-kernel-${{ matrix.profile }}-${{ hashFiles('kernel/source.json', 'configs/*', 'patches/*.patch', 'scripts/build-kernel.py') }}
           restore-keys: |
             arm64-kernel-
+      - name: Check root selection and maintenance guards
+        run: python3 -m unittest discover -s tests -v
       - name: Build the pinned kernel and initramfs
         run: python3 scripts/build-kernel.py --profile '${{ matrix.profile }}'
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

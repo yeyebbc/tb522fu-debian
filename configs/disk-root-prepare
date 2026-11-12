@@ -48,7 +48,17 @@ dev="/dev/${root##*/}"
 disk="/dev/${parent##*/}"
 mkdir -p /newroot
 # noload prevents even journal replay before identity checks complete.
-mount -t ext4 -o ro,noload "$dev" /newroot
+if ! mount -t ext4 -o ro,noload "$dev" /newroot; then
+    rmdir /newroot
+    # A newly created partition has no filesystem yet. The bounded profile
+    # must expose its read-only maintenance channel so installation can proceed.
+    # Never format here, and never relax root verification for production.
+    if [ "$(cat /etc/boot-profile)" = disk-test ]; then
+        echo 'Debian root is not mountable; read-only maintenance only'
+        exit 2
+    fi
+    exit 1
+fi
 [ "$(cat /newroot/etc/tb522fu/board)" = lenovo-tb522fu ]
 [ "$(cat /newroot/etc/tb522fu/root-partuuid)" = "$partuuid" ]
 [ -x /newroot/sbin/init ]

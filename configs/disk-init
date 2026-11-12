@@ -90,7 +90,7 @@ if [ "$debug" = 1 ]; then
     echo 'TB522FU_PROBE_READY: USB 172.26.52.1, serial ttyGS0' >/dev/kmsg
 fi
 if [ "$status" = 2 ]; then
-    echo 'TB522FU_MAINTENANCE: no root partition, all storage read-only' >/dev/console
+    echo 'TB522FU_MAINTENANCE: no usable root, all storage read-only' >/dev/console
     # Installation is explicit over USB. Never auto-format or auto-switch_root.
     while :; do sleep 1; done
 fi

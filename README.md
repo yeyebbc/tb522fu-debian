@@ -14,7 +14,12 @@ GitHub Actions builds two kernel profiles on native ARM64 runners:
 Both locate Debian by GPT label, verify its256GiB geometry and installation
 marker, check ext4 and load the matching root. They never create partitions or
 format filesystems automatically. Before installation, disk-test remains in a
-read-only maintenance shell. SimpleDRM borrows the firmware framebuffer;
+read-only maintenance shell when the partition is absent or cannot be mounted
+read-only. This also permits explicit installation onto a newly created, blank
+partition. A mounted root with a wrong board marker, PARTUUID or module tree
+is still rejected; the installed profile never falls back to a maintenance shell.
+This new blank-partition path has passed host guard tests, not a hardware test.
+SimpleDRM borrows the firmware framebuffer;
 native display and GPU remain disabled. A separate, optional workflow job builds
 Debian13 GNOME from authenticated Debian archives. The original RAM-only
 profile remains available with `scripts/build-kernel.py --profile ram`.
