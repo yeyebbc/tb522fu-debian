@@ -21,8 +21,8 @@ mkdir -p "$root/etc/flash-kernel"
 printf 'none\n' > "$root/etc/flash-kernel/machine"
 ln -sfn /usr/share/zoneinfo/Asia/Shanghai "$root/etc/localtime"
 printf 'Asia/Shanghai\n' > "$root/etc/timezone"
-systemctl --root="$root" disable ssh.service ssh.socket
-systemctl --root="$root" set-default graphical.target
+chroot "$root" systemctl --root=/ disable ssh.service ssh.socket
+chroot "$root" systemctl --root=/ set-default graphical.target
 
 chroot "$root" dpkg --audit > "$TB522FU_ARTIFACT_DIR/dpkg-audit.txt"
 test ! -s "$TB522FU_ARTIFACT_DIR/dpkg-audit.txt"
