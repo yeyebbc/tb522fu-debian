@@ -1,0 +1,6 @@
+id=tb522fu_dualboot
+name=TB522FU Debian dual boot
+version=0.1
+versionCode=1
+author=TB522FU Debian port
+description=Use Action to verify the saved Linux boot image and restart into Debian. Requires the prepared 256 GiB installation.

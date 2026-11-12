@@ -1,0 +1,6 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-only
+set -eu
+/usr/libexec/tb522fu-rotate-boot android /
+# systemd unmounts/remounts the ext4 root read-only during normal shutdown.
+exec systemctl reboot

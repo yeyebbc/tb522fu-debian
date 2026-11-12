@@ -100,7 +100,13 @@ optional SSH restricted to the USB peer with public-key authentication.
 The installer must supply this tablet's firmware, root PARTUUID and authorized
 key privately. Debugging is off unless `/etc/tb522fu/usb-debug-enabled` exists.
 Default SSH services are masked; no credentials or firmware are in the overlay.
-These files have passed syntax/unit checks, not persistent hardware validation.
+These files have passed syntax/unit checks, not persistent hardware validation. The
+image-rotation helper verifies both saved images and the current boot image,
+then writes and reads back only boot_b. File-backed failure tests verify
+rollback after a partial write, wrong readback or read error; unknown images
+are refused. `android-module/` supplies the Magisk Action entry and requires
+a clean ext4 filesystem before mounting Debian read-only. Neither switching
+path has been exercised on hardware yet.
 
 ## Sources and patches
 

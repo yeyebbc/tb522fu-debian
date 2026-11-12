@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Restart to Android
+Comment=Switch the tablet to Android
+Exec=pkexec /usr/sbin/tb522fu-reboot-android
+Icon=system-reboot
+Terminal=false
+Categories=System;

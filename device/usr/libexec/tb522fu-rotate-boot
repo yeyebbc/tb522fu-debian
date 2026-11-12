@@ -1,0 +1,85 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-only
+# Privileged image rotation only. The caller performs a clean OS shutdown.
+set -eu
+[ "$(id -u)" = 0 ]
+[ "$#" = 2 ]
+target=$1
+root=$2
+case "$target" in android) previous=linux;; linux) previous=android;; *) exit 1;; esac
+[ "$(cat "$root/etc/tb522fu/board")" = lenovo-tb522fu ]
+images="$root/var/lib/tb522fu-dualboot"
+cd "$images"
+[ -f android.img ] && [ ! -L android.img ]
+[ -f linux.img ] && [ ! -L linux.img ]
+[ "$(wc -c <android.img)" = 100663296 ]
+[ "$(wc -c <linux.img)" = 100663296 ]
+# The installer supplies exactly these two reviewed image hashes privately.
+[ "$(wc -l <SHA256SUMS)" = 2 ]
+for file in android.img linux.img; do
+    line=$(grep "  $file\$" SHA256SUMS)
+    digest=${line%% *}
+    [ "${#digest}" = 64 ]
+    case "$digest" in *[!0-9a-f]*) exit 1;; esac
+done
+sha256sum -c SHA256SUMS
+node=
+for item in /sys/class/block/*; do
+    [ -e "$item/partition" ] || continue
+    grep -qx PARTNAME=boot_b "$item/uevent" || continue
+    [ -z "$node" ] || { echo 'Duplicate boot_b'; exit 1; }
+    node=$item
+done
+[ -n "$node" ]
+parent=$(dirname "$(readlink -f "$node")")
+case "$(readlink -f "$parent/device")" in
+    */1d84000.ufs/*:0:0:4|*/1d84000.ufshc/*:0:0:4) ;;
+    *) echo 'Wrong boot storage controller/LUN'; exit 1;;
+esac
+[ "$(cat "$parent/queue/logical_block_size")" = 4096 ]
+[ "$(cat "$node/start")" = 2652416 ]
+[ "$(cat "$node/size")" = 196608 ]
+boot="/dev/${node##*/}"
+disk="/dev/${parent##*/}"
+# Android block nodes are under /dev/block; mainline uses /dev.
+if [ ! -b "$boot" ]; then
+    boot="/dev/block/${node##*/}"
+    disk="/dev/block/${parent##*/}"
+fi
+[ -b "$boot" ] && [ -b "$disk" ]
+wanted=$(sha256sum "$target.img"); wanted=${wanted%% *}
+old=$(sha256sum "$previous.img"); old=${old%% *}
+current=$(sha256sum "$boot"); current=${current%% *}
+if [ "$current" = "$wanted" ]; then
+    echo 'Target boot image already verified; no write needed'
+    exit 0
+fi
+[ "$current" = "$old" ] || { echo 'Unknown current boot image; refusing write'; exit 1; }
+blockdev --setrw "$disk"
+blockdev --setrw "$boot"
+[ "$(blockdev --getro "$boot")" = 0 ]
+# Do not leave a deliberately interruptible interval inside image rotation.
+trap '' HUP INT TERM QUIT
+written=
+if dd if="$target.img" of="$boot" bs=4194304 conv=fsync; then
+    if actual=$(sha256sum "$boot"); then
+        actual=${actual%% *}
+        [ "$actual" != "$wanted" ] || written=1
+    fi
+fi
+if [ "$written" != 1 ]; then
+    echo 'Write/readback failed; restoring the known previous image'
+    if dd if="$previous.img" of="$boot" bs=4194304 conv=fsync; then
+        if actual=$(sha256sum "$boot"); then
+            actual=${actual%% *}
+            if [ "$actual" = "$old" ]; then
+                echo 'Previous image restored and verified; reboot declined'
+                exit 1
+            fi
+        fi
+    fi
+    echo 'Boot restoration failed. Keep this OS running and use host recovery.'
+    exit 1
+fi
+sync
+echo "Verified $target boot image; clean shutdown may proceed"
