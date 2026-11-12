@@ -13,3 +13,5 @@ stock partition images and local environment paths out of tracked files.
 - A running GNOME process or a framebuffer capture does not prove physical output. Keep camera evidence and source/image hashes.
 - Do not change the kernel version or source commit without updating its manifest.
 - Validate Python/shell syntax, patch applicability, and the resulting workflow.
+
+- Resolve every explicit modprobe/blacklist name against built modules with modinfo; Kconfig and driver names do not reliably match module filenames. ci12 artifact uses ufs_qcom; its original helper typo is corrected in RAM before the first storage test.

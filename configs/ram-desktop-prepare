@@ -49,7 +49,7 @@ blacklist gpi
 blacklist spi_geni_qcom
 blacklist nt36536_ts
 blacklist msm
-blacklist ufshcd_qcom
+blacklist ufs_qcom
 blacklist phy_qcom_qmp_ufs
 EOF
 cat >/newroot/etc/NetworkManager/conf.d/ram-usb.conf <<'EOF'

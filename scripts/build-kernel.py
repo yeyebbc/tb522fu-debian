@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 import platform
+import re
 import shutil
 import struct
 import subprocess
@@ -136,6 +137,14 @@ def main():
     run(make + ['modules_install', f'INSTALL_MOD_PATH={modules}', 'INSTALL_MOD_STRIP=1'])
     release = (out / 'include/config/kernel.release').read_text().strip()
     installed = modules / 'lib/modules' / release
+    # Check names against the built modules; Kconfig symbols are not filenames.
+    explicit = set(re.findall(r'^blacklist ([\w-]+)$',
+                             (ROOT / 'configs/ram-desktop-prepare').read_text(), re.M))
+    explicit.update(re.findall(r'^modprobe -v ([\w-]+)$',
+                               (ROOT / 'configs/ram-storage-probe').read_text(), re.M))
+    for name in sorted(explicit):
+        actual = capture(['modinfo', '-b', modules, '-k', release, '-F', 'name', name])
+        assert actual.replace('-', '_') == name.replace('-', '_'), (name, actual)
     for name in ['build', 'source']:
         (installed / name).unlink(missing_ok=True)
     # Debian is usr-merged; keep the archive independent of its /lib symlink.

@@ -21,7 +21,7 @@ mkdir -p /lib
 ln -s /newroot/usr/lib/modules /lib/modules
 [ -s "/lib/modules/$(uname -r)/modules.dep" ]
 modprobe -v phy_qcom_qmp_ufs
-modprobe -v ufshcd_qcom
+modprobe -v ufs_qcom
 
 # There is no udev/systemd/automounter in this initramfs. Protect devices as
 # they appear, including partitions, and require all six stock UFS LUNs.

@@ -2,7 +2,7 @@
 
 Experimental native Linux port for the Lenovo Legion Y900 13 / TB522FU
 (SM8750, Snapdragon 8 Elite). The intended installation is Debian 13 ARM64
-with GNOME and 128 GiB of storage, preserving Android for dual boot.
+with GNOME and 256 GiB of storage, preserving Android for dual boot.
 
 GitHub Actions builds two independent artifacts on native ARM64 runners:
 
