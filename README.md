@@ -25,6 +25,10 @@ verified stock Android restoration. The ACM interface enumerated but its
 serial shell did not work. Debian GNOME, native display/GPU, touch, Wi-Fi,
 audio, charging, suspend and installed Android/Linux switching remain
 unverified. The artifacts are development components, not a flashable installer.
+The subsequent RAM desktop recipe `6b72e6d9cbd0a336df93ad12a936a121ab846d51`
+passed both jobs in [CI run 43229000858](https://github.com/yeyebbc/tb522fu-debian/actions/runs/43229000858).
+Its downloaded kernel/modules and local boot packaging passed verification;
+it has not yet been booted on the tablet.
 Own-kernel recovery images trigger a firmware CrashDump on the tested Lenovo
 firmware. A standalone normal-boot entry test successfully returned to EDL,
 followed by verified stock restoration and Android boot. The USB2 reference-
