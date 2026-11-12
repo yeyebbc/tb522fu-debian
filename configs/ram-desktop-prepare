@@ -45,7 +45,7 @@ mkdir -p /newroot/etc/modprobe.d /newroot/etc/NetworkManager/conf.d \
     /newroot/etc/systemd/system/multi-user.target.wants /newroot/etc/systemd/logind.conf.d
 cat >/newroot/etc/modprobe.d/ram-test.conf <<'EOF'
 # Manual load only, once USB evidence has been saved.
-blacklist qcom_gpi
+blacklist gpi
 blacklist spi_geni_qcom
 blacklist nt36536_ts
 blacklist msm
