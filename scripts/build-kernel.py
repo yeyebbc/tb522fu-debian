@@ -78,11 +78,12 @@ def main():
         launcher = [emulator]
     applets = set(capture(launcher + [args.busybox, '--list']).split())
     required = {'sh', 'mount', 'mkdir', 'mdev', 'blockdev', 'ip', 'udhcpd', 'telnetd',
-                'setsid', 'cttyhack', 'sleep', 'seq', 'cat', 'ln', 'reboot', 'dmesg', 'stty'}
+                'setsid', 'cttyhack', 'sleep', 'seq', 'cat', 'ln', 'reboot', 'poweroff', 'dmesg', 'stty'}
     assert required <= applets, required - applets
     run(launcher + [args.busybox, 'sh', '-n', ROOT / 'configs/ram-probe-init'])
     init = (ROOT / 'configs/ram-probe-init').read_text()
-    assert [s.strip() for s in init.splitlines() if s.strip().startswith('reboot ')] == ['reboot -f -n'] * 2
+    assert [s.strip() for s in init.splitlines() if s.strip().startswith('reboot ')] == ['reboot -f -n']
+    assert 'poweroff -f -n' in init and 'probe_edl_ready' in init
     identity = work / 'probe-id'
     identity.write_text('tb522fu-ci-ram-probe\n')
     cpio_spec = [f'dir /{d} 0755 0 0' for d in ['bin','sbin','dev','proc','sys','etc','run','tmp','root']]
@@ -112,6 +113,8 @@ def main():
                     'CONFIG_USB_CONFIGFS_NCM=y', 'CONFIG_USB_CONFIGFS_ACM=y',
                     'CONFIG_PHY_QCOM_M31_EUSB=y', 'CONFIG_PHY_QCOM_EUSB2_REPEATER=y']:
         assert setting in config, setting
+    assert 'CONFIG_QCOM_SCM=y' in config
+    assert any(s.startswith('CONFIG_CMDLINE=') and 'qcom_scm.probe_edl_return=1' in s for s in config)
     run(make + [spec['board_dtb']])
     run(make + ['Image'])
     image = out / 'arch/arm64/boot/Image'
@@ -133,6 +136,7 @@ def main():
                 'busybox_sha256': sha(args.busybox),
                 'patch_sha256': {p: sha(ROOT / p) for p in spec['applied_patches']},
                 'hardware_tested': False,
+                'return_mode': 'EDL; kernel timer 180 seconds from SCM readiness; host stock restore required',
                 'files': {p.name: {'bytes': p.stat().st_size, 'sha256': sha(p)}
                           for p in target.iterdir() if p.is_file()}}
     (target / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')

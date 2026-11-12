@@ -16,5 +16,11 @@
   "0101-tb522fu-touch-protocol.patch": {
     "source": "Local adaptation from stock module and live Android input evidence",
     "hardware_tested": false
+  },
+  "0003-tb522fu-probe-edl-return.patch": {
+    "source": "Local board-gated integration; EDL protocol checked against the stock SCM binary and standalone hardware test",
+    "protocol_reference": "https://github.com/OnePlusOSS/android_kernel_oneplus_sm8750/blob/6028f47faddaa27700f8dd3a1d83906ea8f27170/drivers/firmware/qcom_scm.c",
+    "hardware_tested": "Standalone entry and EDL protocol only; this Linux integration is untested",
+    "license": "GPL-2.0-only driver and BSD-3-Clause board device tree"
   }
 }

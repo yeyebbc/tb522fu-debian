@@ -7,16 +7,21 @@ with GNOME and 128 GiB of storage, preserving Android for dual boot.
 GitHub Actions builds two independent artifacts on native ARM64 runners:
 
 - A mainline kernel and device tree for a USB-only RAM probe. Its BusyBox
-  initramfs exposes USB NCM/ACM, makes block devices read-only and requests a
-  reboot after 180 seconds once userspace starts.
+  initramfs exposes USB NCM/ACM and makes block devices read-only. An opt-in
+  kernel timer requests EDL after 180 seconds from SCM readiness, allowing
+  the attached host to restore the original Android boot image.
 - A Debian 13 GNOME root filesystem from authenticated Debian archives,
   including security updates and the Mesa stack from trixie-backports.
 
 The first mainline boot has **not yet been verified on hardware**. Display,
 touch, Wi-Fi, audio, charging, suspend and Android/Linux switching remain
 unverified. The artifacts are development components, not a flashable installer.
-Packaging a RAM boot image requires the matching stock DTB and overlay from
-the owner's tablet. Firmware, device identifiers, partition dumps and keys
+Own-kernel recovery images trigger a firmware CrashDump on the tested Lenovo
+firmware. A standalone normal-boot entry test successfully returned to EDL,
+followed by verified stock restoration and Android boot. Linux execution
+through that route is still unverified. Packaging and testing require the
+owner's matching stock images and a prepared EDL restoration tool.
+Firmware, device identifiers, partition dumps and keys
 are not stored here or sent to CI.
 
 ## Build
@@ -55,8 +60,10 @@ based on Linux 7.3. The unmodified source compiled successfully locally.
 
 The applied patches guard diagnostic framebuffer writes, preserve initramfs
 boundaries during the built-in FDT merge, panic on a failed merge, and disable
-peripherals outside the initial USB test. The probe configuration retains
-Qualcomm platform support and omits debug symbols.
+peripherals outside the initial USB test. A temporary, board-gated SCM patch
+provides the EDL return protocol checked against the stock driver and exercised
+by the standalone entry test. Its kernel integration still needs a hardware
+test. The probe configuration retains Qualcomm support and omits debug symbols.
 
 The separate NT36536 patches are **staged and not applied by CI yet**. Their
 source is [yzddmr6/linux-sm8750-erhai](https://github.com/yzddmr6/linux-sm8750-erhai/tree/958a2b4654196bb52dfa0217a0f65ffeaa919f81/drivers/input/touchscreen/nt36536).

@@ -14,14 +14,19 @@ echo 30 > /proc/sys/kernel/hung_task_timeout_secs
 echo 1 > /proc/sys/kernel/hung_task_panic
 echo 1 > /proc/sys/kernel/softlockup_panic
 
-# This timer is installed before storage or USB setup, independent of the host.
-(
-    sleep 180
-    echo 'TB522FU_PROBE_TIMEOUT: returning to Android' > /dev/kmsg
-    reboot -f -n
-    echo b > /proc/sysrq-trigger
-) &
-echo 'TB522FU_PROBE_INIT: timeout armed for 180 seconds' > /dev/kmsg
+# The SCM driver arms a kernel timer before userspace. All restart paths,
+# including panic/emergency_restart, use EDL for host-side stock restoration.
+ready=
+for n in $(seq 1 20); do
+    [ "$(cat /sys/module/qcom_scm/parameters/probe_edl_ready 2>/dev/null)" = Y ] && ready=1 && break
+    sleep 1
+done
+if [ -z "$ready" ]; then
+    echo 'TB522FU_PROBE_FAIL: EDL return unavailable; powering off' > /dev/kmsg
+    poweroff -f -n
+    while :; do sleep 1; done
+fi
+echo 'TB522FU_PROBE_INIT: kernel EDL return timer is armed' > /dev/kmsg
 
 fail() {
     echo "TB522FU_PROBE_FAIL: $*" > /dev/kmsg

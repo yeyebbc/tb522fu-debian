@@ -39,7 +39,7 @@ CONFIG_MAGIC_SYSRQ=y
 CONFIG_NULL_TTY=y
 CONFIG_IKCONFIG=y
 CONFIG_IKCONFIG_PROC=y
-CONFIG_CMDLINE="rdinit=/init panic=5 oops=panic softlockup_panic=1 hung_task_panic=1 console=ttynull"
+CONFIG_CMDLINE="rdinit=/init panic=5 oops=panic softlockup_panic=1 hung_task_panic=1 console=ttynull qcom_scm.download_mode=off qcom_scm.probe_edl_return=1"
 CONFIG_CMDLINE_FORCE=y
 
 # Keep the diagnostic build specific to Qualcomm; retain the clean reference.

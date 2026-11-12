@@ -5,7 +5,8 @@
   "board_dtb": "qcom/sm8750-lenovo-y900-acm.dtb",
   "applied_patches": [
     "patches/0001-guard-diagnostics-and-preserve-initrd.patch",
-    "patches/0002-usb-only-board.patch"
+    "patches/0002-usb-only-board.patch",
+    "patches/0003-tb522fu-probe-edl-return.patch"
   ],
   "pending_touch_patches": [
     "patches/0100-import-erhai-nt36536.patch",
