@@ -16,19 +16,25 @@ GitHub Actions builds two independent artifacts on native ARM64 runners:
 - A Debian 13 GNOME root filesystem from authenticated Debian archives,
   including security updates and the Mesa stack from trixie-backports.
 
-The RAM probe has **booted successfully on one TB522FU**. Recipe
-`ac9549fbbafa83e9d8409446118c05541766f15f` from
-[CI run 43222822022](https://github.com/yeyebbc/tb522fu-debian/actions/runs/43222822022)
-produced Linux `7.3.0-tb522fu-probe-ci8+`: visible firmware framebuffer text,
-working USB networking and a network shell, followed by timed EDL return and
-verified stock Android restoration. The ACM interface enumerated but its
-serial shell did not work. Debian GNOME, native display/GPU, touch, Wi-Fi,
-audio, charging, suspend and installed Android/Linux switching remain
-unverified. The artifacts are development components, not a flashable installer.
-The subsequent RAM desktop recipe `6b72e6d9cbd0a336df93ad12a936a121ab846d51`
-passed both jobs in [CI run 43229000858](https://github.com/yeyebbc/tb522fu-debian/actions/runs/43229000858).
-Its downloaded kernel/modules and local boot packaging passed verification;
-it has not yet been booted on the tablet.
+RAM Linux and RAM Debian have **booted on one TB522FU**. The latest tested
+recipe `6b72e6d9cbd0a336df93ad12a936a121ab846d51` from
+[CI run 43229000858](https://github.com/yeyebbc/tb522fu-debian/actions/runs/43229000858)
+produced Linux `7.3.0-tb522fu-probe-ci9+`. USB network and serial logging worked;
+a read-only SquashFS with a RAM overlay booted Debian 13 and started GNOME
+initial setup. **The physical screen went black, so visible GNOME failed.**
+Touch identification failed on SPI timeouts: the controller reported its FIFO
+interface disabled, while inherited board code had removed the DMA channels.
+The kernel returned to EDL on its timer; original stock boot was restored and
+Android slot B boot completion verified. No repartitioning or installation
+has occurred. Native display/GPU, touch, Wi-Fi, audio, charging, suspend and
+installed Android/Linux switching remain unverified. These artifacts are
+development components, not a flashable installer.
+
+The next candidate restores stock-matched GPI1 DMA for SE4, keeps successful
+DMA messages in progress until the SPI core accounts their bytes, and stops
+chip identification on transport failure. Debian starts on the console;
+GNOME is launched explicitly for diagnosis. These corrections have compiled
+locally but are **not yet hardware-tested**.
 Own-kernel recovery images trigger a firmware CrashDump on the tested Lenovo
 firmware. A standalone normal-boot entry test successfully returned to EDL,
 followed by verified stock restoration and Android boot. The USB2 reference-
@@ -82,7 +88,7 @@ by the standalone entry test and the ci8 Linux test. The probe configuration
 retains Qualcomm support and omits debug symbols.
 
 The NT36536 patches now build as a module for explicit loading after USB
-logging is available. The new desktop candidate is **not hardware-tested**. Its
+logging is available. The next DMA correction is **not hardware-tested**. Its
 source is [yzddmr6/linux-sm8750-erhai](https://github.com/yzddmr6/linux-sm8750-erhai/tree/958a2b4654196bb52dfa0217a0f65ffeaa919f81/drivers/input/touchscreen/nt36536).
 The TB522FU adaptation uses the stock driver's CRC-command lengths, report
 length and pen pressure range. The changed objects and board DTB compiled locally; hardware validation is

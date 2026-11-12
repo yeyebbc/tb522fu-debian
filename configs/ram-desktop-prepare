@@ -45,6 +45,7 @@ mkdir -p /newroot/etc/modprobe.d /newroot/etc/NetworkManager/conf.d \
     /newroot/etc/systemd/system/multi-user.target.wants /newroot/etc/systemd/logind.conf.d
 cat >/newroot/etc/modprobe.d/ram-test.conf <<'EOF'
 # Manual load only, once USB evidence has been saved.
+blacklist qcom_gpi
 blacklist spi_geni_qcom
 blacklist nt36536_ts
 blacklist msm
@@ -92,6 +93,9 @@ EOF
 for unit in ram-usb-shell ram-usb-serial; do
     ln -s "../$unit.service" "/newroot/etc/systemd/system/multi-user.target.wants/$unit.service"
 done
+# Start Debian on the console so display loss can be localized before GDM.
+# Launch GNOME explicitly with systemctl start gdm3 after saving evidence.
+ln -sf /usr/lib/systemd/system/multi-user.target /newroot/etc/systemd/system/default.target
 # Keep initial setup and all account creation in the disposable RAM overlay.
 printf 'tmpfs /tmp tmpfs mode=1777,nosuid,nodev 0 0\n' >/newroot/etc/fstab
 touch /newroot/run-desktop-ready

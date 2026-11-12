@@ -1,0 +1,41 @@
+Subject: [PATCH] arm64: dts: restore GPI DMA for the TB522FU touch controller
+
+The first RAM test reports FIFO_IF_DISABLE and fails every transfer after
+missing DMA channels. Stock FDT uses GPI1 SE4 tx/rx, mask 0x1e and stream
+ID 0xb6, matching the SoC dtsi. Retain its channels and enable that provider.
+Remove obsolete PIO and pin-ownership comments; explicit pinctrl is below.
+
+--- a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
++++ b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+@@ -438,23 +438,7 @@
+ &spi4 {
+ 	status = "okay";
+ 
+-	/* keep the transfers on PIO: the touch only moves 64-byte reports and
+-	 * this avoids depending on the GPI DMA instance for SE4.
+-	 */
+-	/delete-property/ dmas;
+-	/delete-property/ dma-names;
+-
+-	/* sm8750.dtsi ships generic QUP pinctrl states for SE4, but those pins
+-	 * are still owned by the firmware hand-off, so the state cannot be
+-	 * applied from Linux; the bootloader already muxes SE4 for the touch.
+-	 */
+-	/delete-property/ pinctrl-0;
+-	/delete-property/ pinctrl-names;
+-
+-	/* The bootloader already muxes SE4 (GPIO48-51) for the touch; applying the
+-	 * same state from Linux fails because the pins are still owned by the
+-	 * firmware hand-off, so leave the mux alone here.
+-	 */
++	/* Keep the inherited GPI DMA channels: this SE disables FIFO access. */
+ 
+ 	touchscreen@0 {
+ 		compatible = "lenovo,tb522fu-nvt";
+@@ -507,3 +491,6 @@
+ 	pinctrl-0 = <&nvts_spi_data_clk &nvts_spi_clk &nvts_spi_cs>;
+ 	pinctrl-names = "default";
+ };
++
++/* Stock GPI1 mask 0x1e, SE4, stream ID 0xb6; no other serial engines enabled. */
++&gpi_dma1 { status = "okay"; };

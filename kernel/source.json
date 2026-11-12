@@ -10,6 +10,9 @@
     "patches/0004-bounded-ram-desktop-timer.patch",
     "patches/0100-import-erhai-nt36536.patch",
     "patches/0101-tb522fu-touch-protocol.patch",
-    "patches/0102-tb522fu-ram-touch-board.patch"
+    "patches/0102-tb522fu-ram-touch-board.patch",
+    "patches/0103-tb522fu-touch-gpi-dma.patch",
+    "patches/0104-geni-dma-message-status.patch",
+    "patches/0105-nt36536-stop-on-transport-failure.patch"
   ]
 }

@@ -20,7 +20,20 @@
   "0003-tb522fu-probe-edl-return.patch": {
     "source": "Local board-gated integration; EDL protocol checked against the stock SCM binary and standalone hardware test",
     "protocol_reference": "https://github.com/OnePlusOSS/android_kernel_oneplus_sm8750/blob/6028f47faddaa27700f8dd3a1d83906ea8f27170/drivers/firmware/qcom_scm.c",
-    "hardware_tested": "Standalone entry and EDL protocol only; this Linux integration is untested",
+    "hardware_tested": "ci8 RAM Linux and ci9 RAM Debian timed EDL returns followed by verified stock restoration",
     "license": "GPL-2.0-only driver and BSD-3-Clause board device tree"
+  },
+  "0103-tb522fu-touch-gpi-dma.patch": {
+    "source": "Stock runtime device tree and ci9 FIFO-disabled/DMA-missing logs",
+    "hardware_tested": false
+  },
+  "0104-geni-dma-message-status.patch": {
+    "source": "Local minimal callback status correction, independently supported by pending upstream series",
+    "reference": "https://lists.openwall.net/linux-kernel/2026/11/06/2331",
+    "hardware_tested": false
+  },
+  "0105-nt36536-stop-on-transport-failure.patch": {
+    "source": "Local transport-error propagation; vendor identification byte sequence unchanged",
+    "hardware_tested": false
   }
 }

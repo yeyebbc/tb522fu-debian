@@ -1,0 +1,45 @@
+Subject: [PATCH] input: nt36536: stop chip identification on transport failure
+
+Do not interpret the untouched receive buffer as an unknown all-zero ID,
+and do not repeat the entire identification sequence after SPI timeouts.
+Keep the vendor identification sequence for successful transfers.
+
+--- a/drivers/input/touchscreen/nt36536/nt36536.c
++++ b/drivers/input/touchscreen/nt36536/nt36536.c
+@@ -1071,6 +1071,7 @@
+ 	uint8_t i = 0;
+ 	int32_t list = 0;
+ 	int32_t retry = 0;
++	int32_t ret;
+ 	/* vendor module checks 5 times */
+ 	const int32_t retry_max = 5;
+ 	const struct nvt_ts_trim_id_table *entry = NULL;
+@@ -1081,7 +1082,9 @@
+ 		nvt_bootloader_reset();
+ 
+ 		//---set xdata index to chip ver trim address---
+-		nvt_set_page(chip_ver_trim_addr);
++		ret = nvt_set_page(chip_ver_trim_addr);
++		if (ret < 0)
++			return ret;
+ 
+ 		//---dummy write before trim read, same as the vendor module---
+ 		buf[0] = chip_ver_trim_addr & 0x7F;
+@@ -1091,11 +1094,15 @@
+ 		buf[4] = 0x00;
+ 		buf[5] = 0x00;
+ 		buf[6] = 0x00;
+-		CTP_SPI_WRITE(ts->client, buf, 7);
++		ret = CTP_SPI_WRITE(ts->client, buf, 7);
++		if (ret < 0)
++			return ret;
+ 
+ 		//---read chip id---
+ 		buf[0] = chip_ver_trim_addr & 0x7F;
+-		CTP_SPI_READ(ts->client, buf, 7);
++		ret = CTP_SPI_READ(ts->client, buf, 7);
++		if (ret < 0)
++			return ret;
+ 
+ 		NVT_LOG("chip id:0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n",
+ 			buf[1], buf[2], buf[3], buf[4], buf[5], buf[6]);

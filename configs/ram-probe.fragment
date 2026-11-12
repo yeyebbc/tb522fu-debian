@@ -122,3 +122,6 @@ CONFIG_INPUT_EVDEV=y
 CONFIG_SPI_QCOM_GENI=m
 CONFIG_TOUCHSCREEN_NT36536_SPI=m
 # CONFIG_TOUCHSCREEN_NOVATEK_NT36XXX is not set
+
+# Stock SE4 is GPI-only; explicitly load qcom_gpi before spi_geni_qcom.
+CONFIG_QCOM_GPI_DMA=m
