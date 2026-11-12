@@ -112,7 +112,14 @@ def main():
                     'CONFIG_FB_SIMPLE=y', 'CONFIG_FONT_TER16x32=y', 'CONFIG_DEBUG_FS=y',
                     'CONFIG_DETECT_HUNG_TASK=y', 'CONFIG_SOFTLOCKUP_DETECTOR=y',
                     'CONFIG_USB_CONFIGFS_NCM=y', 'CONFIG_USB_CONFIGFS_ACM=y',
-                    'CONFIG_PHY_QCOM_M31_EUSB=y', 'CONFIG_PHY_QCOM_EUSB2_REPEATER=y']:
+                    'CONFIG_PHY_QCOM_M31_EUSB=y', 'CONFIG_PHY_QCOM_EUSB2_REPEATER=y',
+                    'CONFIG_SM_TCSRCC_8750=y', 'CONFIG_SM_GCC_8750=y',
+                    'CONFIG_QCOM_CLK_RPMH=y', 'CONFIG_QCOM_RPMHPD=y',
+                    'CONFIG_QCOM_AOSS_QMP=y', 'CONFIG_QCOM_COMMAND_DB=y',
+                    'CONFIG_REGULATOR_QCOM_RPMH=y', 'CONFIG_REGULATOR_FIXED_VOLTAGE=y',
+                    'CONFIG_SPMI_MSM_PMIC_ARB=y', 'CONFIG_MFD_SPMI_PMIC=y',
+                    'CONFIG_QCOM_PDC=y', 'CONFIG_ARM_SMMU=y', 'CONFIG_ARM_SMMU_QCOM=y',
+                    'CONFIG_INTERCONNECT_QCOM_SM8750=y', 'CONFIG_USB_DWC3_QCOM=y']:
         assert setting in config, setting
     assert 'CONFIG_QCOM_SCM=y' in config
     assert any(s.startswith('CONFIG_CMDLINE=') and 'qcom_scm.probe_edl_return=1' in s for s in config)

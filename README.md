@@ -22,8 +22,11 @@ Own-kernel recovery images trigger a firmware CrashDump on the tested Lenovo
 firmware. A standalone normal-boot entry test successfully returned to EDL,
 followed by verified stock restoration and Android boot. The first Linux
 candidate returned to EDL early, without exposing its USB shell; no kernel
-log was captured. The next candidate adds a text console and a bounded
-error-display pause. Packaging and testing require the
+log was captured. Offline review found that the USB2 reference-clock driver
+was modular although the probe initramfs has no modules. The next candidate
+builds it into the kernel, checks the required USB suppliers, and adds a text
+console with a bounded error-display pause. Hardware verification is pending.
+Packaging and testing require the
 owner's matching stock images and a prepared EDL restoration tool.
 Firmware, device identifiers, partition dumps and keys
 are not stored here or sent to CI.
