@@ -47,6 +47,17 @@ mounted or written. Timed EDL return, stock boot restoration and Android boot
 all passed. The module name is `ufs_qcom`; explicit module names are now checked
 against build outputs. Controller initialization can change UFS attributes.
 
+The standalone maintenance profile also passed a cold boot with recipe
+`4a19510f43ebc603a2225a595ce8017a553ea303` from
+[CI run 43261296424](https://github.com/yeyebbc/tb522fu-debian/actions/runs/43261296424).
+Its embedded modules enumerated and protected all six UFS LUNs. With no Debian
+partition present, it stayed in maintenance mode; USB and the physical console
+worked. On a64MiB RAM-backed ext4 image, native formatting, GNU tar copying
+and e2fsck passed, preserving numeric owners, permissions, ACLs, extended
+attributes, capabilities and links. All twelve GPT copies stayed byte-identical.
+An explicit early EDL return restored verified stock Android. The900-second
+fallback timer was armed; this test did not wait for it to expire.
+
 No repartitioning or persistent installation has occurred. Native display/GPU,
 Wi-Fi, audio, charging, suspend and installed Android/Linux switching remain
 unverified. These artifacts are development components, not an installer.
