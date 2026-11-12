@@ -1,0 +1,74 @@
+name: Build ARM64 artifacts
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: arm64-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  kernel:
+    name: USB probe kernel
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 90
+    container: debian:trixie
+    steps:
+      - name: Install build tools
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends git ca-certificates build-essential bc bison flex libssl-dev libelf-dev ccache device-tree-compiler busybox-static cpio python3 zstd
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .ccache
+          key: arm64-kernel-${{ hashFiles('kernel/source.json', 'configs/ram-probe*', 'patches/000*.patch', 'scripts/build-kernel.py') }}
+          restore-keys: |
+            arm64-kernel-
+      - name: Build the pinned kernel and initramfs
+        run: python3 scripts/build-kernel.py
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: kernel-usb-probe
+          path: artifacts/kernel/
+          if-no-files-found: error
+          retention-days: 7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: kernel-source
+          path: artifacts/kernel-source.tar.zst
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 7
+
+  rootfs:
+    name: Debian 13 GNOME root filesystem
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 90
+    container:
+      image: debian:trixie
+      options: --privileged
+    steps:
+      - name: Install root filesystem tools
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends git ca-certificates mmdebstrap debian-archive-keyring python3 zstd
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build Debian natively from signed archives
+        run: python3 scripts/build-rootfs.py
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: debian13-arm64-gnome
+          path: artifacts/rootfs/
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 7

@@ -1,0 +1,42 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-only
+set -eu
+root=$1
+: "${TB522FU_ARTIFACT_DIR:?missing artifact directory}"
+
+chroot "$root" /usr/bin/env DEBIAN_FRONTEND=noninteractive \
+    apt-get -y -t trixie-backports install libegl-mesa0 libgbm1 \
+    libgl1-mesa-dri libglx-mesa0 mesa-libgallium mesa-vulkan-drivers
+printf 'en_US.UTF-8 UTF-8\n' > "$root/etc/locale.gen"
+chroot "$root" locale-gen
+printf 'LANG=en_US.UTF-8\n' > "$root/etc/default/locale"
+printf 'debian-tablet\n' > "$root/etc/hostname"
+cat > "$root/etc/hosts" <<'EOF'
+127.0.0.1 localhost
+127.0.1.1 debian-tablet
+::1 localhost ip6-localhost ip6-loopback
+EOF
+printf 'CHASSIS=tablet\n' > "$root/etc/machine-info"
+mkdir -p "$root/etc/flash-kernel"
+printf 'none\n' > "$root/etc/flash-kernel/machine"
+ln -sfn /usr/share/zoneinfo/Asia/Shanghai "$root/etc/localtime"
+printf 'Asia/Shanghai\n' > "$root/etc/timezone"
+systemctl --root="$root" disable ssh.service ssh.socket
+systemctl --root="$root" set-default graphical.target
+
+chroot "$root" dpkg --audit > "$TB522FU_ARTIFACT_DIR/dpkg-audit.txt"
+test ! -s "$TB522FU_ARTIFACT_DIR/dpkg-audit.txt"
+chroot "$root" dpkg-query -W \
+    '-f=${Package}\t${Architecture}\t${Version}\t${db:Status-Status}\n' \
+    > "$TB522FU_ARTIFACT_DIR/packages.tsv"
+chroot "$root" apt-cache policy mesa-libgallium mesa-vulkan-drivers \
+    > "$TB522FU_ARTIFACT_DIR/mesa-policy.txt"
+chroot "$root" apt-get clean
+
+# Unique machine identity and host keys are generated on the target.
+: > "$root/etc/machine-id"
+rm -f "$root/var/lib/dbus/machine-id"
+ln -s /etc/machine-id "$root/var/lib/dbus/machine-id"
+rm -f "$root"/etc/ssh/ssh_host_*
+rm -f "$root/etc/resolv.conf"
+ln -s /run/NetworkManager/resolv.conf "$root/etc/resolv.conf"

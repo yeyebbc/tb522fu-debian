@@ -1,0 +1,79 @@
+#!/bin/sh
+# Temporary bring-up environment: no persistent mounts or writes.
+export PATH=/bin:/sbin
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t devtmpfs devtmpfs /dev
+mkdir -p /dev/pts /run /sys/kernel/config
+mount -t devpts devpts /dev/pts
+mount -t tmpfs tmpfs /run
+echo 1 > /proc/sys/kernel/sysrq
+echo 5 > /proc/sys/kernel/panic
+echo 1 > /proc/sys/kernel/panic_on_oops
+echo 30 > /proc/sys/kernel/hung_task_timeout_secs
+echo 1 > /proc/sys/kernel/hung_task_panic
+echo 1 > /proc/sys/kernel/softlockup_panic
+
+# This timer is installed before storage or USB setup, independent of the host.
+(
+    sleep 180
+    echo 'TB522FU_PROBE_TIMEOUT: returning to Android' > /dev/kmsg
+    reboot -f
+    echo b > /proc/sysrq-trigger
+) &
+echo 'TB522FU_PROBE_INIT: timeout armed for 180 seconds' > /dev/kmsg
+
+fail() {
+    echo "TB522FU_PROBE_FAIL: $*" > /dev/kmsg
+    reboot -f
+    echo b > /proc/sysrq-trigger
+    while :; do sleep 1; done
+}
+
+mdev -s
+for node in /sys/class/block/*; do
+    [ -e "$node" ] || continue
+    disk="/dev/${node##*/}"
+    [ -b "$disk" ] || fail "missing block node $disk"
+    blockdev --setro "$disk" || fail "cannot protect $disk"
+    [ "$(blockdev --getro "$disk")" = 1 ] || fail "read-only verification failed $disk"
+done
+echo 'TB522FU_PROBE_BLOCKS_READONLY' > /dev/kmsg
+
+mount -t configfs configfs /sys/kernel/config || fail configfs
+g=/sys/kernel/config/usb_gadget/tb522fu_probe
+mkdir "$g" || fail gadget
+echo 0x1d6b > "$g/idVendor"
+echo 0x0104 > "$g/idProduct"
+echo 0x0200 > "$g/bcdUSB"
+mkdir -p "$g/strings/0x409" "$g/configs/c.1/strings/0x409"
+cat /etc/port-device-id > "$g/strings/0x409/serialnumber"
+echo 'TB522FU development' > "$g/strings/0x409/manufacturer"
+echo 'RAM probe: 180-second timeout' > "$g/strings/0x409/product"
+echo 'USB NCM and serial' > "$g/configs/c.1/strings/0x409/configuration"
+echo 250 > "$g/configs/c.1/MaxPower"
+mkdir "$g/functions/ncm.usb0" "$g/functions/acm.usb0" || fail functions
+echo 02:52:2f:00:00:01 > "$g/functions/ncm.usb0/dev_addr"
+echo 02:52:2f:00:00:02 > "$g/functions/ncm.usb0/host_addr"
+ln -s "$g/functions/ncm.usb0" "$g/configs/c.1/"
+ln -s "$g/functions/acm.usb0" "$g/configs/c.1/"
+
+controller=
+for n in $(seq 1 30); do
+    for path in /sys/class/udc/*; do
+        [ -e "$path" ] && controller="${path##*/}" && break
+    done
+    [ -n "$controller" ] && break
+    sleep 1
+done
+[ -n "$controller" ] || fail 'no USB controller'
+echo "$controller" > "$g/UDC" || fail 'UDC binding'
+ip link set lo up
+ip addr add 172.26.52.1/30 dev usb0 || fail 'USB address'
+ip link set usb0 up || fail 'USB link'
+udhcpd /etc/udhcpd.conf
+# Development shells are bound to the physical USB gadget only.
+telnetd -b 172.26.52.1:23 -l /bin/sh
+setsid cttyhack sh </dev/ttyGS0 >/dev/ttyGS0 2>&1 &
+echo 'TB522FU_PROBE_READY: USB 172.26.52.1, serial ttyGS0' > /dev/kmsg
+while :; do sleep 10; done

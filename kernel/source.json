@@ -1,0 +1,14 @@
+{
+  "repository": "https://github.com/arkylin/y900-linux.git",
+  "commit": "eccf7f8cde20924b8a22654f525f73f3cec0829e",
+  "branch": "y900/m184-ctty",
+  "board_dtb": "qcom/sm8750-lenovo-y900-acm.dtb",
+  "applied_patches": [
+    "patches/0001-guard-diagnostics-and-preserve-initrd.patch",
+    "patches/0002-usb-only-board.patch"
+  ],
+  "pending_touch_patches": [
+    "patches/0100-import-erhai-nt36536.patch",
+    "patches/0101-tb522fu-touch-protocol.patch"
+  ]
+}

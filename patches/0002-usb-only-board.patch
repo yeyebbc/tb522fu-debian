@@ -1,0 +1,25 @@
+diff --git a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+index 4e104978e0a9..1c02f165491c 100644
+--- a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
++++ b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+@@ -454,3 +454,20 @@ touchscreen@0 {
+ 		status = "okay";
+ 	};
+ };
++
++/* USB-only first boot. Keep the reviewed board wiring and reserve all memory. */
++&ufs_mem_hc { status = "disabled"; };
++&ufs_mem_phy { status = "disabled"; };
++&mdss { status = "disabled"; };
++&dispcc { status = "disabled"; };
++&gpu { status = "disabled"; };
++&gmu { status = "disabled"; };
++&gpucc { status = "disabled"; };
++&gxclkctl { status = "disabled"; };
++&remoteproc_adsp { status = "disabled"; };
++&spi4 { status = "disabled"; };
++&qupv3_1 { status = "disabled"; };
++&qupv3_2 { status = "disabled"; };
++&i2c10 { status = "disabled"; };
++&i2c11 { status = "disabled"; };
++&{/framebuffer@fc800000} { status = "disabled"; };

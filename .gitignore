@@ -1,0 +1,14 @@
+/work/
+/artifacts/
+/.ccache/
+/private/
+__pycache__/
+*.pyc
+*.img
+*.bin
+*.mbn
+*.melf
+*.pem
+*.key
+*.tar
+*.tar.zst

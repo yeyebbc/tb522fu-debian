@@ -1,0 +1,40 @@
+diff --git a/arch/arm64/kernel/setup.c b/arch/arm64/kernel/setup.c
+index 47a0aa4323c4..f8a8045194f1 100644
+--- a/arch/arm64/kernel/setup.c
++++ b/arch/arm64/kernel/setup.c
+@@ -189,8 +189,7 @@ static void __init setup_machine_fdt(phys_addr_t dt_phys)
+ 
+ 		if (result) {
+ 			pr_crit("Y900: FDT_MERGE_FAILED=%d; refusing unsafe fallback\n", result);
+-			while (true)
+-				cpu_relax();
++			panic("Y900: invalid merged device tree");
+ 		}
+ 		dt_virt = y900_acm_fdt;
+ 		dt_phys = __pa_symbol(y900_acm_fdt);
+diff --git a/arch/arm64/kernel/y900_acm_fdt.h b/arch/arm64/kernel/y900_acm_fdt.h
+index 29597dec5293..f6bb48345b47 100644
+--- a/arch/arm64/kernel/y900_acm_fdt.h
++++ b/arch/arm64/kernel/y900_acm_fdt.h
+@@ -29,6 +29,7 @@ static int __init y900_acm_merge_fdt(const void *firmware, const void *board,
+ {
+  static const char * const chosen_properties[] = {
+   "bootargs", "kaslr-seed", "rng-seed", "linux,usable-memory-range",
++  "linux,initrd-start", "linux,initrd-end",
+  };
+  int result, node, target_node, parent, length, index, memory_count = 0;
+  int firmware_chosen, target_chosen, firmware_reserved;
+diff --git a/init/y900_beacon.h b/init/y900_beacon.h
+index 314569558d17..c0f5635aa965 100644
+--- a/init/y900_beacon.h
++++ b/init/y900_beacon.h
+@@ -64,6 +64,9 @@ static const u32 y900_beacon_colors[] = {
+ 
+ static void __iomem *__init y900_fb(void)
+ {
++	/* Physical framebuffer diagnostics must be explicitly requested. */
++	if (!y900_tracing)
++		return NULL;
+ 	if (!y900_fb_map)
+ 		y900_fb_map = ioremap_wc(Y900_FB_PHYS, Y900_FB_BYTES);
+ 	return y900_fb_map;

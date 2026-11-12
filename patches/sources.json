@@ -1,0 +1,20 @@
+{
+  "0100-import-erhai-nt36536.patch": {
+    "repository": "https://github.com/yzddmr6/linux-sm8750-erhai",
+    "commit": "958a2b4654196bb52dfa0217a0f65ffeaa919f81",
+    "path": "drivers/input/touchscreen/nt36536/",
+    "license": "Original GPL headers retained",
+    "sha256": {
+      "Kconfig": "0dddd2f53e69205d19797cf7aaf2a121b1a62469901007f085d8d7a377f124fd",
+      "Makefile": "488e532f62747c2c42948acc49ef05e36b660d37af32b370627dbcd9d0f7769c",
+      "nt36536.c": "3253102a0ef98bb5956dc70fba7a55a3c8c6072cb254ee67b0d422f2f549f9d0",
+      "nt36536.h": "0295b099cbfd9989b1ace2568c6b564fa391d811ceb29e6bfbfaafcc1a6a809e",
+      "nt36536_fw_update.c": "3fba13bb86e82994c26830beba69efdfe1fba8a45cfeafa547fb47681501f2a9",
+      "nt36536_mem_map.h": "4c480dbb23c614dc25f5ad855849584239b0ef3b86a7f1f7ff6fc2eded0f045f"
+    }
+  },
+  "0101-tb522fu-touch-protocol.patch": {
+    "source": "Local adaptation from stock module and live Android input evidence",
+    "hardware_tested": false
+  }
+}

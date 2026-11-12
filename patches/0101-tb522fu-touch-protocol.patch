@@ -1,0 +1,120 @@
+diff --git a/drivers/input/touchscreen/nt36536/nt36536.c b/drivers/input/touchscreen/nt36536/nt36536.c
+--- a/drivers/input/touchscreen/nt36536/nt36536.c
++++ b/drivers/input/touchscreen/nt36536/nt36536.c
+@@ -235,9 +235,8 @@
+ Description:
+ 	Novatek touchscreen clear status & enable fw crc function.
+ 
+-	The frame lengths below are byte-for-byte what the NT36536 vendor
+-	module issues; trimming or padding them leaves the firmware stuck
+-	in RESET_STATE_INIT with the interrupt line silent.
++	Frame lengths differ between vendor firmware implementations. Keep
++	the command bytes and lengths in the per-device variant.
+ 
+ return:
+ 	N/A.
+@@ -248,12 +247,12 @@
+ 	nvt_set_page(ts->mmap->EVENT_BUF_ADDR);
+ 
+ 	//---clear fw reset status---
+-	u8 clear_cmd[2] = {EVENT_MAP_RESET_COMPLETE, 0x00};
+-	CTP_SPI_WRITE(ts->client, clear_cmd, sizeof(clear_cmd));
++	u8 clear_cmd[7] = {EVENT_MAP_RESET_COMPLETE, 0x00};
++	CTP_SPI_WRITE(ts->client, clear_cmd, ts->variant->reset_clear_len);
+ 
+ 	//---enable fw crc---
+-	u8 crc_cmd[2] = {EVENT_MAP_HOST_CMD, 0xAE};
+-	CTP_SPI_WRITE(ts->client, crc_cmd, sizeof(crc_cmd));
++	u8 crc_cmd[3] = {EVENT_MAP_HOST_CMD, 0xAE};
++	CTP_SPI_WRITE(ts->client, crc_cmd, ts->variant->crc_enable_len);
+ }
+ 
+ /*******************************************************
+@@ -869,7 +868,7 @@
+ 		}
+ 	}
+ 
+-	ret = CTP_SPI_READ(ts->client, point_data, NVT_REPORT_LEN);
++	ret = CTP_SPI_READ(ts->client, point_data, ts->variant->report_len);
+ 	if (ret < 0) {
+ 		NVT_ERR("CTP_SPI_READ failed.(%d)\n", ret);
+ 		goto XFER_ERROR;
+@@ -1060,9 +1059,8 @@
+ 	attempt: bootloader reset, set page to the trim address, a 7-byte
+ 	dummy write, then a 7-byte read carrying the six trim id bytes.
+ 
+-	An unmatched id is not fatal here: the id bytes are logged and the
+-	NT36536 maps are used anyway, so a new trim revision cannot block
+-	bring-up.
++	An unknown ID is rejected before choosing a memory map or loading
++	firmware. New revisions require their own vendor evidence.
+ 
+ return:
+ 	Executive outcomes. 0---NVT IC. -1---not NVT IC.
+@@ -1119,8 +1117,8 @@
+ 
+ matched:
+ 	if (!entry) {
+-		NVT_ERR("chip id not in trim table, continue with NT36536 maps\n");
+-		entry = &trim_id_table[0];
++		NVT_ERR("unknown chip id: refusing firmware download\n");
++		return -ENODEV;
+ 	}
+ 
+ 	ts->hw_crc = entry->hwinfo->hw_crc;
+@@ -1144,7 +1142,9 @@
+ 			buf[1] = 0xFF;
+ 			ret = CTP_SPI_READ(ts->client, buf, 2);
+ 		}
+-		if (ret == 0 && (buf[1] & mask)) {
++		if (ret)
++			return ret;
++		if (buf[1] & mask) {
+ 			NVT_LOG("Single Chip\n");
+ 			ts->mmap = mmap_single;
+ 		} else {
+@@ -2227,10 +2227,23 @@
+ static const struct nvt_ts_variant nt36536_variant = {
+ 	.pen_coord_scale = 10,
+ 	.pen_pressure_max = 16384,
++	.reset_clear_len = 2,
++	.crc_enable_len = 2,
++	.report_len = NVT_REPORT_LEN,
++};
++
++/* TB522FU stock nvt_36xxx.ko: CRC commands 7/3 bytes, report 109 bytes. */
++static const struct nvt_ts_variant tb522fu_variant = {
++	.pen_coord_scale = 10,
++	.pen_pressure_max = 4095,
++	.reset_clear_len = 7,
++	.crc_enable_len = 3,
++	.report_len = 109,
+ };
+ 
+ static const struct spi_device_id nvt_ts_id[] = {
+ 	{ "nt36536-ts", (kernel_ulong_t)&nt36536_variant },
++	{ "tb522fu-nvt", (kernel_ulong_t)&tb522fu_variant },
+ 	{ }
+ };
+ MODULE_DEVICE_TABLE(spi, nvt_ts_id);
+@@ -2238,6 +2251,7 @@
+ #ifdef CONFIG_OF
+ static const struct of_device_id nt36536_of_match[] = {
+ 	{ .compatible = "novatek,nt36536-ts", .data = &nt36536_variant },
++	{ .compatible = "lenovo,tb522fu-nvt", .data = &tb522fu_variant },
+ 	{ },
+ };
+ MODULE_DEVICE_TABLE(of, nt36536_of_match);
+diff --git a/drivers/input/touchscreen/nt36536/nt36536.h b/drivers/input/touchscreen/nt36536/nt36536.h
+--- a/drivers/input/touchscreen/nt36536/nt36536.h
++++ b/drivers/input/touchscreen/nt36536/nt36536.h
+@@ -105,6 +105,9 @@
+ 	/* pen report units per touchscreen-size unit (panel pixel) */
+ 	unsigned int pen_coord_scale;
+ 	unsigned int pen_pressure_max;
++	u8 reset_clear_len;
++	u8 crc_enable_len;
++	u8 report_len;
+ };
+ 
+ enum nvt_ic_state {
