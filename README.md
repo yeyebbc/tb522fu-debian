@@ -15,17 +15,21 @@ GitHub Actions builds two independent artifacts on native ARM64 runners:
 - A Debian 13 GNOME root filesystem from authenticated Debian archives,
   including security updates and the Mesa stack from trixie-backports.
 
-The first mainline boot has **not yet been verified on hardware**. Display,
-touch, Wi-Fi, audio, charging, suspend and Android/Linux switching remain
+The RAM probe has **booted successfully on one TB522FU**. Recipe
+`ac9549fbbafa83e9d8409446118c05541766f15f` from
+[CI run 43222822022](https://github.com/yeyebbc/tb522fu-debian/actions/runs/43222822022)
+produced Linux `7.3.0-tb522fu-probe-ci8+`: visible firmware framebuffer text,
+working USB networking and a network shell, followed by timed EDL return and
+verified stock Android restoration. The ACM interface enumerated but its
+serial shell did not work. Debian GNOME, native display/GPU, touch, Wi-Fi,
+audio, charging, suspend and installed Android/Linux switching remain
 unverified. The artifacts are development components, not a flashable installer.
 Own-kernel recovery images trigger a firmware CrashDump on the tested Lenovo
 firmware. A standalone normal-boot entry test successfully returned to EDL,
-followed by verified stock restoration and Android boot. The first Linux
-candidate returned to EDL early, without exposing its USB shell; no kernel
-log was captured. Offline review found that the USB2 reference-clock driver
-was modular although the probe initramfs has no modules. The next candidate
-builds it into the kernel, checks the required USB suppliers, and adds a text
-console with a bounded error-display pause. Hardware verification is pending.
+followed by verified stock restoration and Android boot. The USB2 reference-
+clock provider must be built into this module-free probe; the build now checks
+it and the required USB suppliers. The firmware text console includes a
+bounded error-display pause.
 Packaging and testing require the
 owner's matching stock images and a prepared EDL restoration tool.
 Firmware, device identifiers, partition dumps and keys
@@ -69,8 +73,8 @@ The applied patches guard diagnostic framebuffer writes, preserve initramfs
 boundaries during the built-in FDT merge, panic on a failed merge, and disable
 peripherals outside the initial USB test. A temporary, board-gated SCM patch
 provides the EDL return protocol checked against the stock driver and exercised
-by the standalone entry test. Its kernel integration still needs a hardware
-test. The probe configuration retains Qualcomm support and omits debug symbols.
+by the standalone entry test and the ci8 Linux test. The probe configuration
+retains Qualcomm support and omits debug symbols.
 
 The separate NT36536 patches are **staged and not applied by CI yet**. Their
 source is [yzddmr6/linux-sm8750-erhai](https://github.com/yzddmr6/linux-sm8750-erhai/tree/958a2b4654196bb52dfa0217a0f65ffeaa919f81/drivers/input/touchscreen/nt36536).
