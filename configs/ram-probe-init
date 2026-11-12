@@ -18,14 +18,14 @@ echo 1 > /proc/sys/kernel/softlockup_panic
 (
     sleep 180
     echo 'TB522FU_PROBE_TIMEOUT: returning to Android' > /dev/kmsg
-    reboot -f
+    reboot -f -n
     echo b > /proc/sysrq-trigger
 ) &
 echo 'TB522FU_PROBE_INIT: timeout armed for 180 seconds' > /dev/kmsg
 
 fail() {
     echo "TB522FU_PROBE_FAIL: $*" > /dev/kmsg
-    reboot -f
+    reboot -f -n
     echo b > /proc/sysrq-trigger
     while :; do sleep 1; done
 }

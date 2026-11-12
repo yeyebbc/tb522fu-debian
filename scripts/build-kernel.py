@@ -77,6 +77,8 @@ def main():
                 'setsid', 'cttyhack', 'sleep', 'seq', 'cat', 'ln', 'reboot', 'dmesg', 'stty'}
     assert required <= applets, required - applets
     run(launcher + [args.busybox, 'sh', '-n', ROOT / 'configs/ram-probe-init'])
+    init = (ROOT / 'configs/ram-probe-init').read_text()
+    assert [s.strip() for s in init.splitlines() if s.strip().startswith('reboot ')] == ['reboot -f -n'] * 2
     identity = work / 'probe-id'
     identity.write_text('tb522fu-ci-ram-probe\n')
     cpio_spec = [f'dir /{d} 0755 0 0' for d in ['bin','sbin','dev','proc','sys','etc','run','tmp','root']]
@@ -102,6 +104,7 @@ def main():
     for setting in ['CONFIG_Y900_ACM_DIAG_DTB=y', 'CONFIG_INITRAMFS_FORCE=y',
                     'CONFIG_CMDLINE_FORCE=y', 'CONFIG_PANIC_TIMEOUT=5',
                     'CONFIG_DEBUG_INFO_NONE=y', 'CONFIG_USB_CONFIGFS=y',
+                    'CONFIG_DETECT_HUNG_TASK=y', 'CONFIG_SOFTLOCKUP_DETECTOR=y',
                     'CONFIG_USB_CONFIGFS_NCM=y', 'CONFIG_USB_CONFIGFS_ACM=y',
                     'CONFIG_PHY_QCOM_M31_EUSB=y', 'CONFIG_PHY_QCOM_EUSB2_REPEATER=y']:
         assert setting in config, setting
@@ -119,6 +122,9 @@ def main():
     (target / 'initramfs.cpio.gz').write_bytes(gzip.compress(cpio.read_bytes(), mtime=0))
     shutil.copy2(ROOT / 'kernel/source.json', target / 'source.json')
     manifest = {'source': spec, 'compiler': capture([compiler, '--version']).splitlines()[0],
+                'recipe_commit': capture(['git', '-C', ROOT, 'rev-parse', 'HEAD']),
+                'recipe_sha256': {p: sha(ROOT / p) for p in ['configs/ram-probe-init',
+                    'configs/ram-probe.fragment', 'configs/udhcpd.conf', 'scripts/build-kernel.py']},
                 'source_date_epoch': int(epoch), 'gadget_serial': identity.read_text().strip(),
                 'busybox_sha256': sha(args.busybox),
                 'patch_sha256': {p: sha(ROOT / p) for p in spec['applied_patches']},
