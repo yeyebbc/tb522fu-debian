@@ -6,12 +6,13 @@ with GNOME and 128 GiB of storage, preserving Android for dual boot.
 
 GitHub Actions builds two independent artifacts on native ARM64 runners:
 
-- A mainline kernel and device tree for a USB-only RAM probe. Its BusyBox
-  initramfs exposes USB NCM/ACM and makes block devices read-only. An opt-in
-  kernel timer requests EDL after 180 seconds from SCM readiness, allowing
-  the attached host to restore the original Android boot image. A temporary
-  firmware framebuffer console shows startup errors; native display remains
-  disabled in this diagnostic configuration.
+- A kernel, device tree and matching modules for a bounded RAM desktop test.
+  Its BusyBox initramfs exposes USB NCM/ACM, protects block devices, and keeps
+  UFS disabled. An opt-in kernel timer requests EDL after 600 seconds from
+  SCM readiness, allowing the attached host to restore Android. SimpleDRM
+  borrows the firmware framebuffer. Native display and GPU remain disabled.
+  The USB host can supply a hash-verified SquashFS root, matching modules and
+  private touch firmware to a disposable RAM overlay before starting Debian.
 - A Debian 13 GNOME root filesystem from authenticated Debian archives,
   including security updates and the Mesa stack from trixie-backports.
 
@@ -27,8 +28,8 @@ unverified. The artifacts are development components, not a flashable installer.
 Own-kernel recovery images trigger a firmware CrashDump on the tested Lenovo
 firmware. A standalone normal-boot entry test successfully returned to EDL,
 followed by verified stock restoration and Android boot. The USB2 reference-
-clock provider must be built into this module-free probe; the build now checks
-it and the required USB suppliers. The firmware text console includes a
+clock provider must be built into this module-free probe; the build checks
+it and the required USB suppliers before building modules. The firmware text console includes a
 bounded error-display pause.
 Packaging and testing require the
 owner's matching stock images and a prepared EDL restoration tool.
@@ -50,7 +51,7 @@ To build the kernel locally on Debian 13 ARM64:
 
 ```sh
 sudo apt-get install build-essential bc bison flex libssl-dev libelf-dev \
-  ccache device-tree-compiler busybox-static cpio python3 git zstd
+  ccache device-tree-compiler busybox-static cpio python3 git zstd kmod
 python3 scripts/build-kernel.py
 ```
 
@@ -76,11 +77,14 @@ provides the EDL return protocol checked against the stock driver and exercised
 by the standalone entry test and the ci8 Linux test. The probe configuration
 retains Qualcomm support and omits debug symbols.
 
-The separate NT36536 patches are **staged and not applied by CI yet**. Their
+The NT36536 patches now build as a module for explicit loading after USB
+logging is available. The new desktop candidate is **not hardware-tested**. Its
 source is [yzddmr6/linux-sm8750-erhai](https://github.com/yzddmr6/linux-sm8750-erhai/tree/958a2b4654196bb52dfa0217a0f65ffeaa919f81/drivers/input/touchscreen/nt36536).
 The TB522FU adaptation uses the stock driver's CRC-command lengths, report
-length and pen pressure range. It still requires compilation and hardware
-validation after the USB recovery channel works.
+length and pen pressure range. The changed objects and board DTB compiled locally; hardware validation is
+pending. Native panel takeover must establish the panel-follower relationship
+before display power management can be tested. Firmware is supplied privately
+on the USB link and is never uploaded to this repository or CI.
 
 ## License
 

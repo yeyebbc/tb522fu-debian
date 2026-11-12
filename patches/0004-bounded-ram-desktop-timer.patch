@@ -1,0 +1,52 @@
+Subject: [PATCH] qcom_scm: allow a bounded RAM desktop test interval
+
+Keep the tested 180-second default and read-only, opt-in board guards.
+Reject values outside 180..900 seconds before arming; no unlimited mode.
+
+--- a/drivers/firmware/qcom/qcom_scm.c
++++ b/drivers/firmware/qcom/qcom_scm.c
+@@ -44,9 +44,12 @@
+ static u32 download_mode;
+ static bool tb522fu_probe_edl_return;
+ static bool tb522fu_probe_edl_ready;
++static unsigned int tb522fu_probe_seconds = 180;
+ module_param_named(probe_edl_return, tb522fu_probe_edl_return, bool, 0400);
+ module_param_named(probe_edl_ready, tb522fu_probe_edl_ready, bool, 0444);
+-MODULE_PARM_DESC(probe_edl_return, "TB522FU RAM probe: restart into EDL, with 180-second kernel timer");
++module_param_named(probe_seconds, tb522fu_probe_seconds, uint, 0400);
++MODULE_PARM_DESC(probe_edl_return, "TB522FU RAM probe: restart into EDL with an independent kernel timer");
++MODULE_PARM_DESC(probe_seconds, "RAM test duration, 180 to 900 seconds (default 180)");
+ 
+ #define GIC_SPI_BASE        32
+ #define GIC_MAX_SPI       1019  // SPIs in GICv3 spec range from 32..1019
+@@ -1242,7 +1245,8 @@
+ 
+ static void tb522fu_probe_timeout(struct timer_list *timer)
+ {
+-	pr_emerg("TB522FU_PROBE_TIMEOUT: 180-second kernel timer, returning to EDL\n");
++	pr_emerg("TB522FU_PROBE_TIMEOUT: %u-second kernel timer, returning to EDL\n",
++		 tb522fu_probe_seconds);
+ 	emergency_restart();
+ }
+ 
+@@ -1258,6 +1262,8 @@
+ 
+ 	if (!tb522fu_probe_edl_return)
+ 		return;
++	if (tb522fu_probe_seconds < 180 || tb522fu_probe_seconds > 900)
++		goto unavailable;
+ 	if (!of_machine_is_compatible("lenovo,y900") ||
+ 	    scm->dload_mode_addr != 0x1fd9000 ||
+ 	    __get_convention() != SMC_CONVENTION_ARM_64)
+@@ -1271,8 +1277,9 @@
+ 	if (ret)
+ 		goto unavailable;
+ 	tb522fu_probe_edl_ready = true;
+-	mod_timer(&tb522fu_probe_timer, jiffies + 180 * HZ);
+-	dev_info(scm->dev, "TB522FU_EDL_RETURN_ARMED: restart handler and 180-second kernel timer\n");
++	mod_timer(&tb522fu_probe_timer, jiffies + tb522fu_probe_seconds * HZ);
++	dev_info(scm->dev, "TB522FU_EDL_RETURN_ARMED: restart handler and %u-second kernel timer\n",
++		 tb522fu_probe_seconds);
+ 	return;
+ unavailable:
+ 	dev_err(scm->dev, "TB522FU_EDL_RETURN_UNAVAILABLE: init must power off, not reboot\n");

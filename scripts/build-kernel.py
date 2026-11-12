@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-2.0-only
-"""Build the pinned USB-only kernel without accessing a device."""
+"""Build the pinned RAM desktop kernel without accessing a device."""
 from pathlib import Path
 import argparse
 import gzip
@@ -78,9 +78,11 @@ def main():
         launcher = [emulator]
     applets = set(capture(launcher + [args.busybox, '--list']).split())
     required = {'sh', 'mount', 'mkdir', 'mdev', 'blockdev', 'ip', 'udhcpd', 'telnetd',
-                'setsid', 'cttyhack', 'sleep', 'seq', 'cat', 'ls', 'ln', 'reboot', 'poweroff', 'dmesg', 'stty'}
+                'setsid', 'sleep', 'seq', 'cat', 'ls', 'ln', 'reboot', 'poweroff', 'dmesg', 'stty',
+                'wget', 'sha256sum', 'tar', 'losetup', 'switch_root', 'cut', 'awk', 'mv', 'killall', 'touch'}
     assert required <= applets, required - applets
-    run(launcher + [args.busybox, 'sh', '-n', ROOT / 'configs/ram-probe-init'])
+    for script in ['ram-probe-init', 'ram-desktop-prepare']:
+        run(launcher + [args.busybox, 'sh', '-n', ROOT / 'configs' / script])
     init = (ROOT / 'configs/ram-probe-init').read_text()
     assert [s.strip() for s in init.splitlines() if s.strip().startswith('reboot ')] == ['reboot -f -n']
     assert 'poweroff -f -n' in init and 'probe_edl_ready' in init
@@ -90,6 +92,7 @@ def main():
     cpio_spec += ['nod /dev/console 0600 0 0 c 5 1', 'nod /dev/null 0666 0 0 c 1 3',
                  f'file /bin/busybox {args.busybox.resolve()} 0755 0 0',
                  f'file /init {ROOT / "configs/ram-probe-init"} 0755 0 0',
+                 f'file /bin/ram-desktop-prepare {ROOT / "configs/ram-desktop-prepare"} 0755 0 0',
                  f'file /etc/udhcpd.conf {ROOT / "configs/udhcpd.conf"} 0644 0 0',
                  f'file /etc/port-device-id {identity} 0644 0 0']
     cpio_spec += [f'slink /bin/{a} busybox 0777 0 0' for a in sorted(applets) if a != 'busybox']
@@ -109,7 +112,9 @@ def main():
     for setting in ['CONFIG_Y900_ACM_DIAG_DTB=y', 'CONFIG_INITRAMFS_FORCE=y',
                     'CONFIG_CMDLINE_FORCE=y', 'CONFIG_PANIC_TIMEOUT=5',
                     'CONFIG_DEBUG_INFO_NONE=y', 'CONFIG_USB_CONFIGFS=y',
-                    'CONFIG_FB_SIMPLE=y', 'CONFIG_FONT_TER16x32=y', 'CONFIG_DEBUG_FS=y',
+                    'CONFIG_DRM_SIMPLEDRM=y', 'CONFIG_DRM=y', 'CONFIG_FONT_TER16x32=y', 'CONFIG_DEBUG_FS=y',
+                    'CONFIG_OVERLAY_FS=y', 'CONFIG_SQUASHFS=y', 'CONFIG_SQUASHFS_ZLIB=y',
+                    'CONFIG_SPI_QCOM_GENI=m', 'CONFIG_TOUCHSCREEN_NT36536_SPI=m',
                     'CONFIG_DETECT_HUNG_TASK=y', 'CONFIG_SOFTLOCKUP_DETECTOR=y',
                     'CONFIG_USB_CONFIGFS_NCM=y', 'CONFIG_USB_CONFIGFS_ACM=y',
                     'CONFIG_PHY_QCOM_M31_EUSB=y', 'CONFIG_PHY_QCOM_EUSB2_REPEATER=y',
@@ -124,7 +129,17 @@ def main():
     assert 'CONFIG_QCOM_SCM=y' in config
     assert any(s.startswith('CONFIG_CMDLINE=') and 'qcom_scm.probe_edl_return=1' in s for s in config)
     run(make + [spec['board_dtb']])
-    run(make + ['Image'])
+    run(make + ['Image', 'modules'])
+    modules = work / 'modules'
+    run(make + ['modules_install', f'INSTALL_MOD_PATH={modules}', 'INSTALL_MOD_STRIP=1'])
+    release = (out / 'include/config/kernel.release').read_text().strip()
+    installed = modules / 'lib/modules' / release
+    for name in ['build', 'source']:
+        (installed / name).unlink(missing_ok=True)
+    # Debian is usr-merged; keep the archive independent of its /lib symlink.
+    (modules / 'usr/lib').mkdir(parents=True)
+    (modules / 'lib/modules').rename(modules / 'usr/lib/modules')
+    run(['tar', '-czf', target / 'modules.tar.gz', '-C', modules, 'usr/lib/modules'])
     image = out / 'arch/arm64/boot/Image'
     dtb = out / 'arch/arm64/boot/dts' / spec['board_dtb']
     data = image.read_bytes()
@@ -139,12 +154,13 @@ def main():
     manifest = {'source': spec, 'compiler': capture([compiler, '--version']).splitlines()[0],
                 'recipe_commit': recipe_commit,
                 'recipe_sha256': {p: sha(ROOT / p) for p in ['configs/ram-probe-init',
-                    'configs/ram-probe.fragment', 'configs/udhcpd.conf', 'scripts/build-kernel.py']},
+                    'configs/ram-probe.fragment', 'configs/ram-desktop-prepare', 'configs/udhcpd.conf', 'scripts/build-kernel.py']},
                 'source_date_epoch': int(epoch), 'gadget_serial': identity.read_text().strip(),
                 'busybox_sha256': sha(args.busybox),
                 'patch_sha256': {p: sha(ROOT / p) for p in spec['applied_patches']},
                 'hardware_tested': False,
-                'return_mode': 'EDL; kernel timer 180 seconds from SCM readiness; host stock restore required',
+                'return_mode': 'EDL; kernel timer 600 seconds from SCM readiness; host stock restore required',
+                'test_stage': 'ram-desktop',
                 'files': {p.name: {'bytes': p.stat().st_size, 'sha256': sha(p)}
                           for p in target.iterdir() if p.is_file()}}
     (target / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')

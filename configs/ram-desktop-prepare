@@ -1,0 +1,99 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-only
+# Run explicitly over the isolated USB link after collecting initramfs evidence.
+# Arguments are SHA-256 hashes from the host's verified payload manifest.
+set -eu
+export PATH=/bin:/sbin
+[ "$#" = 3 ] || { echo 'Expected rootfs, modules and firmware SHA-256'; exit 1; }
+for digest in "$@"; do
+    [ "${#digest}" = 64 ] || exit 1
+    case "$digest" in *[!0-9a-f]*) exit 1;; esac
+done
+[ "$(cat /sys/module/qcom_scm/parameters/probe_edl_ready)" = Y ]
+duration=$(cat /sys/module/qcom_scm/parameters/probe_seconds)
+uptime=$(cut -d. -f1 /proc/uptime)
+[ "$((duration - uptime))" -gt 180 ]
+[ "$(awk '/MemAvailable:/{print $2}' /proc/meminfo)" -gt 6291456 ]
+[ ! -e /newroot ]
+# No persistent device is allowed in this candidate, even read-only.
+for node in /sys/class/block/*; do
+    [ -e "$node" ] || continue
+    case "${node##*/}" in loop[0-9]*) ;; *) echo "Unexpected block device: $node"; exit 1;; esac
+    [ "$(blockdev --getro "/dev/${node##*/}")" = 1 ]
+done
+mkdir -p /run/desktop/payload /run/desktop/lower /run/desktop/rw /newroot
+fetch() {
+    wget -Y off -T 90 -O "/run/desktop/payload/$1.part" "http://172.26.52.2:8052/$1"
+    printf '%s  %s\n' "$2" "/run/desktop/payload/$1.part" | sha256sum -c -
+    mv "/run/desktop/payload/$1.part" "/run/desktop/payload/$1"
+}
+fetch rootfs.squashfs "$1"
+fetch modules.tar.gz "$2"
+fetch firmware.tar.gz "$3"
+loop=$(losetup -f)
+losetup -r "$loop" /run/desktop/payload/rootfs.squashfs
+[ "$(blockdev --getro "$loop")" = 1 ]
+mount -t squashfs -o ro "$loop" /run/desktop/lower
+mount -t tmpfs -o size=4G,mode=0755 tmpfs /run/desktop/rw
+mkdir /run/desktop/rw/upper /run/desktop/rw/work
+mount -t overlay overlay -o lowerdir=/run/desktop/lower,upperdir=/run/desktop/rw/upper,workdir=/run/desktop/rw/work /newroot
+tar -xzf /run/desktop/payload/modules.tar.gz -C /newroot
+tar -xzf /run/desktop/payload/firmware.tar.gz -C /newroot
+[ -d "/newroot/usr/lib/modules/$(uname -r)" ]
+[ -s /newroot/usr/lib/firmware/novatek_ts_38_new_fw.bin ]
+mkdir -p /newroot/etc/modprobe.d /newroot/etc/NetworkManager/conf.d \
+    /newroot/etc/systemd/system/multi-user.target.wants /newroot/etc/systemd/logind.conf.d
+cat >/newroot/etc/modprobe.d/ram-test.conf <<'EOF'
+# Manual load only, once USB evidence has been saved.
+blacklist spi_geni_qcom
+blacklist nt36536_ts
+blacklist msm
+EOF
+cat >/newroot/etc/NetworkManager/conf.d/ram-usb.conf <<'EOF'
+[keyfile]
+unmanaged-devices=interface-name:usb0
+EOF
+cat >/newroot/etc/systemd/logind.conf.d/ram-test.conf <<'EOF'
+[Login]
+HandlePowerKey=ignore
+HandleSuspendKey=ignore
+HandleLidSwitch=ignore
+IdleAction=ignore
+EOF
+# Sleep is outside this bounded borrowed-framebuffer test's scope.
+for unit in sleep.target suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target; do
+    ln -sf /dev/null "/newroot/etc/systemd/system/$unit"
+done
+cat >/newroot/etc/systemd/system/ram-usb-shell.service <<'EOF'
+[Unit]
+Description=Temporary RAM test shell on the isolated USB link
+After=systemd-udevd.service
+Before=display-manager.service
+[Service]
+Type=simple
+ExecStart=/usr/bin/busybox telnetd -F -b 172.26.52.1:23 -l /bin/sh
+[Install]
+WantedBy=multi-user.target
+EOF
+cat >/newroot/etc/systemd/system/ram-usb-serial.service <<'EOF'
+[Unit]
+Description=Temporary RAM test serial console
+After=systemd-udevd.service
+Before=display-manager.service
+[Service]
+Type=idle
+ExecStart=/sbin/agetty --autologin root --noclear --keep-baud 115200,38400,9600 ttyGS0 vt100
+TTYPath=/dev/ttyGS0
+TTYReset=yes
+TTYVHangup=yes
+[Install]
+WantedBy=multi-user.target
+EOF
+for unit in ram-usb-shell ram-usb-serial; do
+    ln -s "../$unit.service" "/newroot/etc/systemd/system/multi-user.target.wants/$unit.service"
+done
+# Keep initial setup and all account creation in the disposable RAM overlay.
+printf 'tmpfs /tmp tmpfs mode=1777,nosuid,nodev 0 0\n' >/newroot/etc/fstab
+touch /newroot/run-desktop-ready
+echo 'TB522FU_DESKTOP_PREPARED: hashes checked, RAM overlay ready; no storage mounted'
+echo 'Save initramfs evidence, then: touch /run/start-desktop; exit'

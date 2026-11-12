@@ -1,0 +1,102 @@
+Subject: [PATCH] arm64: dts: stage stock-matched TB522FU touch for RAM testing
+
+Use the separately imported NT36536 driver and the captured firmware name,
+axes and IRQ. Keep native display, GPU and storage disabled. Touch modules
+must be loaded explicitly after the USB channel and return timer are ready.
+
+--- a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
++++ b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+@@ -161,7 +161,7 @@
+ &{/soc@0/stm@10002000} { status = "disabled"; };
+ &{/soc@0/tn@109ab000} { status = "disabled"; };
+ &{/reserved-memory} { /delete-node/ demura_region_0; /delete-node/ demura_region_1; };
+-&tlmm { gpio-reserved-ranges = <28 4>, <36 4>, <48 4>, <74 1>, <86 3>, <97 2>, <100 1>, <161 2>; };
++&tlmm { gpio-reserved-ranges = <28 4>, <36 4>, <74 1>, <86 3>, <97 2>, <100 1>, <161 1>; };
+ 
+ / {
+ 	framebuffer@fc800000 {
+@@ -403,23 +403,30 @@
+  */
+ &tlmm {
+ 	nvts_spi_data_clk: nvts-spi-data-clk-state {
+-		pins = "gpio48", "gpio49", "gpio50";
++		pins = "gpio48", "gpio49";
++		function = "qup1_se4";
++		drive-strength = <2>;
++		bias-pull-down;
++	};
++
++	nvts_spi_clk: nvts-spi-clk-state {
++		pins = "gpio50";
+ 		function = "qup1_se4";
+ 		drive-strength = <6>;
+-		bias-disable;
++		bias-pull-down;
+ 	};
+ 
+ 	nvts_spi_cs: nvts-spi-cs-state {
+ 		pins = "gpio51";
+ 		function = "qup1_se4";
+-		drive-strength = <6>;
+-		bias-disable;
++		drive-strength = <4>;
++		bias-pull-up;
+ 	};
+ 
+ 	nvts_int_default: nvts-int-default-state {
+ 		pins = "gpio162";
+ 		function = "gpio";
+-		drive-strength = <2>;
++		drive-strength = <8>;
+ 		bias-pull-up;
+ 	};
+ };
+@@ -450,15 +457,19 @@
+ 	 */
+ 
+ 	touchscreen@0 {
+-		compatible = "novatek,NVT-ts-spi";
++		compatible = "lenovo,tb522fu-nvt";
+ 		reg = <0>;
+ 
+ 		spi-max-frequency = <19200000>;
+ 
+ 		interrupt-parent = <&tlmm>;
+ 		interrupts-extended = <&tlmm 162 IRQ_TYPE_EDGE_RISING>;
+-		irq-gpios = <&tlmm 162 GPIO_ACTIVE_HIGH>;
+-		reset-gpios = <&tlmm 161 GPIO_ACTIVE_HIGH>;
++		/* Reset remains with the live firmware panel during this RAM test. */
++		pinctrl-0 = <&nvts_int_default>;
++		pinctrl-names = "default";
++		firmware-name = "novatek_ts_38_new_fw.bin";
++		touchscreen-size-x = <2560>;
++		touchscreen-size-y = <3840>;
+ 
+ 		novatek,pen-support;
+ 		novatek,spi-rd-fast-addr = <0>;
+@@ -477,9 +488,22 @@
+ &gpucc { status = "disabled"; };
+ &gxclkctl { status = "disabled"; };
+ &remoteproc_adsp { status = "disabled"; };
+-&spi4 { status = "disabled"; };
+-&qupv3_1 { status = "disabled"; };
++&spi4 { status = "okay"; };
++&qupv3_1 { status = "okay"; };
+ &qupv3_2 { status = "disabled"; };
+ &i2c10 { status = "disabled"; };
+ &i2c11 { status = "disabled"; };
+-&{/framebuffer@fc800000} { status = "okay"; }; /* Firmware text console only. */
++&{/framebuffer@fc800000} { status = "okay"; }; /* Borrowed display for the first RAM desktop. */
++
++/* Stock FDT reserves only 36..39 and 74. Release only the touch pins for
++ * this staged test; keep unrelated community reservations. The GENI SPI
++ * driver stays modular and is loaded explicitly after USB logging works.
++ * Stock pinctrl uses 2 mA/pull-down for data, 6 mA/pull-down for
++ * clock, 4 mA/pull-up for CS and 8 mA/pull-up for the touch IRQ.
++ * No panel follower yet: the firmware owns the continuously active panel.
++ * Native takeover must add the panel relation before DPMS is supported.
++ */
++&spi4 {
++	pinctrl-0 = <&nvts_spi_data_clk &nvts_spi_clk &nvts_spi_cs>;
++	pinctrl-names = "default";
++};

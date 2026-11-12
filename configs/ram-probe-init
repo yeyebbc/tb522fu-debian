@@ -67,7 +67,7 @@ echo 0x0200 > "$g/bcdUSB"
 mkdir -p "$g/strings/0x409" "$g/configs/c.1/strings/0x409"
 cat /etc/port-device-id > "$g/strings/0x409/serialnumber"
 echo 'TB522FU development' > "$g/strings/0x409/manufacturer"
-echo 'RAM probe: 180-second timeout' > "$g/strings/0x409/product"
+echo 'RAM desktop: 600-second timeout' > "$g/strings/0x409/product"
 echo 'USB NCM and serial' > "$g/configs/c.1/strings/0x409/configuration"
 echo 250 > "$g/configs/c.1/MaxPower"
 mkdir "$g/functions/ncm.usb0" "$g/functions/acm.usb0" || fail functions
@@ -92,6 +92,17 @@ ip link set usb0 up || fail 'USB link'
 udhcpd /etc/udhcpd.conf
 # Development shells are bound to the physical USB gadget only.
 telnetd -b 172.26.52.1:23 -l /bin/sh
-setsid cttyhack sh </dev/ttyGS0 >/dev/ttyGS0 2>&1 &
+# Open the selected terminal after setsid; cttyhack would choose tty0.
+setsid sh -c 'exec sh -i </dev/ttyGS0 >/dev/ttyGS0 2>&1' &
+serial_shell_pid=$!
 echo 'TB522FU_PROBE_READY: USB 172.26.52.1, serial ttyGS0' > /dev/kmsg
-while :; do sleep 10; done
+while [ ! -e /run/start-desktop ]; do sleep 1; done
+# Only PID 1 can switch_root. Preparation has already checked every payload.
+[ -e /newroot/run-desktop-ready ] || fail 'desktop root not prepared'
+killall telnetd udhcpd || true
+kill "$serial_shell_pid" || true
+mount --move /dev /newroot/dev || fail 'move dev'
+mount --move /proc /newroot/proc || fail 'move proc'
+mount --move /sys /newroot/sys || fail 'move sys'
+mount --move /run /newroot/run || { reboot -f -n; exit 1; }
+exec switch_root -c /dev/console /newroot /sbin/init

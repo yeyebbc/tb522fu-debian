@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   kernel:
-    name: USB probe kernel
+    name: RAM desktop kernel
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 90
     container: debian:trixie
@@ -22,14 +22,14 @@ jobs:
       - name: Install build tools
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends git ca-certificates build-essential bc bison flex libssl-dev libelf-dev ccache device-tree-compiler busybox-static cpio python3 zstd
+          apt-get install -y --no-install-recommends git ca-certificates build-essential bc bison flex libssl-dev libelf-dev ccache device-tree-compiler busybox-static cpio python3 zstd kmod
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .ccache
-          key: arm64-kernel-${{ hashFiles('kernel/source.json', 'configs/ram-probe*', 'patches/000*.patch', 'scripts/build-kernel.py') }}
+          key: arm64-kernel-${{ hashFiles('kernel/source.json', 'configs/ram-*', 'patches/*.patch', 'scripts/build-kernel.py') }}
           restore-keys: |
             arm64-kernel-
       - name: Build the pinned kernel and initramfs

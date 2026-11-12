@@ -41,10 +41,10 @@ CONFIG_MAGIC_SYSRQ=y
 CONFIG_NULL_TTY=y
 CONFIG_IKCONFIG=y
 CONFIG_IKCONFIG_PROC=y
-CONFIG_CMDLINE="rdinit=/init panic=5 oops=panic softlockup_panic=1 hung_task_panic=1 console=tty0 loglevel=7 fbcon=font:TER16x32 clk_ignore_unused pd_ignore_unused qcom_scm.download_mode=off qcom_scm.probe_edl_return=1"
+CONFIG_CMDLINE="rdinit=/init panic=5 oops=panic softlockup_panic=1 hung_task_panic=1 console=tty0 loglevel=7 fbcon=font:TER16x32 clk_ignore_unused pd_ignore_unused qcom_scm.download_mode=off qcom_scm.probe_edl_return=1 qcom_scm.probe_seconds=600"
 CONFIG_CMDLINE_FORCE=y
 CONFIG_FB=y
-CONFIG_FB_SIMPLE=y
+# CONFIG_FB_SIMPLE is not set
 CONFIG_FRAMEBUFFER_CONSOLE=y
 CONFIG_FONTS=y
 CONFIG_FONT_TER16x32=y
@@ -107,3 +107,18 @@ CONFIG_DEBUG_INFO_NONE=y
 # CONFIG_ARCH_VISCONTI is not set
 # CONFIG_ARCH_XGENE is not set
 # CONFIG_ARCH_ZYNQMP is not set
+
+# RAM desktop uses only the firmware scanout; native display/GPU stay disabled.
+CONFIG_DRM=y
+CONFIG_DRM_SIMPLEDRM=y
+CONFIG_DRM_FBDEV_EMULATION=y
+CONFIG_DRM_MSM=m
+CONFIG_SM_DISPCC_8750=m
+CONFIG_DRM_PANEL_NOVATEK_NT36536=m
+CONFIG_OVERLAY_FS=y
+CONFIG_SQUASHFS=y
+CONFIG_SQUASHFS_ZLIB=y
+CONFIG_INPUT_EVDEV=y
+CONFIG_SPI_QCOM_GENI=m
+CONFIG_TOUCHSCREEN_NT36536_SPI=m
+# CONFIG_TOUCHSCREEN_NOVATEK_NT36XXX is not set
