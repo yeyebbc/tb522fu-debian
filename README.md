@@ -110,8 +110,18 @@ right-button capability from the single-button clickpad and permits automatic
 loading in the installed profile; bounded probes still require explicit loading.
 Automatic loading and the clickpad correction need fresh hardware acceptance.
 
-Battery properties currently return EAGAIN because ADSP remains disabled.
-Battery bring-up is deferred while keyboard/trackpad support is prioritized.
+Battery properties in the tested kernel return EAGAIN because ADSP is disabled.
+This staged candidate enables ADSP PAS with privately supplied stock firmware
+under `qcom/sm8750/lenovo/tb522fu/`. Its 86 MiB image and 512 KiB configuration
+regions match the stock runtime tree. Firmware hashes and split MDT segment
+bounds are checked locally; proprietary files are never published.
+
+PAS remains blocked from automatic loading in every profile. The first test
+loads it explicitly after USB access and the independent EDL return are verified.
+GPR/FastRPC DT children stay disabled. The pinned GLINK code matches available
+children only, and those clients have no RPMSG name fallback. Service startup,
+battery readings and charging behavior are not yet validated. The first target
+is telemetry, without direct charger-register writes or charging-limit changes.
 
 CI15 also exposed a clock failure: fake-hwclock restored the saved date, then
 the late PMIC RTC probe set system time to 1970. The configuration now disables

@@ -54,5 +54,10 @@
     "reference": "https://wayland.freedesktop.org/libinput/doc/1.28.1/clickpad-with-right-button.html",
     "license": "GPL-2.0-only",
     "hardware_tested": false
+  },
+  "0109-tb522fu-staged-adsp.patch": {
+    "source": "Existing upstream SM8750/SM8550 PAS support, board memory regions checked against the captured stock runtime tree and split firmware ELF segments",
+    "license": "BSD-3-Clause device tree",
+    "hardware_tested": false
   }
 }

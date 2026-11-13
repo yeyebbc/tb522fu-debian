@@ -1,0 +1,33 @@
+Subject: [PATCH] arm64: dts: stage stock ADSP for TB522FU battery telemetry
+
+The USB-only probe left ADSP disabled, so qcom_battmgr never receives a
+service-up event and every property returns EAGAIN. Enable the existing
+SoC PAS path with board-scoped stock firmware. Keep audio and compute
+clients disabled while battery/charging behavior is evaluated.
+
+The existing 86 MiB ADSP carveout and 512 KiB configuration region match
+the captured stock runtime tree. Both split MDT images pass segment and
+manifest checks; firmware is supplied privately, never included here.
+
+--- a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
++++ b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+@@ -592,3 +592,19 @@
+ 		serial0 = &uart15;
+ 	};
+ };
++
++/* Stage the stock ADSP battery service. Its 86 MiB image and 512 KiB
++ * configuration carveouts match the captured runtime tree. Keep all firmware
++ * private and board-scoped; DSP audio/compute clients are separate bring-up.
++ * The disk-test profile blocks automatic PAS loading until USB/return checks.
++ */
++&remoteproc_adsp {
++	firmware-name = "qcom/sm8750/lenovo/tb522fu/adsp.mdt",
++			"qcom/sm8750/lenovo/tb522fu/adsp_dtb.mdt";
++	status = "okay";
++
++	glink-edge {
++		fastrpc { status = "disabled"; };
++		gpr { status = "disabled"; };
++	};
++};
