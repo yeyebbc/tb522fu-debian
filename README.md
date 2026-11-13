@@ -94,20 +94,21 @@ setup is complete and the GNOME desktop is physically visible. GUI switching
 remains pending.
 
 
-The next candidate adds a staged UART keyboard/trackpad driver. Stock captures
-confirm the report layouts, attachment/lid polarity and the power sequence.
-The driver object compiles for ARM64 and its parser passed captured-packet
-replay and sanitizer checks; Linux keyboard input is not yet hardware tested.
-It remains a module with automatic loading blocked for the first supervised
-test. Initial support receives keys and four-contact touchpad reports, releases
-input on detach/lid close, and exposes standard lid/tablet-mode switches.
-Keyboard LED transmission and suspend support are not included yet.
+The UART keyboard/trackpad driver now has initial hardware validation. With
+CI18 recipe `0ecb61c`, real A/B/C and Shift+A input, pointer motion,
+two-finger scrolling and clicks reached the standard Linux input stack.
+GNOME recognized all three accessory input devices. Lid close/open reached
+logind, and the user confirmed typing/trackpad recovery after attachment and
+lid reopening, with an approximately five-second delay accepted by the owner.
+No decoder errors were reported during the test. Keyboard LED transmission
+and system suspend support are not included yet.
 
-The first candidate (CI17, recipe `3a790d4`) reached the GNOME login screen
-but its UART probe stopped at `Invalid line -19`, before any accessory input
-device existed. An explicit `serial0` alias fixes that missing board
-description; the build now checks the compiled alias. This correction still
-requires a new hardware test.
+CI17 initially stopped before UART registration because the board lacked a
+serial alias. CI18's explicit `serial0` alias fixed that failure. The build
+checks the compiled alias. The next candidate removes a spurious physical
+right-button capability from the single-button clickpad and permits automatic
+loading in the installed profile; bounded probes still require explicit loading.
+Automatic loading and the clickpad correction need fresh hardware acceptance.
 
 Battery properties currently return EAGAIN because ADSP remains disabled.
 Battery bring-up is deferred while keyboard/trackpad support is prioritized.

@@ -146,6 +146,9 @@ def main():
         else:
             cmdline = cmdline.replace(' qcom_scm.probe_edl_return=1', '')
             cmdline = cmdline.replace(' qcom_scm.probe_seconds=600', '')
+            # CI18 verified real UART input. Production coldplug is the next
+            # acceptance step; bounded hardware probes keep manual loading.
+            cmdline = cmdline.replace(' modprobe.blacklist=lenovo_yoga_keyboard', '')
         run([source / 'scripts/config', '--file', out / '.config', '--set-str', 'CMDLINE', cmdline])
     run(make + ['olddefconfig'])
     config = (out / '.config').read_text().splitlines()
@@ -175,7 +178,7 @@ def main():
     assert '# CONFIG_RTC_SYSTOHC is not set' in config
     cmdline = next(s for s in config if s.startswith('CONFIG_CMDLINE='))
     assert ('qcom_scm.probe_edl_return=1' in cmdline) == (args.profile != 'installed')
-    assert 'modprobe.blacklist=lenovo_yoga_keyboard' in cmdline
+    assert ('modprobe.blacklist=lenovo_yoga_keyboard' in cmdline) == (args.profile != 'installed')
     if disk:
         assert 'CONFIG_EXT4_FS=y' in config
     run(make + [spec['board_dtb']])

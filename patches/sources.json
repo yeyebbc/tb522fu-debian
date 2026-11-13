@@ -48,5 +48,11 @@
     "source": "Local correction from CI17 hardware UART probe failure and pinned qcom_geni_serial alias allocation",
     "license": "BSD-3-Clause board device tree",
     "hardware_tested": false
+  },
+  "0112-tb522fu-clickpad-button.patch": {
+    "source": "Local correction from physical click capture and libinput single-button clickpad requirements",
+    "reference": "https://wayland.freedesktop.org/libinput/doc/1.28.1/clickpad-with-right-button.html",
+    "license": "GPL-2.0-only",
+    "hardware_tested": false
   }
 }

@@ -18,6 +18,7 @@
     "patches/0107-tb522fu-touch-landscape.patch",
     "patches/0108-tb522fu-staged-ufs-probe.patch",
     "patches/0110-tb522fu-uart-keyboard.patch",
-    "patches/0111-tb522fu-keyboard-serial-alias.patch"
+    "patches/0111-tb522fu-keyboard-serial-alias.patch",
+    "patches/0112-tb522fu-clickpad-button.patch"
   ]
 }
