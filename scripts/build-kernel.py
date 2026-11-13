@@ -222,10 +222,23 @@ def main():
         ('/reserved-memory/adspslpi@9ee00000', 'reg', 'x', '0 9ee00000 0 5600000'),
         ('/reserved-memory/q6-adsp-dtb@9ed80000', 'reg', 'x', '0 9ed80000 0 80000'),
         ('/soc@0/remoteproc@6800000/glink-edge/fastrpc', 'status', 's', 'disabled'),
-        ('/soc@0/remoteproc@6800000/glink-edge/gpr', 'status', 's', 'disabled'),
+        ('/soc@0/remoteproc@6800000/glink-edge/gpr', 'status', 's', 'okay'),
     ]:
         assert capture(['fdtget', '-t', typ, dtb, node, prop]) == expected, (node, prop)
-    # The radio remains blocked from coldplug until the first bounded test.
+    # Check board-specific speaker wiring and the first-test gain cap.
+    assert capture(['fdtget', '-t', 's', dtb, '/sound', 'model']) == 'TB522FU'
+    for bus, channels in [('a88000', [0, 2, 4]), ('a98000', [5, 1, 3])]:
+        parent = '/soc@0/geniqup@ac0000/i2c@' + bus
+        assert capture(['fdtget', '-t', 's', dtb, parent, 'status']) == 'okay'
+        for addr, channel in zip(['34', '35', '36'], channels):
+            node = parent + '/amplifier@' + addr
+            assert capture(['fdtget', '-t', 's', dtb, node, 'compatible']) == 'awinic,aw88461'
+            assert capture(['fdtget', '-t', 'i', dtb, node, 'awinic,audio-channel']) == str(channel)
+            assert capture(['fdtget', '-t', 'i', dtb, node, 'awinic,maximum-volume']) == '767'
+            assert capture(['fdtget', '-t', 'i', dtb, node, 'reset-gpios']).split()[1:] == ['120', '1']
+            assert capture(['fdtget', '-t', 's', dtb, node, 'firmware-name']) == (
+                'qcom/sm8750/lenovo/tb522fu/aw88461_acf.bin')
+    # Disk profiles retain automatic Wi-Fi and accepted keyboard startup.
     wifi = '/soc@0/pcie@1c00000/pcie@0/wifi@0'
     assert capture(['fdtget', '-t', 's', dtb, wifi, 'compatible']) == 'pci17cb,110e'
     assert capture(['fdtget', '-t', 's', dtb, '/wcn7861-pmu', 'compatible']) == 'qcom,wcn7861-pmu'
@@ -260,7 +273,8 @@ def main():
                                (ROOT / 'configs/ram-storage-probe').read_text(), re.M))
     explicit.update(['lenovo_yoga_keyboard', 'qcom_q6v5_pas', 'qcom_glink_smem',
                      'qrtr_smd', 'qcom_pd_mapper', 'qcom_battmgr',
-                     'pwrseq_qcom_wcn', 'pci_pwrctrl_pwrseq', 'ath12k', 'ath12k_wifi7'])
+                     'pwrseq_qcom_wcn', 'pci_pwrctrl_pwrseq', 'ath12k', 'ath12k_wifi7',
+                     'snd_soc_aw88461', 'snd_soc_sc8280xp', 'reset_gpio'])
     for name in sorted(explicit):
         actual = capture(['modinfo', '-b', modules, '-k', release, '-F', 'name', name])
         assert actual.replace('-', '_') == name.replace('-', '_'), (name, actual)
