@@ -1,0 +1,125 @@
+From cc28f38a29838640bb8c106d35014d313a89f0eb Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Fri, 13 Nov 2026 21:17:42 +0800
+Subject: [PATCH] arm64: dts: qcom: enable TB522FU analog microphone capture
+
+Wire the stock WCD939x reset, 1.8 V rails, 3.296 V mic supply and AMIC1/AMIC3 biases. Enable both SoundWire codec components and the TX capture DAI using mainline SM8750 port mapping. Preserve the speaker backend and all existing input/Wi-Fi support.
+---
+ .../boot/dts/qcom/sm8750-lenovo-y900-acm.dts  | 84 ++++++++++++++++++-
+ 1 file changed, 82 insertions(+), 2 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+index b3101e2cc149..fba84cea3477 100644
+--- a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
++++ b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+@@ -157,7 +157,7 @@ &ramoops_mem {
+ &ufs_mem_hc { vcc-supply = <&vreg_l17b_2p5>; vcc-max-microamp = <1300000>; vccq-supply = <&vreg_l1d_1p2>; vccq-max-microamp = <1200000>; };
+ &ice { status = "disabled"; };
+ &crypto { status = "disabled"; };
+-&lpass_tlmm { status = "disabled"; };
++&lpass_tlmm { status = "okay"; };
+ &{/soc@0/stm@10002000} { status = "disabled"; };
+ &{/soc@0/tn@109ab000} { status = "disabled"; };
+ &{/reserved-memory} { /delete-node/ demura_region_0; /delete-node/ demura_region_1; };
+@@ -774,10 +774,27 @@ tb522fu_sound: sound {
+ 			  "Speaker", "Speaker4", "Speaker", "Speaker5";
+ 		audio-routing = "Speaker0", "Spkr0 OUT", "Speaker1", "Spkr1 OUT",
+ 				"Speaker2", "Spkr2 OUT", "Speaker3", "Spkr3 OUT",
+-				"Speaker4", "Spkr4 OUT", "Speaker5", "Spkr5 OUT";
++				"Speaker4", "Spkr4 OUT", "Speaker5", "Spkr5 OUT",
++				"AMIC1", "MIC BIAS1", "AMIC3", "MIC BIAS3",
++				"TX SWR_INPUT0", "ADC1_OUTPUT",
++				"TX SWR_INPUT1", "ADC2_OUTPUT";
+ 		pin-switches = "Speaker0", "Speaker1", "Speaker2",
+ 			       "Speaker3", "Speaker4", "Speaker5";
+ 
++		wcd-capture-dai-link {
++			link-name = "Internal Microphones";
++			cpu {
++				sound-dai = <&q6apmbedai TX_CODEC_DMA_TX_3>;
++			};
++			codec {
++				sound-dai = <&tb522fu_wcd 1>, <&swr2 0>,
++					    <&lpass_txmacro 0>;
++			};
++			platform {
++				sound-dai = <&q6apm>;
++			};
++		};
++
+ 		speaker-dai-link {
+ 			link-name = "Secondary TDM Speakers";
+ 			cpu {
+@@ -803,6 +820,69 @@ platform {
+ 	};
+ };
+ 
++/* Stock handset capture is AMIC1 + AMIC3 on WCD939x, not LPASS DMICs.
++ * Both SoundWire halves are required by the codec component even when only
++ * the TX DAI is connected to the card. Headphone playback is not exposed.
++ */
++/ {
++	tb522fu_wcd: audio-codec {
++		compatible = "qcom,wcd9390-codec";
++		#sound-dai-cells = <1>;
++		pinctrl-names = "default";
++		pinctrl-0 = <&tb522fu_wcd_reset>;
++		reset-gpios = <&tlmm 101 GPIO_ACTIVE_LOW>;
++		qcom,rx-device = <&tb522fu_wcd_rx>;
++		qcom,tx-device = <&tb522fu_wcd_tx>;
++		qcom,micbias1-microvolt = <2800000>;
++		qcom,micbias2-microvolt = <1800000>;
++		qcom,micbias3-microvolt = <2800000>;
++		qcom,micbias4-microvolt = <1800000>;
++		vdd-buck-supply = <&vreg_l15b>;
++		vdd-rxtx-supply = <&vreg_l15b>;
++		vdd-io-supply = <&vreg_l15b>;
++		/* This board's stock PX rail is 1.8 V, unlike the MTP wiring. */
++		vdd-px-supply = <&vreg_l15b>;
++		vdd-mic-bias-supply = <&vreg_bob1>;
++	};
++};
++
++/* Stock BOB1 initial voltage and the static codec vote are both 3296000 uV.
++ * WCD939x only enables its supplies, so express that board voltage here.
++ * The existing downstream LDO supplies and their constraints are unchanged.
++ */
++&vreg_bob1 {
++	regulator-min-microvolt = <3296000>;
++	regulator-max-microvolt = <3296000>;
++};
++
++&swr1 {
++	status = "okay";
++	tb522fu_wcd_rx: codec@0,4 {
++		compatible = "sdw20217010e00";
++		reg = <0 4>;
++		qcom,rx-port-mapping = <1 2 3 4 5 9>;
++	};
++};
++
++&swr2 {
++	status = "okay";
++	tb522fu_wcd_tx: codec@0,3 {
++		compatible = "sdw20217010e00";
++		reg = <0 3>;
++		/* Codec ADC1/2 on port1 map to TX SWR_INPUT0/1 on host port2. */
++		qcom,tx-port-mapping = <2 2 3 4>;
++	};
++};
++
++&tlmm {
++	tb522fu_wcd_reset: tb522fu-wcd-reset-state {
++		pins = "gpio101";
++		function = "gpio";
++		drive-strength = <16>;
++		output-high;
++	};
++};
++
+ &remoteproc_adsp {
+ 	glink-edge {
+ 		gpr { status = "okay"; };
+-- 
+2.47.3
+

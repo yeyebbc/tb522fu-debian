@@ -264,6 +264,23 @@
     "local_commit": "6a06f2e614b201e20969d5e505c841dd7d951269",
     "adaptation": "Original patch and attribution retained; context refreshed for pinned base.",
     "source": "https://lore.kernel.org/all/20261011074433.9187-1-franzelfranzel@gmail.com/",
-    "status": "Pending upstream patch by François Roux; not claimed merged"
+    "status": "Pending upstream patch by Fran\u00e7ois Roux; not claimed merged"
+  },
+  "0150-q6apm-capture-trigger-lifecycle.patch": {
+    "sha256": "94b4ca28bfe229b56f821c0c632bd1cd06d4063a95c42accd8e95ea120705bf1",
+    "local_commit": "fab0409b24f430731d05f609b2fe8061c2f5513e",
+    "hardware_tested": false,
+    "license": "GPL-2.0-only; original source license and authorship retained",
+    "source": "https://github.com/yzddmr6/linux-sm8750-erhai/commit/e85a25943b2a44b819a4a520b1101f458581b16f",
+    "upstream_commit": "e85a25943b2a44b819a4a520b1101f458581b16f",
+    "adaptation": "Original capture lifecycle change applied on the reviewed Wi-Fi kernel; playback prepare/ack behavior preserved."
+  },
+  "0151-tb522fu-microphone-board.patch": {
+    "sha256": "fe079862ef73c6feb4c075a8dfaefcb18d3e65f8642516dd288474cc1f5eb8d2",
+    "local_commit": "cc28f38a29838640bb8c106d35014d313a89f0eb",
+    "hardware_tested": false,
+    "license": "BSD-3-Clause device tree",
+    "source": "Board wiring and voltages verified from TB522FU stock runtime FDT and handset microphone mixer route; SoundWire mapping and capture link follow upstream SM8750 MTP.",
+    "scope": "WCD939x AMIC1/3 capture only; no headphone output or USB analog mux enabled."
   }
 }

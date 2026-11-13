@@ -172,6 +172,10 @@ def main():
                     'CONFIG_INPUT_LENOVO_YOGA_KEYBOARD=m',
                     'CONFIG_QCOM_APR=m', 'CONFIG_SND_SOC_SC8280XP=m',
                     'CONFIG_SND_SOC_AW88461=m', 'CONFIG_RESET_GPIO=m',
+                    'CONFIG_SND_SOC_WCD939X=m', 'CONFIG_SND_SOC_WCD939X_SDW=m',
+                    'CONFIG_SND_SOC_LPASS_RX_MACRO=m', 'CONFIG_SND_SOC_LPASS_TX_MACRO=m',
+                    'CONFIG_SND_SOC_LPASS_VA_MACRO=m', 'CONFIG_SOUNDWIRE_QCOM=m',
+                    'CONFIG_PINCTRL_SM8650_LPASS_LPI=m',
                     'CONFIG_PCIE_QCOM=y', 'CONFIG_PHY_QCOM_QMP_PCIE=y',
                     'CONFIG_POWER_SEQUENCING=y', 'CONFIG_POWER_SEQUENCING_QCOM_WCN=m',
                     'CONFIG_PCI_PWRCTRL_PWRSEQ=m', 'CONFIG_ATH12K=m',
@@ -233,6 +237,27 @@ def main():
         assert capture(['fdtget', '-t', typ, dtb, node, prop]) == expected, (node, prop)
     # Check board-specific speaker wiring and the first-test gain cap.
     assert capture(['fdtget', '-t', 's', dtb, '/sound', 'model']) == 'TB522FU'
+    # Stock WCD939x rails and pin routing: do not import MTP voltages.
+    codec = '/audio-codec'
+    supplies = '/soc@0/rsc@16500000/regulators-b/'
+    l15 = capture(['fdtget', '-t', 'x', dtb, supplies + 'ldo15', 'phandle'])
+    bob1 = capture(['fdtget', '-t', 'x', dtb, supplies + 'bob1', 'phandle'])
+    for prop in ['vdd-buck-supply', 'vdd-rxtx-supply', 'vdd-io-supply', 'vdd-px-supply']:
+        assert capture(['fdtget', '-t', 'x', dtb, codec, prop]) == l15
+    assert capture(['fdtget', '-t', 'x', dtb, codec, 'vdd-mic-bias-supply']) == bob1
+    for name, voltage in [('ldo15', '1800000'), ('bob1', '3296000')]:
+        for prop in ['regulator-min-microvolt', 'regulator-max-microvolt']:
+            assert capture(['fdtget', '-t', 'i', dtb, supplies + name, prop]) == voltage
+    assert capture(['fdtget', '-t', 'i', dtb, codec, 'reset-gpios']).split()[1:] == ['101', '1']
+    for bias, voltage in [(1, 2800000), (2, 1800000), (3, 2800000), (4, 1800000)]:
+        assert capture(['fdtget', '-t', 'i', dtb, codec, f'qcom,micbias{bias}-microvolt']) == str(voltage)
+    assert capture(['fdtget', '-t', 's', dtb, '/soc@0/pinctrl@7760000', 'status']) == 'okay'
+    for bus, address, prop, mapping in [('6ad0000', '4', 'rx', '1 2 3 4 5 9'),
+                                        ('7630000', '3', 'tx', '2 2 3 4')]:
+        parent = '/soc@0/soundwire@' + bus
+        assert capture(['fdtget', '-t', 's', dtb, parent, 'status']) == 'okay'
+        assert capture(['fdtget', '-t', 'i', dtb, parent + '/codec@0,' + address,
+                        f'qcom,{prop}-port-mapping']) == mapping
     for bus, channels in [('a88000', [0, 2, 4]), ('a98000', [5, 1, 3])]:
         parent = '/soc@0/geniqup@ac0000/i2c@' + bus
         assert capture(['fdtget', '-t', 's', dtb, parent, 'status']) == 'okay'

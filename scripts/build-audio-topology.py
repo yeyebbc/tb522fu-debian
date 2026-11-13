@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-2.0-only
-"""Compile and inspect the TB522FU speaker topology without device access."""
+"""Compile and inspect the TB522FU speaker/capture topology without device access."""
 from pathlib import Path
 import argparse
 import hashlib
@@ -53,7 +53,7 @@ def main():
     (args.output / 'decoded.conf').write_text(decoded)
     modules = graph_check.modules_binary(topology.read_bytes())
     graph = graph_check.check(modules)
-    assert graph['verdict'] == 'PASS' and graph['modules'] == 7, graph
+    assert graph['verdict'] == 'PASS' and graph['modules'] == 14, graph
     # No positive DSP gain control in the stream graph.
     assert all(m['mid'] != 0x0700101b for m in modules.values())
     (args.output / 'checks.json').write_text(json.dumps({'graph': graph, 'mixing': mixing}, indent=2) + '\n')
@@ -65,7 +65,7 @@ def main():
              for p in args.output.iterdir() if p.is_file()}
     (args.output / 'manifest.json').write_text(json.dumps({'recipe_commit': recipe, 'source': spec,
         'hardware_tested': False, 'files': files}, indent=2) + '\n')
-    print('Speaker topology compiled: seven modules, valid routes, unity stereo duplication; hardware untested.')
+    print('Audio topology compiled: fourteen modules, playback/capture routes, unity stereo duplication; hardware untested.')
 
 
 if __name__ == '__main__':
