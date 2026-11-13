@@ -57,6 +57,7 @@
     "patches/0165-qcom-geni-rs485-binding.patch",
     "patches/0166-qcom-geni-rs485-direction.patch",
     "patches/0167-tb522fu-white-keyboard-light.patch",
-    "patches/0168-tb522fu-keyboard-direction.patch"
+    "patches/0168-tb522fu-keyboard-direction.patch",
+    "patches/0169-tb522fu-white-intensity.patch"
   ]
 }

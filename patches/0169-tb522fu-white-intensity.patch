@@ -1,0 +1,45 @@
+From 8b2ca4c1b6309d43a36cc4a7a3daafdc9f986520 Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Sat, 14 Nov 2026 04:59:30 +0800
+Subject: [PATCH] Input: lenovo-yoga-keyboard: dim white through RGB intensity
+
+CI41 camera comparisons showed white on/off working, but stock parameter
+0x34 values 57, 114 and 228 did not produce distinct RGB-mode brightness.
+Scale the equal RGB channels instead, capped at the known stock sample
+intensity of 100. Keep 0x34 at the tested enabled value 228, or zero for off.
+The default requested intensity becomes 25. UART and input are unchanged;
+actual dimming remains subject to a fresh recorded hardware test.
+---
+ drivers/input/misc/lenovo-yoga-keyboard.c | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/input/misc/lenovo-yoga-keyboard.c b/drivers/input/misc/lenovo-yoga-keyboard.c
+index 1496b6810fd3..7663eab18705 100644
+--- a/drivers/input/misc/lenovo-yoga-keyboard.c
++++ b/drivers/input/misc/lenovo-yoga-keyboard.c
+@@ -31,7 +31,7 @@
+ 
+ #define LY_BAUD 921600
+ #define LY_COMMAND_SIZE 14
+-#define LY_BACKLIGHT_MAX 228
++#define LY_BACKLIGHT_MAX 100
+ #define U KEY_UNKNOWN
+ 
+ /* HID keyboard page -> Linux key codes, matching the stock Lenovo table. */
+@@ -299,9 +299,10 @@ static int ly_command(struct ly_keyboard *kb, const u8 *command)
+ /* Caller holds tx_lock. Stock setting writes require an echo, not a reply. */
+ static int ly_apply_backlight(struct ly_keyboard *kb, unsigned int level)
+ {
+-	/* Stock steady mode, equal RGB components, no animation parameter. */
+-	const u8 white[LY_COMMAND_SIZE] = { 0x6a, 9, 0x39, 7, 1, 100, 100, 100 };
+-	u8 brightness[LY_COMMAND_SIZE] = { 0x6a, 3, 0x34, 1, level };
++	/* Equal RGB intensities keep the steady light white while dimming it. */
++	u8 white[LY_COMMAND_SIZE] = { 0x6a, 9, 0x39, 7, 1, level, level, level };
++	/* Stock accepts 228 as enabled; 0x34 alone did not dim RGB mode. */
++	u8 brightness[LY_COMMAND_SIZE] = { 0x6a, 3, 0x34, 1, level ? 228 : 0 };
+ 	int ret;
+ 
+ 	ret = ly_command(kb, white);
+-- 
+2.47.3
+

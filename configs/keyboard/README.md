@@ -1,10 +1,16 @@
 # White keyboard backlight candidate
 
-Not hardware accepted or installed. Production remains CI39.
+The revised dimming mapping is not hardware accepted or installed.
+Production remains CI39. CI41 proved physical white light and off/on, preserved
+input nodes and passed Bluetooth/Wi-Fi tests, but the three nonzero0x34settings
+looked essentially identical on camera. CI41 was not promoted. The correction
+scales equal RGB intensity fields and needs fresh physical dimming acceptance.
+The intensity cap100 is a conservative stock-example value, not a claim about
+the controller's absolute maximum.
 
-Patches0165–0168 add `lenovo:white:kbd_backlight` with a brightness range of
-0..228. Steady white uses mode1 and equal RGB components100; the independent
-brightness opcode is0x34. These fields come from the TB522FU stock SDK and
+Patches0165–0169 add `lenovo:white:kbd_backlight` with a brightness range of
+0..100. Steady white uses mode1 and equal RGB components matching the LED
+brightness; the known enabled0x34value228 is used for on,0 for off. These fields come from the TB522FU stock SDK and
 shipped keyboard module. No proprietary application or firmware is included.
 
 The UART parent owns the GPIO60 direction gate through standard RS485
@@ -16,7 +22,7 @@ request echo, matching stock kernel setting writes. An echo is transport evidenc
 not proof of illumination. Separate replies are counted without inventing their
 payload semantics. Commands have bounded timeouts and no background retries.
 
-Default requested brightness is57, restored once after the keyboard announces
+Default requested brightness is25, restored once after the keyboard announces
 synchronization. Changes made while detached or with the lid closed are saved
 for the next active sync. The normal LED class exposes brightness to desktop
 software. Older receive-only device trees retain their original TX-disabled path.

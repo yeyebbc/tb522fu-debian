@@ -398,5 +398,12 @@
     "license": "Original Linux file-level licenses and attribution retained",
     "hardware_tested": false,
     "source": "Stock-verified TB522FU UART15 GPIO60 gate, 450us minimum setup rounded to standard 1ms, immediate DMA-completion release."
+  },
+  "0169-tb522fu-white-intensity.patch": {
+    "local_commit": "8b2ca4c1b6309d43a36cc4a7a3daafdc9f986520",
+    "sha256": "cf3adca2760ca24577a54acd88708ab87875a42e38c3b64f8295887172d6abdc",
+    "license": "GPL-2.0-only; existing driver authorship retained",
+    "hardware_tested": false,
+    "source": "Local correction after CI41 physical camera evidence: stock0x34 enabled levels did not dim RGB mode. Scale equal documented RGB fields within known stock sample intensities, preserving steady white. UART and input unchanged."
   }
 }

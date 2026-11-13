@@ -38,7 +38,9 @@ was not retested in this Bluetooth update at the owner's request.
 
 A [white keyboard backlight candidate](configs/keyboard/README.md) is now in the
 source recipe. It adds standard LED control and GPIO RS485 direction timing;
-it has not passed a hardware boot or replaced installed CI39.
+CI41 passed white/off-on and wireless regression, but its brightness steps were
+visually indistinguishable. The revised RGB-intensity mapping still needs a
+recorded test; installed CI39 remains unchanged.
 
 The CI35 bounded GPU test passed native display, Adreno 830 hardware pixel
 readback for210seconds, rejection of a forced software renderer, and actual
