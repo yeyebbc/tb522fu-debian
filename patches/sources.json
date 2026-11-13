@@ -59,5 +59,67 @@
     "source": "Existing upstream SM8750/SM8550 PAS support, board memory regions checked against the captured stock runtime tree and split firmware ELF segments",
     "license": "BSD-3-Clause device tree",
     "hardware_tested": false
+  },
+  "0114-ath12k-wcn7860-hardware.patch": {
+    "repository": "https://github.com/yzddmr6/linux-sm8750-erhai",
+    "commit": "99ee84f5e52f2c54705a5f2198eb52f5e10132ca",
+    "license": "Original source file licenses and attribution retained",
+    "hardware_tested": false,
+    "sha256": "75ae16ff73b49bc35e50785d6313c9ef2a2a3f869fafac903ffedc042177c44d"
+  },
+  "0115-pwrseq-wcn7860.patch": {
+    "repository": "https://github.com/yzddmr6/linux-sm8750-erhai",
+    "commit": "8c4a79d49e9afbe490fd65d9f968e8493f5c3647",
+    "license": "Original source file licenses and attribution retained",
+    "hardware_tested": false,
+    "sha256": "9960cd06a8cea35f3f43814cd9b7981e3277f887d663fce9593072bf3772fb7c"
+  },
+  "0116-pci-pwrctrl-wcn7860.patch": {
+    "repository": "https://github.com/yzddmr6/linux-sm8750-erhai",
+    "commit": "b7c95a723a1eaf0f9b84e5cb24306de745372979",
+    "license": "Original source file licenses and attribution retained",
+    "hardware_tested": false,
+    "sha256": "2aa232f159a6585984ba0e41b2296f08c7a5cefb1307427e951b88fb7fdf4693"
+  },
+  "0117-ath12k-qdss-download.patch": {
+    "repository": "https://github.com/yzddmr6/linux-sm8750-erhai",
+    "commit": "d230717a8a2fd7894d8b72396459a36634a26716",
+    "license": "Original source file licenses and attribution retained",
+    "hardware_tested": false,
+    "sha256": "eac03fb86e0c79b5e40e45d6222888d267dbee0a53604f3326ecd79152f6b095",
+    "adaptation": "Context refreshed for the pinned 7.3 tree; trailing whitespace removed; QDSS behavior unchanged."
+  },
+  "0118-ath12k-wcn7860-qdss-gate.patch": {
+    "repository": "https://github.com/yzddmr6/linux-sm8750-erhai",
+    "commit": "2a14b6992a3e579c7824844cc80dc674ccd102a9",
+    "license": "Original source file licenses and attribution retained",
+    "hardware_tested": false,
+    "sha256": "522bf884a431bd07776db6788e119867816ed154f3884bd88a44dc8c69d20e25"
+  },
+  "0119-wcn7860-bindings.patch": {
+    "repository": "https://github.com/yzddmr6/linux-sm8750-erhai",
+    "commit": "b653e660e4317dc601d1e835752a7cc0164d0555",
+    "license": "Original source file licenses and attribution retained",
+    "hardware_tested": false,
+    "sha256": "3cfe56f0ea0cedc82335dc671c02279f20ce76a0bb5719acd624b0492c89f0ec"
+  },
+  "0120-pci-qcom-iommu-map-cells.patch": {
+    "repository": "https://github.com/torvalds/linux",
+    "commit": "626acf6efc69c666ffee50bf18e7b95e68670c6a",
+    "license": "Original source file licenses and attribution retained",
+    "hardware_tested": false,
+    "sha256": "ae762bd93b908737dc4f751bb490eba7e075bdd45f83eda51aeb75c68cebf529"
+  },
+  "0121-tb522fu-pcie-wifi-board.patch": {
+    "source": "Lenovo stock runtime tree CNSS peach node, PMIC references and live rail state; PHY supply association inferred from same-SoC community board",
+    "reference_repository": "https://github.com/yzddmr6/linux-sm8750-erhai",
+    "reference_commit": "fb18d39b1baeeac3698a8786c134a326235ead9f",
+    "license": "BSD-3-Clause device tree",
+    "hardware_tested": false
+  },
+  "0122-ath12k-wcn7860-binding.patch": {
+    "source": "Document PCI ID supported by imported WCN7860 hardware definition",
+    "license": "GPL-2.0-only OR BSD-2-Clause",
+    "hardware_tested": false
   }
 }

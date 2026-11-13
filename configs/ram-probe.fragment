@@ -41,7 +41,7 @@ CONFIG_MAGIC_SYSRQ=y
 CONFIG_NULL_TTY=y
 CONFIG_IKCONFIG=y
 CONFIG_IKCONFIG_PROC=y
-CONFIG_CMDLINE="rdinit=/init panic=5 oops=panic softlockup_panic=1 hung_task_panic=1 console=tty0 loglevel=7 fbcon=font:TER16x32 clk_ignore_unused pd_ignore_unused qcom_scm.download_mode=off qcom_scm.probe_edl_return=1 qcom_scm.probe_seconds=600 modprobe.blacklist=lenovo_yoga_keyboard"
+CONFIG_CMDLINE="rdinit=/init panic=5 oops=panic softlockup_panic=1 hung_task_panic=1 console=tty0 loglevel=7 fbcon=font:TER16x32 clk_ignore_unused pd_ignore_unused qcom_scm.download_mode=off qcom_scm.probe_edl_return=1 qcom_scm.probe_seconds=600 modprobe.blacklist=lenovo_yoga_keyboard,pwrseq_qcom_wcn,pci_pwrctrl_pwrseq,ath12k,ath12k_wifi7"
 CONFIG_CMDLINE_FORCE=y
 CONFIG_FB=y
 # CONFIG_FB_SIMPLE is not set
@@ -148,3 +148,18 @@ CONFIG_RPMSG_QCOM_GLINK_SMEM=m
 CONFIG_QRTR_SMD=m
 CONFIG_QCOM_PD_MAPPER=m
 CONFIG_BATTERY_QCOM_BATTMGR=m
+
+# PCIe Wi-Fi first bring-up: physical bus built in, radio load stays explicit.
+CONFIG_PCIE_QCOM=y
+CONFIG_PHY_QCOM_QMP_PCIE=y
+CONFIG_POWER_SEQUENCING=y
+CONFIG_POWER_SEQUENCING_QCOM_WCN=m
+CONFIG_PCI_PWRCTRL=y
+CONFIG_PCI_PWRCTRL_PWRSEQ=m
+CONFIG_ATH12K=m
+CONFIG_ATH12K_DEBUG=y
+CONFIG_ATH12K_DEBUGFS=y
+CONFIG_MAC80211_DEBUGFS=y
+CONFIG_ATH12K_COREDUMP=y
+CONFIG_PHY_QCOM_QMP=y
+CONFIG_CFG80211_DEBUGFS=y

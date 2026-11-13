@@ -149,7 +149,8 @@ def main():
             # CI19 verified keyboard coldplug; bounded profiles retain its
             # explicit load. CI20 verified ADSP, which now coldplugs in all
             # profiles so the bounded profile can test its startup ordering.
-            cmdline = cmdline.replace(' modprobe.blacklist=lenovo_yoga_keyboard', '')
+            cmdline = cmdline.replace('modprobe.blacklist=lenovo_yoga_keyboard,',
+                                      'modprobe.blacklist=')
         run([source / 'scripts/config', '--file', out / '.config', '--set-str', 'CMDLINE', cmdline])
     run(make + ['olddefconfig'])
     config = (out / '.config').read_text().splitlines()
@@ -162,6 +163,10 @@ def main():
                     'CONFIG_SPI_QCOM_GENI=m', 'CONFIG_QCOM_GPI_DMA=m', 'CONFIG_TOUCHSCREEN_NT36536_SPI=m',
                     'CONFIG_SERIAL_DEV_BUS=y', 'CONFIG_SERIAL_DEV_CTRL_TTYPORT=y',
                     'CONFIG_INPUT_LENOVO_YOGA_KEYBOARD=m',
+                    'CONFIG_PCIE_QCOM=y', 'CONFIG_PHY_QCOM_QMP_PCIE=y',
+                    'CONFIG_POWER_SEQUENCING=y', 'CONFIG_POWER_SEQUENCING_QCOM_WCN=m',
+                    'CONFIG_PCI_PWRCTRL_PWRSEQ=m', 'CONFIG_ATH12K=m',
+                    'CONFIG_ATH12K_DEBUG=y', 'CONFIG_ATH12K_DEBUGFS=y',
                     'CONFIG_QCOM_Q6V5_PAS=m', 'CONFIG_RPMSG_QCOM_GLINK_SMEM=m',
                     'CONFIG_QRTR_SMD=m', 'CONFIG_QCOM_PD_MAPPER=m', 'CONFIG_BATTERY_QCOM_BATTMGR=m',
                     'CONFIG_DETECT_HUNG_TASK=y', 'CONFIG_SOFTLOCKUP_DETECTOR=y',
@@ -185,6 +190,7 @@ def main():
     blocked = {name for value in re.findall(r'modprobe.blacklist=([^ \"]+)', cmdline)
                for name in value.split(',')}
     assert 'qcom_q6v5_pas' not in blocked
+    assert {'pwrseq_qcom_wcn', 'pci_pwrctrl_pwrseq', 'ath12k', 'ath12k_wifi7'} <= blocked
     if disk:
         assert 'CONFIG_EXT4_FS=y' in config
     run(make + [spec['board_dtb']])
@@ -210,6 +216,20 @@ def main():
         ('/soc@0/remoteproc@6800000/glink-edge/gpr', 'status', 's', 'disabled'),
     ]:
         assert capture(['fdtget', '-t', typ, dtb, node, prop]) == expected, (node, prop)
+    # The radio remains blocked from coldplug until the first bounded test.
+    wifi = '/soc@0/pcie@1c00000/pcie@0/wifi@0'
+    assert capture(['fdtget', '-t', 's', dtb, wifi, 'compatible']) == 'pci17cb,110e'
+    assert capture(['fdtget', '-t', 's', dtb, '/wcn7860-pmu', 'compatible']) == 'qcom,wcn7860-pmu'
+    assert capture(['fdtget', '-t', 's', dtb, '/soc@0/phy@1c06000', 'status']) == 'okay'
+    for node, prop, expected in [
+        ('/wcn7860-pmu', 'wlan-enable-gpios', [16, 0]),
+        ('/soc@0/pcie@1c00000/pcie@0', 'reset-gpios', [102, 1]),
+        ('/soc@0/pcie@1c00000/pcie@0', 'wake-gpios', [104, 1]),
+    ]:
+        cells = list(map(int, capture(['fdtget', '-t', 'i', dtb, node, prop]).split()))
+        assert len(cells) == 3 and cells[1:] == expected, (node, prop)
+    iommu = capture(['fdtget', '-t', 'x', dtb, '/soc@0/pcie@1c00000', 'iommu-map']).split()
+    assert len(iommu) == 10 and iommu[2:5] == ['1400', '0', '1'] and iommu[7:] == ['1401', '0', '1']
     run(make + ['Image', 'modules'])
     modules = work / 'modules'
     run(make + ['modules_install', f'INSTALL_MOD_PATH={modules}', 'INSTALL_MOD_STRIP=1'])
@@ -222,7 +242,8 @@ def main():
     explicit.update(re.findall(r'^modprobe -v ([\w-]+)$',
                                (ROOT / 'configs/ram-storage-probe').read_text(), re.M))
     explicit.update(['lenovo_yoga_keyboard', 'qcom_q6v5_pas', 'qcom_glink_smem',
-                     'qrtr_smd', 'qcom_pd_mapper', 'qcom_battmgr'])
+                     'qrtr_smd', 'qcom_pd_mapper', 'qcom_battmgr',
+                     'pwrseq_qcom_wcn', 'pci_pwrctrl_pwrseq', 'ath12k', 'ath12k_wifi7'])
     for name in sorted(explicit):
         actual = capture(['modinfo', '-b', modules, '-k', release, '-F', 'name', name])
         assert actual.replace('-', '_') == name.replace('-', '_'), (name, actual)

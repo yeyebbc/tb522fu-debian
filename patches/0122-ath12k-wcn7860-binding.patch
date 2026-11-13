@@ -1,0 +1,15 @@
+Subject: [PATCH] dt-bindings: net: wireless: describe WCN7860 PCIe
+
+The imported driver uses the same PMU output supplies as WCN7850.
+
+---
+--- a/Documentation/devicetree/bindings/net/wireless/qcom,ath12k.yaml
++++ b/Documentation/devicetree/bindings/net/wireless/qcom,ath12k.yaml
+@@ -17,6 +17,7 @@
+   compatible:
+     enum:
+       - pci17cb,1107  # WCN7850
++      - pci17cb,110e  # WCN7860
+ 
+   reg:
+     maxItems: 1

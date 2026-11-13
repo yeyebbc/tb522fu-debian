@@ -140,6 +140,14 @@ remain unvalidated. A charging icon alone does not establish these. Wi-Fi is
 the next development priority, followed by audio; further charging refinements
 are deferred.
 
+The Wi-Fi bring-up candidate imports community WCN7860 (`17cb:110e`)
+ath12k support and its QDSS startup sequence, plus the upstream Qualcomm PCIe
+IOMMU-map parser fix. The board power mapping follows Lenovo stock evidence;
+the inferred PCIe PHY supply association still needs a bounded link test.
+Wi-Fi power sequencing and radio modules remain blocked from automatic loading
+in both profiles until hardware acceptance. Firmware and calibration are supplied
+privately from this tablet. No Wi-Fi hardware success is claimed yet.
+
 CI15 also exposed a clock failure: fake-hwclock restored the saved date, then
 the late PMIC RTC probe set system time to 1970. The configuration now disables
 automatic RTC-to-system and system-to-RTC synchronization until the stock
