@@ -60,49 +60,6 @@
     "license": "BSD-3-Clause device tree",
     "hardware_tested": false
   },
-  "0114-ath12k-wcn7860-hardware.patch": {
-    "repository": "https://github.com/yzddmr6/linux-sm8750-erhai",
-    "commit": "99ee84f5e52f2c54705a5f2198eb52f5e10132ca",
-    "license": "Original source file licenses and attribution retained",
-    "hardware_tested": false,
-    "sha256": "75ae16ff73b49bc35e50785d6313c9ef2a2a3f869fafac903ffedc042177c44d"
-  },
-  "0115-pwrseq-wcn7860.patch": {
-    "repository": "https://github.com/yzddmr6/linux-sm8750-erhai",
-    "commit": "8c4a79d49e9afbe490fd65d9f968e8493f5c3647",
-    "license": "Original source file licenses and attribution retained",
-    "hardware_tested": false,
-    "sha256": "9960cd06a8cea35f3f43814cd9b7981e3277f887d663fce9593072bf3772fb7c"
-  },
-  "0116-pci-pwrctrl-wcn7860.patch": {
-    "repository": "https://github.com/yzddmr6/linux-sm8750-erhai",
-    "commit": "b7c95a723a1eaf0f9b84e5cb24306de745372979",
-    "license": "Original source file licenses and attribution retained",
-    "hardware_tested": false,
-    "sha256": "2aa232f159a6585984ba0e41b2296f08c7a5cefb1307427e951b88fb7fdf4693"
-  },
-  "0117-ath12k-qdss-download.patch": {
-    "repository": "https://github.com/yzddmr6/linux-sm8750-erhai",
-    "commit": "d230717a8a2fd7894d8b72396459a36634a26716",
-    "license": "Original source file licenses and attribution retained",
-    "hardware_tested": false,
-    "sha256": "eac03fb86e0c79b5e40e45d6222888d267dbee0a53604f3326ecd79152f6b095",
-    "adaptation": "Context refreshed for the pinned 7.3 tree; trailing whitespace removed; QDSS behavior unchanged."
-  },
-  "0118-ath12k-wcn7860-qdss-gate.patch": {
-    "repository": "https://github.com/yzddmr6/linux-sm8750-erhai",
-    "commit": "2a14b6992a3e579c7824844cc80dc674ccd102a9",
-    "license": "Original source file licenses and attribution retained",
-    "hardware_tested": false,
-    "sha256": "522bf884a431bd07776db6788e119867816ed154f3884bd88a44dc8c69d20e25"
-  },
-  "0119-wcn7860-bindings.patch": {
-    "repository": "https://github.com/yzddmr6/linux-sm8750-erhai",
-    "commit": "b653e660e4317dc601d1e835752a7cc0164d0555",
-    "license": "Original source file licenses and attribution retained",
-    "hardware_tested": false,
-    "sha256": "3cfe56f0ea0cedc82335dc671c02279f20ce76a0bb5719acd624b0492c89f0ec"
-  },
   "0120-pci-qcom-iommu-map-cells.patch": {
     "repository": "https://github.com/torvalds/linux",
     "commit": "626acf6efc69c666ffee50bf18e7b95e68670c6a",
@@ -120,6 +77,29 @@
   "0122-ath12k-wcn7860-binding.patch": {
     "source": "Document PCI ID supported by imported WCN7860 hardware definition",
     "license": "GPL-2.0-only OR BSD-2-Clause",
+    "hardware_tested": false
+  },
+  "0123-import-elden-peach.patch": {
+    "repository": "https://github.com/GEEKiDoS/linux",
+    "commit": "b0c05eb72e10140f87efd0e499ad840e6c3e6975",
+    "parent": "8d3ae59288f1e7d58d76558a6ee96d533bc5019f",
+    "paths": [
+      "drivers/net/wireless/ath/ath12k",
+      "drivers/power/sequencing",
+      "drivers/pci/pwrctrl/pci-pwrctrl-pwrseq.c",
+      "include/linux/pwrseq/qcom_wcn.h",
+      "Documentation/devicetree/bindings/regulator/qcom,qca6390-pmu.yaml"
+    ],
+    "license": "Original source file licenses, author and sign-off retained",
+    "adaptation": "Wi-Fi dependency subset only; three-way context refresh for pinned 7.3, retaining its firmware-mode enum. No imported board wiring, Bluetooth node or fuse operation.",
+    "hardware_tested": false,
+    "sha256": "81d594952210cf604c253899ff3f956a9c09b34618b47a3d2871cd1c9c6f1a25"
+  },
+  "0124-tb522fu-peach-pdc-board.patch": {
+    "source": "Local adaptation using TB522FU stock runtime CNSS PDC messages, pin mappings, pinctrl and CNSS power.c host-SOL default",
+    "reference_repository": "https://github.com/GEEKiDoS/linux",
+    "reference_commit": "b0c05eb72e10140f87efd0e499ad840e6c3e6975",
+    "license": "BSD-3-Clause device tree",
     "hardware_tested": false
   }
 }

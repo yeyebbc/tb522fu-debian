@@ -140,13 +140,19 @@ remain unvalidated. A charging icon alone does not establish these. Wi-Fi is
 the next development priority, followed by audio; further charging refinements
 are deferred.
 
-The Wi-Fi bring-up candidate imports community WCN7860 (`17cb:110e`)
-ath12k support and its QDSS startup sequence, plus the upstream Qualcomm PCIe
-IOMMU-map parser fix. The board power mapping follows Lenovo stock evidence;
-the inferred PCIe PHY supply association still needs a bounded link test.
+The Wi-Fi candidate imports the Peach (`17cb:110e`) ath12k implementation from
+[GEEKiDoS/linux](https://github.com/GEEKiDoS/linux/commit/b0c05eb72e10140f87efd0e499ad840e6c3e6975),
+including TME-L patch loading, QDSS transfer, and firmware-directed PDC votes.
+The original source attribution is retained; the import is limited to Wi-Fi
+and its power-sequencing dependencies. Bluetooth remains disabled.
+The board uses its own stock CNSS pinmux, supply ranges and PDC mappings.
+The inferred PCIe PHY supply association still needs a bounded link test.
+The upstream Qualcomm PCIe IOMMU-map parser fix preserves normal DMA isolation.
 Wi-Fi power sequencing and radio modules remain blocked from automatic loading
-in both profiles until hardware acceptance. Firmware and calibration are supplied
-privately from this tablet. No Wi-Fi hardware success is claimed yet.
+in both profiles until hardware acceptance. The seven matching firmware files,
+including calibration, are supplied privately from this tablet. No Wi-Fi
+hardware success is claimed yet. CI22 built successfully but was not booted;
+this fuller initialization sequence supersedes its candidate.
 
 CI15 also exposed a clock failure: fake-hwclock restored the saved date, then
 the late PMIC RTC probe set system time to 1970. The configuration now disables

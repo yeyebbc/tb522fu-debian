@@ -22,14 +22,10 @@
     "patches/0112-tb522fu-clickpad-button.patch",
     "patches/0109-tb522fu-staged-adsp.patch",
     "patches/0113-qcom-battmgr-full-charge-units.patch",
-    "patches/0114-ath12k-wcn7860-hardware.patch",
-    "patches/0115-pwrseq-wcn7860.patch",
-    "patches/0116-pci-pwrctrl-wcn7860.patch",
-    "patches/0117-ath12k-qdss-download.patch",
-    "patches/0118-ath12k-wcn7860-qdss-gate.patch",
-    "patches/0119-wcn7860-bindings.patch",
+    "patches/0123-import-elden-peach.patch",
     "patches/0120-pci-qcom-iommu-map-cells.patch",
     "patches/0121-tb522fu-pcie-wifi-board.patch",
-    "patches/0122-ath12k-wcn7860-binding.patch"
+    "patches/0122-ath12k-wcn7860-binding.patch",
+    "patches/0124-tb522fu-peach-pdc-board.patch"
   ]
 }

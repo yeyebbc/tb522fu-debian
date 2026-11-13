@@ -219,10 +219,18 @@ def main():
     # The radio remains blocked from coldplug until the first bounded test.
     wifi = '/soc@0/pcie@1c00000/pcie@0/wifi@0'
     assert capture(['fdtget', '-t', 's', dtb, wifi, 'compatible']) == 'pci17cb,110e'
-    assert capture(['fdtget', '-t', 's', dtb, '/wcn7860-pmu', 'compatible']) == 'qcom,wcn7860-pmu'
+    assert capture(['fdtget', '-t', 's', dtb, '/wcn7861-pmu', 'compatible']) == 'qcom,wcn7861-pmu'
     assert capture(['fdtget', '-t', 's', dtb, '/soc@0/phy@1c06000', 'status']) == 'okay'
+    pmu = '/wcn7861-pmu'
+    assert capture(['fdtget', '-t', 's', dtb, pmu, 'qcom,vreg-pdc-map']) == 's5f:rf s4d:bb s3g:rf s7i:rf'
+    assert capture(['fdtget', '-t', 's', dtb, pmu, 'qcom,pmu-vreg-map']) == (
+        'VDDD_AON_0P9:s5f VDDA_RFA_1P9:s3g VDDA_RFA_1P3:s7i VDDA_RFA_0P9:s5f '
+        'VDDD_WLMX_0P9:s4d VDDD_WLCX_0P9:s5f VDDD_BTCX_0P9:s5f VDDD_BTCMX_0P9:s5f '
+        'VDDA_PCIE_1P2:s7i VDDA_PCIE_0P9:s7i')
+    assert capture(['fdtget', '-t', 'x', dtb, pmu, 'vdd-supply']) == capture(
+        ['fdtget', '-t', 'x', dtb, pmu, 'vdddig-supply'])
     for node, prop, expected in [
-        ('/wcn7860-pmu', 'wlan-enable-gpios', [16, 0]),
+        ('/wcn7861-pmu', 'wlan-enable-gpios', [16, 0]),
         ('/soc@0/pcie@1c00000/pcie@0', 'reset-gpios', [102, 1]),
         ('/soc@0/pcie@1c00000/pcie@0', 'wake-gpios', [104, 1]),
     ]:
