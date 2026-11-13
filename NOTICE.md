@@ -44,3 +44,11 @@ stream template and graph-link checker derive from yzddmr6/xiaomipad-8pro-mainli
 (BSD-3-Clause and MIT respectively); the MFC/TDM templates and validation helpers
 derive from yzddmr6/onepluspad-2pro-mainline (BSD-3-Clause and GPL-2.0-only respectively).
 The compiled graph uses this tablet's observed slot routing with kernel channel labels.
+
+Patches0140–0141 retain Mohit Sharma's October22,2026 GPR probe callback
+series, co-developed with Ajay Kumar Nandam and published to linux-sound
+(message IDs20261022144130.2443667-2 and-3-mohit.sharma@oss.qualcomm.com).
+The callback-state guard was accepted into the sound for-7.4 tree as
+ ef7062864c05. Patch0142 is a separate local follow-up addressing receive
+callback draining on probe failure, as raised in review. Original GPL source
+and author/sign-off information remain in each imported patch.

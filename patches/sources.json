@@ -175,5 +175,35 @@
     "sha256": "b0618a7dd13b75e93fa87c0470c161763e4305c0ebaacbd2805cf771f37213b3",
     "hardware_tested": false,
     "source": "Local adaptation from TB522FU runtime DT, AW88461 chip IDs, private ACF and official read-only AudioReach ACDB queries; conservative gain, no speaker protection claim."
+  },
+  "0140-q6apm-probe-callback-state.patch": {
+    "license": "GPL-2.0-only",
+    "sha256": "ba1bb66d5314ee45c56fca5379fa9a3e53589d3cf7a3d4ddbb70dff1146eed76",
+    "hardware_tested": false,
+    "author": "Mohit Sharma",
+    "source": "https://lore.kernel.org/linux-sound/20261022144130.2443667-2-mohit.sharma@oss.qualcomm.com/",
+    "adaptation": "Original patch and author retained; failed-probe draining is a separate local follow-up.",
+    "accepted_upstream_commit": "https://git.kernel.org/broonie/sound/c/ef7062864c05"
+  },
+  "0141-apr-publish-probe-callback.patch": {
+    "license": "GPL-2.0-only",
+    "sha256": "49f50568c20632a8637c5b7bc5b86ede38f9cd67728bb0be965f5ae88cb47b08",
+    "hardware_tested": false,
+    "author": "Mohit Sharma",
+    "source": "https://lore.kernel.org/linux-sound/20261022144130.2443667-3-mohit.sharma@oss.qualcomm.com/",
+    "adaptation": "Original patch and author retained; failed-probe draining is a separate local follow-up."
+  },
+  "0142-apr-drain-failed-probe.patch": {
+    "license": "GPL-2.0-only",
+    "sha256": "938d56fc8387737d79017cefd0229ab4004f2909750e5cb368d2ee7e79e2d9e0",
+    "hardware_tested": false,
+    "source": "Local failure-path completion of early callback publication; serialize callback snapshot/update and drain the receive workqueue before devm cleanup.",
+    "review": "https://lore-kernel.gnuweeb.org/linux-sound/20261022144130.2443667-3-mohit.sharma@oss.qualcomm.com/T/"
+  },
+  "0143-tb522fu-standard-topology-path.patch": {
+    "license": "BSD-3-Clause device tree",
+    "sha256": "e97ef0eb880ff6f2cfb028b1cd2131254dffc955822446865b189463b688a64f",
+    "hardware_tested": false,
+    "source": "Remove unused topology property; install at the filename derived by upstream AudioReach from card driver/model."
   }
 }

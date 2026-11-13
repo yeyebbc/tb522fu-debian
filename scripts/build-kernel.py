@@ -175,6 +175,9 @@ def main():
                     'CONFIG_POWER_SEQUENCING=y', 'CONFIG_POWER_SEQUENCING_QCOM_WCN=m',
                     'CONFIG_PCI_PWRCTRL_PWRSEQ=m', 'CONFIG_ATH12K=m',
                     'CONFIG_ATH12K_DEBUG=y', 'CONFIG_ATH12K_DEBUGFS=y', 'CONFIG_DYNAMIC_DEBUG=y',
+                    'CONFIG_EXPERT=y', 'CONFIG_CFG80211_CERTIFICATION_ONUS=y',
+                    'CONFIG_CFG80211_REQUIRE_SIGNED_REGDB=y', 'CONFIG_CFG80211_USE_KERNEL_REGDB_KEYS=y',
+                    'CONFIG_ATH_REG_DYNAMIC_USER_REG_HINTS=y',
                     'CONFIG_QCOM_Q6V5_PAS=m', 'CONFIG_RPMSG_QCOM_GLINK_SMEM=m',
                     'CONFIG_QRTR_SMD=m', 'CONFIG_QCOM_PD_MAPPER=m', 'CONFIG_BATTERY_QCOM_BATTMGR=m',
                     'CONFIG_DETECT_HUNG_TASK=y', 'CONFIG_SOFTLOCKUP_DETECTOR=y',
@@ -189,6 +192,8 @@ def main():
                     'CONFIG_INTERCONNECT_QCOM_SM8750=y', 'CONFIG_USB_DWC3_QCOM=y']:
         assert setting in config, setting
     assert 'CONFIG_QCOM_SCM=y' in config
+    assert '# CONFIG_CFG80211_REG_RELAX_NO_IR is not set' in config
+    assert '# CONFIG_ATH_REG_DYNAMIC_USER_CERT_TESTING is not set' in config
     # PMIC coldplug must not replace Debian's saved time with its raw counter.
     assert '# CONFIG_RTC_HCTOSYS is not set' in config
     assert '# CONFIG_RTC_SYSTOHC is not set' in config

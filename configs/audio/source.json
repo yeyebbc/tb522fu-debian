@@ -44,5 +44,6 @@
     "clock_id": 514
   },
   "hardware_tested": false,
-  "firmware_included": false
+  "firmware_included": false,
+  "firmware_name": "qcom/sm8750/TB522FU-tplg.bin"
 }

@@ -298,3 +298,12 @@ copyright and license notices, including the GPL-2.0-or-later Novatek driver
 and BSD-3-Clause board device tree. [NOTICE.md](NOTICE.md) records provenance.
 Debian packages retain their individual licenses. No firmware extracted from the tablet is included. The root filesystem uses
 Debian’s redistributable firmware packages.
+
+The first combined CI27 boot reached GNOME, automatically connected Wi-Fi,
+and loaded the keyboard and all six amplifier drivers. Speaker playback did
+not start: the topology was installed under a filename the loader does not use,
+and a probe-time GPR callback race caused the DSP readiness query to time out.
+The next candidate installs `qcom/sm8750/TB522FU-tplg.bin` and includes the
+attributed upstream callback fixes plus failed-probe receive draining.
+Wi-Fi needs an explicit local country hint for its self-managed PHY; a global
+module hint alone does not configure the radio. No speaker audio claim yet.

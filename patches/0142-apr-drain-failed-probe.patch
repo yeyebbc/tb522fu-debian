@@ -1,0 +1,74 @@
+From 29b6272e554a403611c1ffeddc3d478d65039d4c Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Fri, 13 Nov 2026 19:21:29 +0800
+Subject: [PATCH] soc: qcom: apr: drain early callbacks after a failed probe
+
+Serialize callback publication and snapshot with svcs_lock, then drain the receive worker before driver core can free failed-probe state. This addresses the failure-path lifetime issue identified in review of the early callback patch. Normal APR callback ordering is unchanged.
+---
+ drivers/soc/qcom/apr.c | 22 ++++++++++++++++++----
+ 1 file changed, 18 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/soc/qcom/apr.c b/drivers/soc/qcom/apr.c
+index 829e5c8fdf98..bda66793c3f4 100644
+--- a/drivers/soc/qcom/apr.c
++++ b/drivers/soc/qcom/apr.c
+@@ -263,6 +263,7 @@ static int gpr_do_rx_callback(struct packet_router *gpr, struct apr_rx_buf *abuf
+ {
+ 	uint16_t hdr_size, ver;
+ 	struct pkt_router_svc *svc = NULL;
++	gpr_port_cb callback;
+ 	struct gpr_resp_pkt resp;
+ 	struct gpr_hdr *hdr;
+ 	unsigned long flags;
+@@ -298,6 +299,7 @@ static int gpr_do_rx_callback(struct packet_router *gpr, struct apr_rx_buf *abuf
+ 
+ 	spin_lock_irqsave(&gpr->svcs_lock, flags);
+ 	svc = idr_find(&gpr->svcs_idr, hdr->dest_port);
++	callback = svc ? svc->callback : NULL;
+ 	spin_unlock_irqrestore(&gpr->svcs_lock, flags);
+ 
+ 	if (!svc) {
+@@ -306,8 +308,8 @@ static int gpr_do_rx_callback(struct packet_router *gpr, struct apr_rx_buf *abuf
+ 		return -EINVAL;
+ 	}
+ 
+-	if (svc->callback)
+-		svc->callback(&resp, svc->priv, 0);
++	if (callback)
++		callback(&resp, svc->priv, 0);
+ 
+ 	return 0;
+ }
+@@ -366,15 +368,27 @@ static int apr_device_probe(struct device *dev)
+ 	struct apr_device *adev = to_apr_device(dev);
+ 	struct apr_driver *adrv = to_apr_driver(dev->driver);
+ 	struct packet_router *apr = dev_get_drvdata(dev->parent);
++	unsigned long flags;
+ 	int ret;
+ 
+-	if (apr->type == PR_TYPE_GPR)
++	if (apr->type == PR_TYPE_GPR) {
++		spin_lock_irqsave(&apr->svcs_lock, flags);
+ 		adev->svc.callback = adrv->gpr_callback;
++		spin_unlock_irqrestore(&apr->svcs_lock, flags);
++	}
+ 
+ 	ret = adrv->probe(adev);
+ 	if (ret) {
+-		if (apr->type == PR_TYPE_GPR)
++		if (apr->type == PR_TYPE_GPR) {
++			spin_lock_irqsave(&apr->svcs_lock, flags);
+ 			adev->svc.callback = NULL;
++			spin_unlock_irqrestore(&apr->svcs_lock, flags);
++			/* A receiver may already have taken the previous callback.
++			 * Drain it before driver core releases the failed probe's
++			 * devm allocations. New receivers observe NULL under the lock.
++			 */
++			flush_workqueue(apr->rxwq);
++		}
+ 
+ 		return ret;
+ 	}
+-- 
+2.47.3
+

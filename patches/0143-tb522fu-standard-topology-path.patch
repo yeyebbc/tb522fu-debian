@@ -1,0 +1,28 @@
+From 7d8de97738ae311525c69782b1250df45c49f401 Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Fri, 13 Nov 2026 19:23:03 +0800
+Subject: [PATCH] arm64: qcom: use the standard TB522FU topology lookup
+
+AudioReach constructs qcom/sm8750/TB522FU-tplg.bin from the card driver and model. Remove the unused firmware-name property; userspace installs the compiled topology at the standard path.
+---
+ arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts | 4 ----
+ 1 file changed, 4 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+index e5d8aa63004d..b3101e2cc149 100644
+--- a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
++++ b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+@@ -809,10 +809,6 @@ glink-edge {
+ 	};
+ };
+ 
+-&q6apm {
+-	firmware-name = "qcom/sm8750/lenovo/tb522fu/tb522fu-speakers.tplg";
+-};
+-
+ &q6apmbedai {
+ 	#address-cells = <1>;
+ 	#size-cells = <0>;
+-- 
+2.47.3
+

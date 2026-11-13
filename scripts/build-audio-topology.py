@@ -39,7 +39,8 @@ def main():
     with config.open('wb') as stream:
         run(['m4', '-I', inputs, '-I', args.source, inputs / 'TB522FU.m4'], stdout=stream)
     check_topology(config.read_text(), spec['kernel_dai_widgets'])
-    topology = args.output / 'tb522fu-speakers.tplg'
+    assert spec['firmware_name'] == f"qcom/{spec['driver']}/{spec['model']}-tplg.bin"
+    topology = args.output / Path(spec['firmware_name']).name
     run(['alsatplg', '-c', config, '-o', topology])
     mixing = check_module_configs(topology.read_bytes())
     assert list(mixing) == ['device40.mfc1']
