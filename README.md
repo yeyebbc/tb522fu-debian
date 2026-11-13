@@ -111,7 +111,8 @@ loaded the keyboard automatically, registered all three accessory input devices,
 and received valid synchronization packets without decoder errors. The libinput
 right-button warning is gone. GNOME was physically visible, and the temporary
 acceptance timer returned cleanly to Android using the on-device switch helper.
-The acceptance timer was then removed. Bounded probes retain explicit loading.
+The acceptance timer was then removed. Subsequent disk tests retain keyboard
+automatic loading; the legacy RAM probe retains explicit loading.
 The existing GNOME two-finger right-click preference is preserved.
 
 CI20 recipe `4575d23` verified the first explicit ADSP load using privately
@@ -146,13 +147,26 @@ including TME-L patch loading, QDSS transfer, and firmware-directed PDC votes.
 The original source attribution is retained; the import is limited to Wi-Fi
 and its power-sequencing dependencies. Bluetooth remains disabled.
 The board uses its own stock CNSS pinmux, supply ranges and PDC mappings.
-The inferred PCIe PHY supply association still needs a bounded link test.
 The upstream Qualcomm PCIe IOMMU-map parser fix preserves normal DMA isolation.
-Wi-Fi power sequencing and radio modules remain blocked from automatic loading
-in both profiles until hardware acceptance. The seven matching firmware files,
-including calibration, are supplied privately from this tablet. No Wi-Fi
-hardware success is claimed yet. CI22 built successfully but was not booted;
-this fuller initialization sequence supersedes its candidate.
+The seven matching firmware files, including calibration, are supplied privately
+from this tablet. CI22 built successfully but was not booted; this fuller
+initialization sequence supersedes its candidate.
+
+CI24 recipe `67b4301` passed the first bounded hardware test: PCIe trained at
+8 GT/s with normal IOMMU isolation; board API 1, QDSS and all ten firmware PDC
+entries were accepted. The owner connected through GNOME. The link used 5 GHz
+at 80 MHz; DHCP, DNS and HTTPS worked, an 8 MiB download averaged 2.68 MB/s,
+and twelve subsequent internet pings had no loss. No WLAN firmware crash or
+SMMU context fault occurred. A clean early return restored Android, and the
+filesystem check passed. This establishes initial networking, not sustained
+performance or suspend support.
+
+The next candidate enables Wi-Fi and keyboard coldplug in both disk profiles;
+automatic Wi-Fi startup and address stability still need fresh-boot acceptance.
+Install the distribution's `wireless-regdb` before that boot. The test initially
+lacked this database and used the conservative world domain; country policy
+and stock SAR behavior still need follow-up. The legacy RAM probe keeps manual
+Wi-Fi loading.
 
 CI15 also exposed a clock failure: fake-hwclock restored the saved date, then
 the late PMIC RTC probe set system time to 1970. The configuration now disables
@@ -163,7 +177,7 @@ installed boots verified that the saved date survives RTC probing without
 host clock correction. This does not provide accurate elapsed time while
 powered off or network time synchronization.
 
-Native display/GPU, brightness, Wi-Fi, audio, charging, suspend and pen input
+Native display/GPU, brightness, audio, sustained charging, suspend and pen input
 remain unverified under Linux. These artifacts
 are development components, not an installer.
 

@@ -146,11 +146,17 @@ def main():
         else:
             cmdline = cmdline.replace(' qcom_scm.probe_edl_return=1', '')
             cmdline = cmdline.replace(' qcom_scm.probe_seconds=600', '')
-            # CI19 verified keyboard coldplug; bounded profiles retain its
-            # explicit load. CI20 verified ADSP, which now coldplugs in all
-            # profiles so the bounded profile can test its startup ordering.
-            cmdline = cmdline.replace('modprobe.blacklist=lenovo_yoga_keyboard,',
-                                      'modprobe.blacklist=')
+        # CI24 verified Wi-Fi initialization and real 5 GHz traffic. Both disk
+        # profiles now exercise normal coldplug, retaining the accepted keyboard
+        # in peripheral tests. The legacy RAM probe remains manually staged.
+        accepted = {'lenovo_yoga_keyboard', 'pwrseq_qcom_wcn',
+                    'pci_pwrctrl_pwrseq', 'ath12k', 'ath12k_wifi7'}
+
+        def retain_unverified(match):
+            names = [name for name in match[1].split(',') if name not in accepted]
+            return ' modprobe.blacklist=' + ','.join(names) if names else ''
+
+        cmdline = re.sub(r' modprobe\.blacklist=([^ ]+)', retain_unverified, cmdline)
         run([source / 'scripts/config', '--file', out / '.config', '--set-str', 'CMDLINE', cmdline])
     run(make + ['olddefconfig'])
     config = (out / '.config').read_text().splitlines()
@@ -186,11 +192,12 @@ def main():
     assert '# CONFIG_RTC_SYSTOHC is not set' in config
     cmdline = next(s for s in config if s.startswith('CONFIG_CMDLINE='))
     assert ('qcom_scm.probe_edl_return=1' in cmdline) == (args.profile != 'installed')
-    assert ('modprobe.blacklist=lenovo_yoga_keyboard' in cmdline) == (args.profile != 'installed')
     blocked = {name for value in re.findall(r'modprobe.blacklist=([^ \"]+)', cmdline)
                for name in value.split(',')}
+    assert ('lenovo_yoga_keyboard' in blocked) == (not disk)
     assert 'qcom_q6v5_pas' not in blocked
-    assert {'pwrseq_qcom_wcn', 'pci_pwrctrl_pwrseq', 'ath12k', 'ath12k_wifi7'} <= blocked
+    wifi_modules = {'pwrseq_qcom_wcn', 'pci_pwrctrl_pwrseq', 'ath12k', 'ath12k_wifi7'}
+    assert wifi_modules.isdisjoint(blocked) if disk else wifi_modules <= blocked
     if disk:
         assert 'CONFIG_EXT4_FS=y' in config
     run(make + [spec['board_dtb']])

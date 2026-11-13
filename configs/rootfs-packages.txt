@@ -4,6 +4,9 @@ gnome-initial-setup
 firefox-esr
 network-manager
 wpasupplicant
+wireless-regdb
+iw
+curl
 openssh-server
 sudo
 locales
