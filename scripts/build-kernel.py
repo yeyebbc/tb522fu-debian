@@ -211,7 +211,7 @@ def main():
                for name in value.split(',')}
     assert ('lenovo_yoga_keyboard' in blocked) == (not disk)
     assert 'qcom_q6v5_pas' not in blocked
-    display_modules = {'msm', 'dispcc_sm8750', 'ktz8866', 'fastrpc', 'panel_novatek_nt36536'}
+    display_modules = {'msm', 'dispcc_sm8750', 'ktz8866', 'fastrpc', 'panel_novatek_nt36536', 'gpucc_sm8750', 'gxclkctl_kaanapali'}
     assert display_modules <= blocked
     assert 'module_blacklist=' not in cmdline, 'Explicit diagnostic modprobe must remain possible'
     wifi_modules = {'pwrseq_qcom_wcn', 'pci_pwrctrl_pwrseq', 'ath12k', 'ath12k_wifi7'}
@@ -269,6 +269,18 @@ def main():
     for address, se in [('888000', 2), ('88c000', 3)]:
         bus = '/soc@0/geniqup@8c0000/i2c@' + address
         assert capture(['fdtget', '-t', 'x', dtb, bus, 'dmas']) == f'{ref} 0 {se} 3 {ref} 1 {se} 3'
+    # Stock chip ID and signed-shader reservation, with GPU providers staged.
+    assert 'CONFIG_SM_GPUCC_8750=m' in config
+    gpu = '/soc@0/gpu@3d00000'
+    for node in [gpu, '/soc@0/gmu@3d6c000', '/soc@0/clock-controller@3d90000',
+                 '/soc@0/clock-controller@3d64000']:
+        assert capture(['fdtget', '-t', 's', dtb, node, 'status']) == 'okay'
+    assert capture(['fdtget', '-t', 's', dtb, gpu, 'compatible']) == 'qcom,adreno-44050001 qcom,adreno'
+    shader = gpu + '/zap-shader'
+    memory = '/reserved-memory/gpu-micro-code@9b09a000'
+    assert capture(['fdtget', '-t', 's', dtb, shader, 'firmware-name']) == 'qcom/sm8750/lenovo/tb522fu/gen80000_zap.mbn'
+    assert capture(['fdtget', '-t', 'x', dtb, shader, 'memory-region']) == capture(['fdtget', '-t', 'x', dtb, memory, 'phandle'])
+    assert capture(['fdtget', '-t', 'x', dtb, memory, 'reg']) == '0 9b09a000 0 2000'
     # Check board-specific speaker wiring and the first-test gain cap.
     assert capture(['fdtget', '-t', 's', dtb, '/sound', 'model']) == 'TB522FU'
     # Stock WCD939x rails and pin routing: do not import MTP voltages.

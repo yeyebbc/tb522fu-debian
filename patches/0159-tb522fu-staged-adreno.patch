@@ -1,0 +1,51 @@
+From 626259d475863f96575318bb55a0a033702ea24b Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Sat, 14 Nov 2026 00:09:22 +0800
+Subject: [PATCH] arm64: dts: stage TB522FU Adreno 830 and stock signed shader
+
+---
+ .../boot/dts/qcom/sm8750-lenovo-y900-acm.dts     | 16 ++++++++++------
+ 1 file changed, 10 insertions(+), 6 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+index 3977497c7764..1fd33c45d5cd 100644
+--- a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
++++ b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+@@ -330,13 +330,17 @@ pmic-glink {
+ 	};
+ };
+ 
+-/* Adreno 830 (A830) - the GMU/CX/GX power domains and gpucc are described in
+- * sm8750.dtsi; the board only has to bring the GPU out of reset by enabling it.
++/* Stock identifies Adreno830v2, chip ID 0x44050001. Keep the SoC speed-bin
++ * OPPs and use this tablet's signed shader in the stock reserved region.
+  */
+ &gpu {
+ 	status = "okay";
+ };
+ 
++&gpu_zap_shader {
++	firmware-name = "qcom/sm8750/lenovo/tb522fu/gen80000_zap.mbn";
++};
++
+ /*
+  * Buttons.  The board has exactly one discrete key (volume-up on PM8550
+  * GPIO 6, active low, same wiring as SM8650 QRD); volume-down and power come
+@@ -458,10 +462,10 @@ touchscreen@0 {
+ &ufs_mem_phy { status = "disabled"; };
+ &mdss { status = "okay"; };
+ &dispcc { status = "okay"; };
+-&gpu { status = "disabled"; };
+-&gmu { status = "disabled"; };
+-&gpucc { status = "disabled"; };
+-&gxclkctl { status = "disabled"; };
++&gpu { status = "okay"; };
++&gmu { status = "okay"; };
++&gpucc { status = "okay"; };
++&gxclkctl { status = "okay"; };
+ &remoteproc_adsp { status = "disabled"; };
+ &spi4 { status = "okay"; };
+ &qupv3_1 { status = "okay"; };
+-- 
+2.47.3
+

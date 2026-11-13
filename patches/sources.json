@@ -331,5 +331,12 @@
     "license": "BSD-3-Clause device tree",
     "hardware_tested": false,
     "source": "Stock TB522FU GPI2 mask 0x1e, SMMU stream 0x436 and SE10/11 DMA bindings; enable the referenced provider."
+  },
+  "0159-tb522fu-staged-adreno.patch": {
+    "local_commit": "626259d475863f96575318bb55a0a033702ea24b",
+    "sha256": "8bc92cb834fd68886129c16ad42a885b3566137feaf2e78ea9c488d12efdb004",
+    "license": "BSD-3-Clause device tree",
+    "hardware_tested": false,
+    "source": "Enable the existing SM8750 Adreno830 driver/providers; stock chip ID 0x44050001 and signed-shader reservation match. Device-specific shader filename; firmware kept private."
   }
 }
