@@ -41,6 +41,11 @@
     "patches/0141-apr-publish-probe-callback.patch",
     "patches/0142-apr-drain-failed-probe.patch",
     "patches/0143-tb522fu-standard-topology-path.patch",
-    "patches/0144-ath12k-per-radio-reg-ranges.patch"
+    "patches/0144-ath12k-per-radio-reg-ranges.patch",
+    "patches/0145-ath12k-reg-event-completion.patch",
+    "patches/0146-ath12k-registration-radio.patch",
+    "patches/0147-ath12k-country-lock.patch",
+    "patches/0148-ath12k-skip-unchanged-country.patch",
+    "patches/0149-ath12k-regdomain-before-wiphy.patch"
   ]
 }

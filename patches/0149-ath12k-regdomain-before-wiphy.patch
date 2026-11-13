@@ -1,0 +1,98 @@
+From 6a06f2e614b201e20969d5e505c841dd7d951269 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Fran=C3=A7ois=20Roux?= <franzelfranzel@gmail.com>
+Date: Sun, 11 Oct 2026 09:44:33 +0200
+Subject: [PATCH] wifi: ath12k: set the regdomain before registering the wiphy
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+ath12k marks its wiphy as REGULATORY_WIPHY_SELF_MANAGED, but it applies
+the regdomain received from the firmware only after
+ieee80211_register_hw(). cfg80211 announces the new wiphy to userspace
+during registration, so a GET_REG request sent in that window finds a
+self-managed wiphy without a regdomain:
+
+  WARNING: net/wireless/nl80211.c:10828 at nl80211_get_reg_do+0x1d0/0x1fc [cfg80211], CPU#5: iwd/721
+
+iwd queries the regdomain of each new wiphy right away, so this shows up
+at boot. On a Microsoft Surface Pro 11 (WCN7850) it happened in 3 of 4
+boots.
+
+Apply the boot-time regdomain before ieee80211_register_hw().
+regulatory_set_wiphy_regd() only queues it. cfg80211 then applies it in
+wiphy_regulatory_register(), which runs under the RTNL before
+wiphy_register() returns. nl80211_get_reg_do() also takes the
+RTNL, so userspace can no longer see the wiphy without a regdomain.
+
+The regdomain update no longer needs to unregister the hw on failure,
+so drop that error path.
+
+Tested on a Surface Pro 11 (WCN7850 hw2.0, WLAN.HMT.1.1.c7-00108) with
+next-20260929:
+- without this patch, every driver unbind/bind triggers the warning
+  (12 warnings over 6 cycles);
+- with it, there is no warning over two boots, two module reloads and
+  17 unbind/bind cycles, and Wi-Fi connects each time;
+- with CONFIG_ATH_REG_DYNAMIC_USER_REG_HINTS and the user regdomain set
+  to CH, the wiphy ends up with CH after each of 4 unbind/bind cycles,
+  with or without this patch. The user hint handling added by commit
+  906619a00967 ("wifi: ath12k: handle regulatory hints during mac
+  registration") still works.
+
+Link: https://lore.kernel.org/all/20261006161744.3804-1-franzelfranzel@gmail.com/
+Assisted-by: LLM
+Signed-off-by: François Roux <franzelfranzel@gmail.com>
+---
+ drivers/net/wireless/ath/ath12k/mac.c | 25 ++++++++++++-------------
+ 1 file changed, 12 insertions(+), 13 deletions(-)
+
+diff --git a/drivers/net/wireless/ath/ath12k/mac.c b/drivers/net/wireless/ath/ath12k/mac.c
+index 3dfd93ebb781..b1da04e8dda9 100644
+--- a/drivers/net/wireless/ath/ath12k/mac.c
++++ b/drivers/net/wireless/ath/ath12k/mac.c
+@@ -15028,6 +15028,18 @@ static int ath12k_mac_hw_register(struct ath12k_hw *ah)
+ 	for_each_ar(ah, ar, i)
+ 		complete_all(&ar->regd_update_completed);
+ 
++	/* Apply the regd received during initialization before registering
++	 * the wiphy. It is self-managed, so userspace may ask for its regd as
++	 * soon as it shows up, and cfg80211 expects one to be there.
++	 */
++	for_each_ar(ah, ar, i) {
++		ret = ath12k_regd_update(ar, true);
++		if (ret) {
++			ath12k_err(ar->ab, "ath12k regd update failed: %d\n", ret);
++			goto err_cleanup_if_combs;
++		}
++	}
++
+ 	ret = ieee80211_register_hw(hw);
+ 	if (ret) {
+ 		ath12k_err(ab, "ieee80211 registration failed: %d\n", ret);
+@@ -15045,13 +15057,6 @@ static int ath12k_mac_hw_register(struct ath12k_hw *ah)
+ 	for_each_ar(ah, ar, i) {
+ 		struct ath12k_base *this_ab = ar->ab;
+ 
+-		/* Apply the regd received during initialization */
+-		ret = ath12k_regd_update(ar, true);
+-		if (ret) {
+-			ath12k_err(this_ab, "ath12k regd update failed: %d\n", ret);
+-			goto err_unregister_hw;
+-		}
+-
+ 		if (this_ab->hw_params->current_cc_support) {
+ 			struct wmi_set_current_country_arg current_cc = {};
+ 			struct ieee80211_regdomain *default_regd;
+@@ -15092,12 +15097,6 @@ static int ath12k_mac_hw_register(struct ath12k_hw *ah)
+ 
+ 	return 0;
+ 
+-err_unregister_hw:
+-	for_each_ar(ah, ar, i)
+-		ath12k_debugfs_unregister(ar);
+-
+-	ieee80211_unregister_hw(hw);
+-
+ err_cleanup_if_combs:
+ 	ath12k_mac_cleanup_iface_combinations(ah);
+ 

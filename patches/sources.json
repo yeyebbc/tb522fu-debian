@@ -212,8 +212,58 @@
     "review": "https://lore.kernel.org/all/87eb6978-74fe-4ec6-b76a-b09210ceea7a@oss.qualcomm.com/",
     "reviewed_by": "Baochen Qiang",
     "local_commit": "455d57112d2b",
-    "license": "GPL-2.0-only kernel driver",
+    "license": "BSD-3-Clause-Clear; original kernel source headers retained",
     "hardware_tested": false,
-    "scope": "Preserve per-radio 2.4/5/6 GHz ranges and correct NL80211 band indices; retain firmware regulatory rules"
+    "scope": "Preserve per-radio 2.4/5/6 GHz ranges and correct NL80211 band indices; retain firmware regulatory rules",
+    "sha256": "f0959e26881f98f032a04f6518acd56f314821c40bd997a83205001f5b1d50a8"
+  },
+  "0145-ath12k-reg-event-completion.patch": {
+    "license": "BSD-3-Clause-Clear; original kernel source headers retained",
+    "sha256": "483a4336028abc41f1052a4cd028d7c19ef272d5ab8bf372de7bbf94c53b2d76",
+    "hardware_tested": false,
+    "local_commit": "c22b6175e72483c97fdb7be838f55d3d93f1a8f4",
+    "adaptation": "Original patch and attribution retained; context refreshed for pinned base.",
+    "upstream_commit": "f2576dc0f894ef33045ba7ed057ec417988bba8a",
+    "source": "https://git.zx2c4.com/linux-rng/patch/?id=f2576dc0f894ef33045ba7ed057ec417988bba8a",
+    "accepted_series": "https://marc.info/?l=linux-wireless&m=178846347175650&w=3"
+  },
+  "0146-ath12k-registration-radio.patch": {
+    "license": "BSD-3-Clause-Clear; original kernel source headers retained",
+    "sha256": "32affc44732d55bc7ae7f0b1ac21b4d74f701cfbc6ba4e3b254828166ea4f351",
+    "hardware_tested": false,
+    "local_commit": "f54bc3452b55dd88ac77f62558bd22795abfdaea",
+    "adaptation": "Original patch and attribution retained; context refreshed for pinned base.",
+    "upstream_commit": "af8d103b2b23f8cf9a1a72b15b3873bad53470df",
+    "source": "https://git.zx2c4.com/linux-rng/patch/?id=af8d103b2b23f8cf9a1a72b15b3873bad53470df",
+    "accepted_series": "https://marc.info/?l=linux-wireless&m=178846347175650&w=3"
+  },
+  "0147-ath12k-country-lock.patch": {
+    "license": "BSD-3-Clause-Clear; original kernel source headers retained",
+    "sha256": "199c06bd44a6d2e447b0fadd835f1b564738e06edf3eae2bacbbe9c6179b1262",
+    "hardware_tested": false,
+    "local_commit": "2a2770c7123183558a68313d68868b19d62d7372",
+    "adaptation": "Original patch and attribution retained; context refreshed for pinned base.",
+    "upstream_commit": "04497f2a77216f27f60463c9b3d84c3c8f2cf62c",
+    "source": "https://git.zx2c4.com/linux-rng/patch/?id=04497f2a77216f27f60463c9b3d84c3c8f2cf62c",
+    "accepted_series": "https://marc.info/?l=linux-wireless&m=178846347175650&w=3"
+  },
+  "0148-ath12k-skip-unchanged-country.patch": {
+    "license": "BSD-3-Clause-Clear; original kernel source headers retained",
+    "sha256": "9b9ae20c2cca47ae6c465608c9718f65535e44dc697c670eddf4798fab41c61b",
+    "hardware_tested": false,
+    "local_commit": "9b364d06157b74f18b0f5698f62df4a0c5e324ba",
+    "adaptation": "Original patch and attribution retained; context refreshed for pinned base.",
+    "upstream_commit": "8ab8a5ee16b2fcb06837039dc42405ed53866fec",
+    "source": "https://git.zx2c4.com/linux-rng/patch/?id=8ab8a5ee16b2fcb06837039dc42405ed53866fec",
+    "accepted_series": "https://marc.info/?l=linux-wireless&m=178846347175650&w=3"
+  },
+  "0149-ath12k-regdomain-before-wiphy.patch": {
+    "license": "BSD-3-Clause-Clear; original kernel source headers retained",
+    "sha256": "698f60e623ac205b7a967851a4e04805eb7a067a3be4a1434866dc82bb6d421b",
+    "hardware_tested": false,
+    "local_commit": "6a06f2e614b201e20969d5e505c841dd7d951269",
+    "adaptation": "Original patch and attribution retained; context refreshed for pinned base.",
+    "source": "https://lore.kernel.org/all/20261011074433.9187-1-franzelfranzel@gmail.com/",
+    "status": "Pending upstream patch by François Roux; not claimed merged"
   }
 }
