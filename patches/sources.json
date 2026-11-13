@@ -282,5 +282,12 @@
     "license": "BSD-3-Clause device tree",
     "source": "Board wiring and voltages verified from TB522FU stock runtime FDT and handset microphone mixer route; SoundWire mapping and capture link follow upstream SM8750 MTP.",
     "scope": "WCD939x AMIC1/3 capture only; no headphone output or USB analog mux enabled."
+  },
+  "0152-tb522fu-preserve-bob1-range.patch": {
+    "local_commit": "a83e12b1791c0453c5dd1853c3bacb276990d783",
+    "sha256": "82624d8adb4184bbdbef0e9147404d3c8afa149277a6e45f188f804e85e17483",
+    "license": "BSD-3-Clause device tree",
+    "hardware_tested": false,
+    "source": "Local correction after CI31 BOB1 regulator-registration EINVAL; retain previously working stock operating range matching upstream SM8750 MTP. Exact downstream vote is not a mainline voltage selector."
   }
 }

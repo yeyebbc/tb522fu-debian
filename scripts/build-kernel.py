@@ -245,9 +245,19 @@ def main():
     for prop in ['vdd-buck-supply', 'vdd-rxtx-supply', 'vdd-io-supply', 'vdd-px-supply']:
         assert capture(['fdtget', '-t', 'x', dtb, codec, prop]) == l15
     assert capture(['fdtget', '-t', 'x', dtb, codec, 'vdd-mic-bias-supply']) == bob1
-    for name, voltage in [('ldo15', '1800000'), ('bob1', '3296000')]:
-        for prop in ['regulator-min-microvolt', 'regulator-max-microvolt']:
-            assert capture(['fdtget', '-t', 'i', dtb, supplies + name, prop]) == voltage
+    for name, low, high in [('ldo15', '1800000', '1800000'),
+                           ('bob1', '3008000', '4000000')]:
+        assert capture(['fdtget', '-t', 'i', dtb, supplies + name, 'regulator-min-microvolt']) == low
+        assert capture(['fdtget', '-t', 'i', dtb, supplies + name, 'regulator-max-microvolt']) == high
+    # Preserve the working BOB1 range. The exact downstream 3296000 uV vote
+    # is not a selector in mainline's PMIC5 BOB table; a fixed constraint would
+    # reject the entire regulator provider, including USB/UFS supply rails.
+    regulator_source = (source / 'drivers/regulator/qcom-rpmh-regulator.c').read_text()
+    bob = regulator_source.split('static const struct rpmh_vreg_hw_data pmic5_bob = {', 1)[1].split('\n};', 1)[0]
+    base, first, last, step = map(int, re.search(r'REGULATOR_LINEAR_RANGE\((\d+), (\d+), (\d+), (\d+)\)', bob).groups())
+    low = int(capture(['fdtget', '-t', 'i', dtb, supplies + 'bob1', 'regulator-min-microvolt']))
+    high = int(capture(['fdtget', '-t', 'i', dtb, supplies + 'bob1', 'regulator-max-microvolt']))
+    assert any(low <= base + step * (selector - first) <= high for selector in range(first, last + 1)), 'BOB1 range has no voltage selector'
     assert capture(['fdtget', '-t', 'i', dtb, codec, 'reset-gpios']).split()[1:] == ['101', '1']
     for bias, voltage in [(1, 2800000), (2, 1800000), (3, 2800000), (4, 1800000)]:
         assert capture(['fdtget', '-t', 'i', dtb, codec, f'qcom,micbias{bias}-microvolt']) == str(voltage)

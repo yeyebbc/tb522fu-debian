@@ -48,6 +48,7 @@
     "patches/0148-ath12k-skip-unchanged-country.patch",
     "patches/0149-ath12k-regdomain-before-wiphy.patch",
     "patches/0150-q6apm-capture-trigger-lifecycle.patch",
-    "patches/0151-tb522fu-microphone-board.patch"
+    "patches/0151-tb522fu-microphone-board.patch",
+    "patches/0152-tb522fu-preserve-bob1-range.patch"
   ]
 }

@@ -1,0 +1,33 @@
+From a83e12b1791c0453c5dd1853c3bacb276990d783 Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Fri, 13 Nov 2026 21:35:47 +0800
+Subject: [PATCH] arm64: dts: qcom: preserve TB522FU BOB1 operating range
+
+The stock 3296000 uV static vote is not a selector in the mainline PMIC5 BOB table (3000000 + n * 32000). Fixing both constraints to it rejects the entire regulator bank and prevents USB/UFS from probing. Retain the previously working stock operating range, as used by upstream SM8750 MTP, instead of forcing an unrepresentable setting.
+---
+ arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts | 9 ---------
+ 1 file changed, 9 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+index fba84cea3477..936582051bb5 100644
+--- a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
++++ b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+@@ -846,15 +846,6 @@ tb522fu_wcd: audio-codec {
+ 	};
+ };
+ 
+-/* Stock BOB1 initial voltage and the static codec vote are both 3296000 uV.
+- * WCD939x only enables its supplies, so express that board voltage here.
+- * The existing downstream LDO supplies and their constraints are unchanged.
+- */
+-&vreg_bob1 {
+-	regulator-min-microvolt = <3296000>;
+-	regulator-max-microvolt = <3296000>;
+-};
+-
+ &swr1 {
+ 	status = "okay";
+ 	tb522fu_wcd_rx: codec@0,4 {
+-- 
+2.47.3
+
