@@ -1,0 +1,12 @@
+{
+  "version": "26.1.6",
+  "archive": "https://deb.debian.org/debian/pool/main/m/mesa/mesa_26.1.6.orig.tar.xz",
+  "sha256": "5296b88a0f1e012e2cb9ada150a2bbadf728ca81e5a4fb2ab43c83a4d2158606",
+  "checksum_reference": "https://deb.debian.org/debian/pool/main/m/mesa/mesa_26.1.6-1~bpo13+1.dsc",
+  "prefix": "/opt/tb522fu/mesa-26.1.6-a830",
+  "patch": "configs/graphics/0001-a830-mainline-chip-id.patch",
+  "patch_reference": "https://chromium.googlesource.com/external/gitlab.freedesktop.org/mesa/mesa/+/f1ec46beaa6739fb15de953e6f4dc679b4e8c07f/src/freedreno/common/freedreno_devices.py",
+  "patch_description": "Local one-line backport of the newer upstream device-table entry: recognize chip 0x44050001 independently of the mainline kernel speed-bin bits. Keep all existing GPU properties. No hardware support claim before a real rendering test.",
+  "license": "Mesa original licenses and authorship retained in matching source archive",
+  "exit_condition": "Remove the private prefix when Debian Mesa includes the mainline A830 chip ID and passes the same rendering checks."
+}
