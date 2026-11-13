@@ -126,12 +126,19 @@ stock Android readings. UPower reported no warning, and the physical screen's
 red battery warning cleared. The test returned cleanly through EDL and stock
 Android restoration. No direct charger registers or charging limits were written.
 
-The next candidate allows automatic ADSP loading, first tested in the bounded
-profile. It also adapts the upstream-discussed full-charge unit fix to the two
-populated full-charge properties; empty/current-charge properties stay guarded.
-Automatic startup and the full-charge values still require hardware acceptance.
-Current direction, USB voltage, runtime estimates, unplug behavior and sustained
-net charging remain unvalidated. A charging icon alone does not establish these.
+CI21 recipe `9c4937a` passed automatic ADSP startup in both bounded and
+installed boots. Battery percentage, voltage, temperature and full-charge
+capacity are available automatically; the installed boot reported 84% and
+12.096 Ah full charge against 12.7 Ah design capacity. A physical USB unplug
+and reconnect changed both the kernel power status and UPower correctly,
+while ADSP remained running. Keyboard automatic loading and physical GNOME
+also passed. The installed test returned cleanly to Android entirely on-device;
+its temporary acceptance timer was then removed and the filesystem checked.
+
+Current direction, USB voltage, runtime estimates and sustained net charging
+remain unvalidated. A charging icon alone does not establish these. Wi-Fi is
+the next development priority, followed by audio; further charging refinements
+are deferred.
 
 CI15 also exposed a clock failure: fake-hwclock restored the saved date, then
 the late PMIC RTC probe set system time to 1970. The configuration now disables
