@@ -28,6 +28,26 @@ def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def check_keyboard_wiring(dtb):
+    uart = '/soc@0/geniqup@8c0000/serial@89c000'
+    assert capture(['fdtget', '-t', 's', dtb, '/aliases', 'serial0']) == uart
+    assert capture(['fdtget', '-t', 's', dtb, uart, 'status']) == 'okay'
+    assert capture(['fdtget', '-t', 's', dtb, uart + '/keyboard', 'compatible']) == 'lenovo,tb522fu-keyboard'
+    # Resolve the controller phandle from this DT, then check number/polarity.
+    controller = int(capture(['fdtget', '-t', 'i', dtb, '/soc@0/pinctrl@f100000', 'phandle']))
+    for prop, gpio, active_low in [('vcc3-enable-gpios', 105, 0), ('vcc5-enable-gpios', 106, 0),
+                                  ('ocp-enable-gpios', 110, 0), ('mode-gpios', 42, 0),
+                                  ('detect-gpios', 43, 1),
+                                  ('lid-gpios', 11, 1)]:
+        cells = capture(['fdtget', '-t', 'i', dtb, uart + '/keyboard', prop]).split()
+        assert list(map(int, cells)) == [controller, gpio, active_low], prop
+    assert capture(['fdtget', '-t', 'i', dtb, uart, 'rts-gpios']) == f'{controller} 60 0'
+    assert capture(['fdtget', '-t', 'i', dtb, uart, 'rs485-rts-delay']) == '1 0'
+    assert {'linux,rs485-enabled-at-boot-time', 'rs485-rx-during-tx'} <= set(
+        capture(['fdtget', '-p', dtb, uart]).splitlines())
+    assert 'tx-enable-gpios' not in capture(['fdtget', '-p', dtb, uart+'/keyboard']).splitlines()
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--busybox', type=Path, default=Path('/usr/bin/busybox'))
@@ -213,7 +233,7 @@ def main():
                for name in value.split(',')}
     assert ('lenovo_yoga_keyboard' in blocked) == (not disk)
     assert 'qcom_q6v5_pas' not in blocked
-    # This Bluetooth candidate uses the accepted CI32 firmware framebuffer.
+    # Peripheral candidates use the accepted CI32 firmware framebuffer.
     # GPU/DPMS changes remain separate until visible wake is fixed.
     assert {'msm', 'dispcc_sm8750', 'ktz8866', 'panel_novatek_nt36536'} <= blocked
     assert 'hci_uart' not in blocked
@@ -240,17 +260,7 @@ def main():
                       ('vddrfa1p8', 7)]:
         assert capture(['fdtget', '-t', 'x', dtb, bt, prop + '-supply']) == capture(
             ['fdtget', '-t', 'x', dtb, '/wcn7861-pmu/regulators/ldo' + str(ldo), 'phandle'])
-    uart = '/soc@0/geniqup@8c0000/serial@89c000'
-    assert capture(['fdtget', '-t', 's', dtb, '/aliases', 'serial0']) == uart
-    assert capture(['fdtget', '-t', 's', dtb, uart, 'status']) == 'okay'
-    assert capture(['fdtget', '-t', 's', dtb, uart + '/keyboard', 'compatible']) == 'lenovo,tb522fu-keyboard'
-    # Check the encoded GPIO number/polarity rather than unstable phandles.
-    for prop, gpio, active_low in [('vcc3-enable-gpios', 105, 0), ('vcc5-enable-gpios', 106, 0),
-                                  ('ocp-enable-gpios', 110, 0), ('mode-gpios', 42, 0),
-                                  ('tx-enable-gpios', 60, 0), ('detect-gpios', 43, 1),
-                                  ('lid-gpios', 11, 1)]:
-        cells = capture(['fdtget', '-t', 'i', dtb, uart + '/keyboard', prop]).split()
-        assert len(cells) == 3 and list(map(int, cells[1:])) == [gpio, active_low], prop
+    check_keyboard_wiring(dtb)
     for node, prop, typ, expected in [
         ('/soc@0/remoteproc@6800000', 'status', 's', 'okay'),
         ('/soc@0/remoteproc@6800000', 'firmware-name', 's',
