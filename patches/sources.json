@@ -324,5 +324,12 @@
     "license": "Original Linux file-level licenses and authorship retained; board DTS BSD-3-Clause",
     "hardware_tested": false,
     "source": "Local staged native display/SSC board enablement, panel-follower relationship and stock SE11 pin bias."
+  },
+  "0158-tb522fu-backlight-dma-provider.patch": {
+    "local_commit": "deb26e7813a093cfff18fee7e7d563f651e33dd6",
+    "sha256": "2fcf1e51696e6b86df9ea97d93bed26cf51835427772df36d25884752f2b00ac",
+    "license": "BSD-3-Clause device tree",
+    "hardware_tested": false,
+    "source": "Stock TB522FU GPI2 mask 0x1e, SMMU stream 0x436 and SE10/11 DMA bindings; enable the referenced provider."
   }
 }

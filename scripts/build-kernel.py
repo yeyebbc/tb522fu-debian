@@ -261,6 +261,14 @@ def main():
         assert capture(['fdtget', '-t', 'i', dtb, node, 'regulator-min-microvolt']) == uv
         assert capture(['fdtget', '-t', 'i', dtb, node, 'regulator-max-microvolt']) == uv
     assert 'vdd-supply' not in capture(['fdtget', '-p', dtb, panel]).splitlines()
+    dma = '/soc@0/dma-controller@800000'
+    assert capture(['fdtget', '-t', 's', dtb, dma, 'status']) == 'okay'
+    assert capture(['fdtget', '-t', 'x', dtb, dma, 'dma-channel-mask']) == '1e'
+    assert capture(['fdtget', '-t', 'x', dtb, dma, 'iommus']).split()[1:] == ['436', '0']
+    ref = capture(['fdtget', '-t', 'x', dtb, dma, 'phandle'])
+    for address, se in [('888000', 2), ('88c000', 3)]:
+        bus = '/soc@0/geniqup@8c0000/i2c@' + address
+        assert capture(['fdtget', '-t', 'x', dtb, bus, 'dmas']) == f'{ref} 0 {se} 3 {ref} 1 {se} 3'
     # Check board-specific speaker wiring and the first-test gain cap.
     assert capture(['fdtget', '-t', 's', dtb, '/sound', 'model']) == 'TB522FU'
     # Stock WCD939x rails and pin routing: do not import MTP voltages.

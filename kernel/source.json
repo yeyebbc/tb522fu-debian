@@ -54,6 +54,7 @@
     "patches/0154-tb522fu-dvt2-panel.patch",
     "patches/0155-dpu-four-pipeline-clocks.patch",
     "patches/0156-tb522fu-panel-supply-order.patch",
-    "patches/0157-tb522fu-staged-native-display-ssc.patch"
+    "patches/0157-tb522fu-staged-native-display-ssc.patch",
+    "patches/0158-tb522fu-backlight-dma-provider.patch"
   ]
 }

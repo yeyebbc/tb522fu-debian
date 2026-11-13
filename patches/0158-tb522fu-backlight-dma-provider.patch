@@ -1,0 +1,26 @@
+From deb26e7813a093cfff18fee7e7d563f651e33dd6 Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Fri, 13 Nov 2026 23:24:21 +0800
+Subject: [PATCH] arm64: dts: enable the TB522FU backlight DMA provider
+
+SE10 and SE11 refer to GPI2, which was left disabled. Stock runtime DT confirms mask 0x1e, stream ID 0x436 and the existing I2C DMA channels. Enable the provider rather than leaving its clients permanently deferred when FIFO access is disabled.
+---
+ arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+index 4d93fa849b9f..3977497c7764 100644
+--- a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
++++ b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+@@ -468,6 +468,8 @@ touchscreen@0 {
+ &qupv3_2 { status = "disabled"; };
+ &i2c10 { status = "okay"; };
+ &i2c11 { status = "okay"; };
++/* Stock SE10/11 DMA uses GPI2 with mask 0x1e and SMMU stream 0x436. */
++&gpi_dma2 { status = "okay"; };
+ &{/framebuffer@fc800000} { status = "okay"; }; /* Preserved until native takeover. */
+ 
+ /* Stock SE11 SDA/SCL use external pull-ups, 2 mA and no internal bias. */
+-- 
+2.47.3
+
