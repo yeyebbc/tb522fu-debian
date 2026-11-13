@@ -105,10 +105,14 @@ and system suspend support are not included yet.
 
 CI17 initially stopped before UART registration because the board lacked a
 serial alias. CI18's explicit `serial0` alias fixed that failure. The build
-checks the compiled alias. The next candidate removes a spurious physical
-right-button capability from the single-button clickpad and permits automatic
-loading in the installed profile; bounded probes still require explicit loading.
-Automatic loading and the clickpad correction need fresh hardware acceptance.
+checks the compiled alias. CI19 recipe `012bfc0` removes a spurious physical
+right-button capability from the single-button clickpad. Its installed image
+loaded the keyboard automatically, registered all three accessory input devices,
+and received valid synchronization packets without decoder errors. The libinput
+right-button warning is gone. GNOME was physically visible, and the temporary
+acceptance timer returned cleanly to Android using the on-device switch helper.
+The acceptance timer was then removed. Bounded probes retain explicit loading.
+The existing GNOME two-finger right-click preference is preserved.
 
 Battery properties in the tested kernel return EAGAIN because ADSP is disabled.
 This staged candidate enables ADSP PAS with privately supplied stock firmware
@@ -132,8 +136,8 @@ installed boots verified that the saved date survives RTC probing without
 host clock correction. This does not provide accurate elapsed time while
 powered off or network time synchronization.
 
-Native display/GPU, brightness, Wi-Fi, audio, charging, suspend and the
-keyboard/trackpad/lid accessory remain unverified under Linux. These artifacts
+Native display/GPU, brightness, Wi-Fi, audio, charging, suspend and pen input
+remain unverified under Linux. These artifacts
 are development components, not an installer.
 
 Own-kernel recovery images trigger a firmware CrashDump on the tested Lenovo
