@@ -1,0 +1,48 @@
+From a38ea5b0d62d5a0e365b6851edfa268f109ce327 Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Sat, 14 Nov 2026 05:09:47 +0800
+Subject: [PATCH] Input: lenovo-yoga-keyboard: expose verified white on-off
+ states
+
+Both nonzero brightness-command values and equal RGB intensity values produced indistinguishable illumination in camera comparisons. Expose a binary LED until dimming semantics are established, using the already verified off and full-white packets. Keep input and UART behavior unchanged.
+---
+ drivers/input/misc/lenovo-yoga-keyboard.c | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/input/misc/lenovo-yoga-keyboard.c b/drivers/input/misc/lenovo-yoga-keyboard.c
+index 7663eab18705..1c839ecc7153 100644
+--- a/drivers/input/misc/lenovo-yoga-keyboard.c
++++ b/drivers/input/misc/lenovo-yoga-keyboard.c
+@@ -31,7 +31,7 @@
+ 
+ #define LY_BAUD 921600
+ #define LY_COMMAND_SIZE 14
+-#define LY_BACKLIGHT_MAX 100
++#define LY_BACKLIGHT_MAX 1
+ #define U KEY_UNKNOWN
+ 
+ /* HID keyboard page -> Linux key codes, matching the stock Lenovo table. */
+@@ -299,8 +299,9 @@ static int ly_command(struct ly_keyboard *kb, const u8 *command)
+ /* Caller holds tx_lock. Stock setting writes require an echo, not a reply. */
+ static int ly_apply_backlight(struct ly_keyboard *kb, unsigned int level)
+ {
+-	/* Equal RGB intensities keep the steady light white while dimming it. */
+-	u8 white[LY_COMMAND_SIZE] = { 0x6a, 9, 0x39, 7, 1, level, level, level };
++	/* Only expose the white off/on states verified on this controller. */
++	u8 intensity = level ? 100 : 0;
++	u8 white[LY_COMMAND_SIZE] = { 0x6a, 9, 0x39, 7, 1, intensity, intensity, intensity };
+ 	/* Stock accepts 228 as enabled; 0x34 alone did not dim RGB mode. */
+ 	u8 brightness[LY_COMMAND_SIZE] = { 0x6a, 3, 0x34, 1, level ? 228 : 0 };
+ 	int ret;
+@@ -642,7 +643,7 @@ static int ly_probe(struct serdev_device *serdev)
+ 		kb->backlight.name = "lenovo:white:kbd_backlight";
+ 		kb->backlight.max_brightness = LY_BACKLIGHT_MAX;
+ 		kb->backlight.brightness_set_blocking = ly_set_backlight;
+-		kb->backlight_level = LY_BACKLIGHT_MAX / 4;
++		kb->backlight_level = LY_BACKLIGHT_MAX;
+ 		kb->backlight.brightness = kb->backlight_level;
+ 		ret = devm_led_classdev_register(dev, &kb->backlight);
+ 		if (ret)
+-- 
+2.47.3
+

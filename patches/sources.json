@@ -405,5 +405,12 @@
     "license": "GPL-2.0-only; existing driver authorship retained",
     "hardware_tested": false,
     "source": "Local correction after CI41 physical camera evidence: stock0x34 enabled levels did not dim RGB mode. Scale equal documented RGB fields within known stock sample intensities, preserving steady white. UART and input unchanged."
+  },
+  "0170-tb522fu-white-switch.patch": {
+    "local_commit": "a38ea5b0d62d5a0e365b6851edfa268f109ce327",
+    "sha256": "b7ecf1e26f6b08b4dfb3bd51f49d3fa2206b361837e70d1e3ebcf59b2427806c",
+    "license": "GPL-2.0-only; existing driver authorship retained",
+    "hardware_tested": false,
+    "source": "Limit the LED class to the physically verified off/on white states. Both tested dimming mappings were visually indistinguishable; no further speculative lighting values. Input and UART unchanged."
   }
 }
