@@ -40,3 +40,9 @@ ln -s /etc/machine-id "$root/var/lib/dbus/machine-id"
 rm -f "$root"/etc/ssh/ssh_host_*
 rm -f "$root/etc/resolv.conf"
 ln -s /run/NetworkManager/resolv.conf "$root/etc/resolv.conf"
+
+# This custom kernel trusts upstream wireless-regdb signing keys. Keep the
+# database and its signature together through Debian's alternatives mechanism.
+chroot "$root" update-alternatives --set regulatory.db /lib/firmware/regulatory.db-upstream
+install -D -m 0644 "$(dirname "$0")/../configs/networkmanager-wifi.conf" \
+    "$root/etc/NetworkManager/conf.d/90-tb522fu-wifi-address.conf"

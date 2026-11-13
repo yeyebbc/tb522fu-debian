@@ -1,0 +1,42 @@
+From 26f89dc0aa6febecf73f61c96c100334dfa908b5 Mon Sep 17 00:00:00 2001
+From: yzddmr6 <46088090+yzddmr6@users.noreply.github.com>
+Date: Sat, 26 Sep 2026 10:14:52 +0800
+Subject: [PATCH] ASoC: qcom: audioreach: apply topology configuration to MFC
+ modules
+
+When the input and output channel layouts of the Media Format Converter
+differ, its channel mixer uses built-in coefficients based on ITU-R BS.775
+unless PARAM_ID_CHMIXER_COEFF supplies a table for that pair of layouts.
+The built-in upmix cannot express board wiring such as a stereo stream
+spread over the eight slots of a TDM speaker array, left on the even slots
+and right on the odd ones.
+
+The topology can already attach a module configuration blob to any module,
+but only SMECNS_V2 sends it. Send an MFC's blob after its output media
+format, so a board topology can carry the mixing table next to the graph
+that needs it. MFCs without one are configured as before.
+
+Assisted-by: LLM
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+---
+ sound/soc/qcom/qdsp6/audioreach.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/sound/soc/qcom/qdsp6/audioreach.c b/sound/soc/qcom/qdsp6/audioreach.c
+index c062c605e506..4abc48327e8e 100644
+--- a/sound/soc/qcom/qdsp6/audioreach.c
++++ b/sound/soc/qcom/qdsp6/audioreach.c
+@@ -1605,6 +1605,9 @@ int audioreach_set_media_format(struct q6apm_graph *graph,
+ 		break;
+ 	case MODULE_ID_MFC:
+ 		rc = audioreach_mfc_set_media_format(graph, module, cfg);
++		/* e.g. channel mixer coefficients replacing the built-in ones */
++		if (!rc && module->data)
++			rc = audioreach_set_module_config(graph, module, cfg);
+ 		break;
+ 	case MODULE_ID_GAPLESS:
+ 		rc = audioreach_gapless_set_media_format(graph, module, cfg);
+-- 
+2.47.3
+

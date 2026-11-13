@@ -1,0 +1,108 @@
+From 82262f4056dccc6fd32f1e03933ad532e2c8f3eb Mon Sep 17 00:00:00 2001
+From: yzddmr6 <46088090+yzddmr6@users.noreply.github.com>
+Date: Sat, 26 Sep 2026 10:14:52 +0800
+Subject: [PATCH] ASoC: qcom: audioreach: fix the size of topology module
+ configuration
+
+struct audioreach_module_priv_data documents its size as the size of the
+whole array including the header, and the topology parser walks the
+widget private data by it like any other vendor array.
+
+The parser then allocated and copied struct_size(pdata, data, size)
+bytes, counting size in __le32 elements, so it read up to three times the
+blob's length past its end in the topology firmware.
+audioreach_set_module_config() sent size bytes starting after the 16-byte
+header, which appended 16 bytes beyond the configuration to the APM
+command. An allocation failure was also stored in mod->data as an error
+pointer and later dereferenced.
+
+Bound the walk by the private data size, copy exactly the blob, send only
+the bytes that follow its header, and fail the widget load on an
+allocation failure or a blob too short to carry any configuration.
+
+Fixes: c7ed4c2debfd ("ASoC: qcom: audioreach: add support for static calibration")
+Assisted-by: LLM
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+---
+ sound/soc/qcom/qdsp6/audioreach.c |  2 +-
+ sound/soc/qcom/qdsp6/topology.c   | 36 ++++++++++++++++++++-----------
+ 2 files changed, 24 insertions(+), 14 deletions(-)
+
+diff --git a/sound/soc/qcom/qdsp6/audioreach.c b/sound/soc/qcom/qdsp6/audioreach.c
+index 89930a0c7699..c062c605e506 100644
+--- a/sound/soc/qcom/qdsp6/audioreach.c
++++ b/sound/soc/qcom/qdsp6/audioreach.c
+@@ -855,7 +855,7 @@ static int audioreach_set_module_config(struct q6apm_graph *graph,
+ 					const struct audioreach_module *module,
+ 					const struct audioreach_module_config *cfg)
+ {
+-	int size = le32_to_cpu(module->data->size);
++	int size = le32_to_cpu(module->data->size) - sizeof(*module->data);
+ 	void *p;
+ 
+ 	struct gpr_pkt *pkt __free(kfree) = audioreach_alloc_apm_cmd_pkt(size, APM_CMD_SET_CFG, 0);
+diff --git a/sound/soc/qcom/qdsp6/topology.c b/sound/soc/qcom/qdsp6/topology.c
+index 7cc6f89d6127..f929823fbc8a 100644
+--- a/sound/soc/qcom/qdsp6/topology.c
++++ b/sound/soc/qcom/qdsp6/topology.c
+@@ -308,26 +308,30 @@ audioreach_get_module_array(const struct snd_soc_tplg_private *private)
+ static struct audioreach_module_priv_data *
+ audioreach_get_module_priv_data(const struct snd_soc_tplg_private *private)
+ {
+-	int sz;
++	u32 priv_size = le32_to_cpu(private->size);
++	u32 sz, size;
+ 
+-	for (sz = 0; sz < le32_to_cpu(private->size); ) {
++	for (sz = 0; priv_size - sz >= sizeof(struct snd_soc_tplg_vendor_array); sz += size) {
+ 		const struct snd_soc_tplg_vendor_array *mod_array;
++		struct audioreach_module_priv_data *pdata;
+ 
+ 		mod_array = (struct snd_soc_tplg_vendor_array *)((u8 *)private->array + sz);
+-		if (le32_to_cpu(mod_array->type) == SND_SOC_AR_TPLG_MODULE_CFG_TYPE) {
+-			struct audioreach_module_priv_data *pdata;
++		size = le32_to_cpu(mod_array->size);
++		if (size < sizeof(*mod_array) || size > priv_size - sz)
++			break;
+ 
+-			pdata = kzalloc_flex(*pdata, data,
+-					     le32_to_cpu(mod_array->size));
+-			if (!pdata)
+-				return ERR_PTR(-ENOMEM);
++		if (le32_to_cpu(mod_array->type) != SND_SOC_AR_TPLG_MODULE_CFG_TYPE)
++			continue;
+ 
+-			memcpy(pdata, ((u8 *)private->data + sz), struct_size(pdata, data,
+-						le32_to_cpu(mod_array->size)));
+-			return pdata;
+-		}
++		/* The size covers the header, as it does for every vendor array. */
++		if (size <= sizeof(*pdata))
++			return ERR_PTR(-EINVAL);
+ 
+-		sz = sz + le32_to_cpu(mod_array->size);
++		pdata = kmemdup(mod_array, size, GFP_KERNEL);
++		if (!pdata)
++			return ERR_PTR(-ENOMEM);
++
++		return pdata;
+ 	}
+ 
+ 	return NULL;
+@@ -611,6 +615,12 @@ static int audioreach_widget_load_module_common(struct snd_soc_component *compon
+ 		return mod ? PTR_ERR(mod) : -ENODEV;
+ 
+ 	mod->data = audioreach_get_module_priv_data(&tplg_w->priv);
++	if (IS_ERR(mod->data)) {
++		int ret = PTR_ERR(mod->data);
++
++		mod->data = NULL;
++		return ret;
++	}
+ 
+ 	dobj = &w->dobj;
+ 	dobj->private = mod;
+-- 
+2.47.3
+

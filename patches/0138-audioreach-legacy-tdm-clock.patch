@@ -1,0 +1,50 @@
+From 8aad029a65819320f63c617dd11e5df3f5392ae8 Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Fri, 13 Nov 2026 18:42:12 +0800
+Subject: [PATCH] ASoC: qcom: select the legacy TDM endpoint clock from its
+ interface
+
+---
+ sound/soc/qcom/qdsp6/audioreach.c | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
+
+diff --git a/sound/soc/qcom/qdsp6/audioreach.c b/sound/soc/qcom/qdsp6/audioreach.c
+index df23c9fd5480..a1d0a648d3d6 100644
+--- a/sound/soc/qcom/qdsp6/audioreach.c
++++ b/sound/soc/qcom/qdsp6/audioreach.c
+@@ -10,6 +10,7 @@
+ #include <sound/pcm_params.h>
+ #include <dt-bindings/soc/qcom,gpr.h>
+ #include "q6apm.h"
++#include "q6prm.h"
+ #include "q6dsp-common.h"
+ #include "audioreach.h"
+ 
+@@ -1114,8 +1115,9 @@ static int audioreach_tdm_set_media_format(struct q6apm_graph *graph,
+ 	    module->ctrl_invert_sync_pulse > 1 || module->ctrl_sync_data_delay > 2)
+ 		return -EINVAL;
+ 
+-	/* The legacy clock parameter currently requests firmware defaults. */
+-	if (module->bit_clk_type || module->inv_int_bit_clk || module->inv_ext_bit_clk ||
++	/* The legacy LPAIF uses the 0x200-series TDM clocks, not MI2S clocks. */
++	if (module->hw_interface_type || module->bit_clk_type ||
++	    module->inv_int_bit_clk || module->inv_ext_bit_clk ||
+ 	    (cfg->fmt & SND_SOC_DAIFMT_INV_MASK))
+ 		return -EOPNOTSUPP;
+ 
+@@ -1153,9 +1155,11 @@ static int audioreach_tdm_set_media_format(struct q6apm_graph *graph,
+ 				 PARAM_ID_TDM_LANE_CFG, sizeof(data->lane));
+ 	data->lane.lane_mask = module->active_lane_mask;
+ 
+-	/* Zero ID, frequency, attributes and root select the firmware defaults. */
++	/* PRM owns the rate vote. Match the endpoint's interface and sync source. */
+ 	audioreach_tdm_init_param(&data->clock_param, module->instance_id,
+ 				 PARAM_ID_HW_INTF_CLK_CFG, sizeof(data->clock));
++	data->clock.clock_id = Q6PRM_LPASS_CLK_ID_PRI_TDM_IBIT +
++			      2 * module->hw_interface_idx + !module->sync_src;
+ 
+ 	return q6apm_send_cmd_sync(graph->apm, pkt, 0);
+ }
+-- 
+2.47.3
+

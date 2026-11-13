@@ -1,0 +1,126 @@
+From 2ba119110fb039007c6d046bcebb4a31ad6519b0 Mon Sep 17 00:00:00 2001
+From: yzddmr6 <46088090+yzddmr6@users.noreply.github.com>
+Date: Thu, 24 Sep 2026 21:10:37 +0800
+Subject: [PATCH] ASoC: qcom: audioreach: provide valid multichannel maps
+
+The default mapper only populated one, two and four channels, leaving an eight-channel stream with null channel IDs. Reuse the shared QDSP6 channel mapper and propagate unsupported channel-count errors before sending a stream configuration to the DSP. Keep the existing AudioReach mono FL convention.
+
+Assisted-by: LLM
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+---
+ sound/soc/qcom/qdsp6/audioreach.c       | 21 +++++++++------------
+ sound/soc/qcom/qdsp6/audioreach.h       |  2 +-
+ sound/soc/qcom/qdsp6/q6apm-dai.c        |  9 ++++++---
+ sound/soc/qcom/qdsp6/q6apm-lpass-dais.c |  8 ++++----
+ 4 files changed, 20 insertions(+), 20 deletions(-)
+
+diff --git a/sound/soc/qcom/qdsp6/audioreach.c b/sound/soc/qcom/qdsp6/audioreach.c
+index 2f28ac9b8382..89930a0c7699 100644
+--- a/sound/soc/qcom/qdsp6/audioreach.c
++++ b/sound/soc/qcom/qdsp6/audioreach.c
+@@ -10,6 +10,7 @@
+ #include <sound/pcm_params.h>
+ #include <dt-bindings/soc/qcom,gpr.h>
+ #include "q6apm.h"
++#include "q6dsp-common.h"
+ #include "audioreach.h"
+ 
+ /* SubGraph Config */
+@@ -327,19 +328,15 @@ void *audioreach_alloc_apm_cmd_pkt(int pkt_size, uint32_t opcode, uint32_t token
+ }
+ EXPORT_SYMBOL_GPL(audioreach_alloc_apm_cmd_pkt);
+ 
+-void audioreach_set_default_channel_mapping(u8 *ch_map, int num_channels)
++int audioreach_set_default_channel_mapping(u8 *ch_map, int num_channels)
+ {
+-	if (num_channels == 1) {
+-		ch_map[0] =  PCM_CHANNEL_FL;
+-	} else if (num_channels == 2) {
+-		ch_map[0] =  PCM_CHANNEL_FL;
+-		ch_map[1] =  PCM_CHANNEL_FR;
+-	} else if (num_channels == 4) {
+-		ch_map[0] =  PCM_CHANNEL_FL;
+-		ch_map[1] =  PCM_CHANNEL_FR;
+-		ch_map[2] =  PCM_CHANNEL_LS;
+-		ch_map[3] =  PCM_CHANNEL_RS;
+-	}
++	int ret = q6dsp_map_channels(ch_map, num_channels);
++
++	/* Preserve the AudioReach mono convention used by existing topologies. */
++	if (!ret && num_channels == 1)
++		ch_map[0] = PCM_CHANNEL_FL;
++
++	return ret;
+ }
+ EXPORT_SYMBOL_GPL(audioreach_set_default_channel_mapping);
+ 
+diff --git a/sound/soc/qcom/qdsp6/audioreach.h b/sound/soc/qcom/qdsp6/audioreach.h
+index 1330591528d4..0b86bd901f8a 100644
+--- a/sound/soc/qcom/qdsp6/audioreach.h
++++ b/sound/soc/qcom/qdsp6/audioreach.h
+@@ -1037,7 +1037,7 @@ struct audioreach_module_config {
+ /* Packet Allocation routines */
+ void *audioreach_alloc_apm_cmd_pkt(int pkt_size, uint32_t opcode, uint32_t
+ 				    token);
+-void audioreach_set_default_channel_mapping(u8 *ch_map, int num_channels);
++int audioreach_set_default_channel_mapping(u8 *ch_map, int num_channels);
+ void *audioreach_alloc_cmd_pkt(int payload_size, uint32_t opcode,
+ 			       uint32_t token, uint32_t src_port,
+ 			       uint32_t dest_port);
+diff --git a/sound/soc/qcom/qdsp6/q6apm-dai.c b/sound/soc/qcom/qdsp6/q6apm-dai.c
+index 033197bdd870..3b4929677961 100644
+--- a/sound/soc/qcom/qdsp6/q6apm-dai.c
++++ b/sound/soc/qcom/qdsp6/q6apm-dai.c
+@@ -235,7 +235,9 @@ static int q6apm_dai_prepare(struct snd_soc_component *component,
+ 	cfg.num_channels = runtime->channels;
+ 	cfg.bit_width = prtd->bits_per_sample;
+ 	cfg.fmt = SND_AUDIOCODEC_PCM;
+-	audioreach_set_default_channel_mapping(cfg.channel_map, runtime->channels);
++	ret = audioreach_set_default_channel_mapping(cfg.channel_map, runtime->channels);
++	if (ret)
++		return ret;
+ 	if (prtd->state) {
+ 		/* clear the previous setup if any  */
+ 		q6apm_graph_stop(prtd->graph);
+@@ -840,8 +842,9 @@ static int q6apm_dai_compr_set_params(struct snd_soc_component *component,
+ 		cfg.num_channels = 2;
+ 		cfg.bit_width = prtd->bits_per_sample;
+ 		cfg.fmt = codec->id;
+-		audioreach_set_default_channel_mapping(cfg.channel_map,
+-						       cfg.num_channels);
++		ret = audioreach_set_default_channel_mapping(cfg.channel_map, cfg.num_channels);
++		if (ret)
++			return ret;
+ 		memcpy(&cfg.codec, codec, sizeof(*codec));
+ 
+ 		ret = q6apm_graph_media_format_shmem(prtd->graph, &cfg);
+diff --git a/sound/soc/qcom/qdsp6/q6apm-lpass-dais.c b/sound/soc/qcom/qdsp6/q6apm-lpass-dais.c
+index e204fd59e512..2bb07e1d1ad9 100644
+--- a/sound/soc/qcom/qdsp6/q6apm-lpass-dais.c
++++ b/sound/soc/qcom/qdsp6/q6apm-lpass-dais.c
+@@ -147,7 +147,9 @@ static int q6hdmi_hw_params(struct snd_pcm_substream *substream,
+ 	cfg->bit_width = params_width(params);
+ 	cfg->sample_rate = params_rate(params);
+ 	cfg->num_channels = channels;
+-	audioreach_set_default_channel_mapping(cfg->channel_map, channels);
++	ret = audioreach_set_default_channel_mapping(cfg->channel_map, channels);
++	if (ret)
++		return ret;
+ 
+ 	switch (dai->id) {
+ 	case DISPLAY_PORT_RX_0:
+@@ -177,9 +179,7 @@ static int q6dma_hw_params(struct snd_pcm_substream *substream,
+ 	cfg->bit_width = params_width(params);
+ 	cfg->sample_rate = params_rate(params);
+ 	cfg->num_channels = channels;
+-	audioreach_set_default_channel_mapping(cfg->channel_map, channels);
+-
+-	return 0;
++	return audioreach_set_default_channel_mapping(cfg->channel_map, channels);
+ }
+ 
+ static void q6apm_lpass_dai_shutdown(struct snd_pcm_substream *substream, struct snd_soc_dai *dai)
+-- 
+2.47.3
+

@@ -26,6 +26,16 @@
     "patches/0120-pci-qcom-iommu-map-cells.patch",
     "patches/0121-tb522fu-pcie-wifi-board.patch",
     "patches/0122-ath12k-wcn7860-binding.patch",
-    "patches/0124-tb522fu-peach-pdc-board.patch"
+    "patches/0124-tb522fu-peach-pdc-board.patch",
+    "patches/0130-audioreach-legacy-tdm.patch",
+    "patches/0131-audioreach-multichannel-maps.patch",
+    "patches/0132-audioreach-topology-config-size.patch",
+    "patches/0133-audioreach-mfc-config.patch",
+    "patches/0134-audioreach-pcm-container.patch",
+    "patches/0135-import-elden-aw88461.patch",
+    "patches/0136-q6prm-tdm-clocks.patch",
+    "patches/0137-aw88461-shared-reset-tdm-limit.patch",
+    "patches/0138-audioreach-legacy-tdm-clock.patch",
+    "patches/0139-tb522fu-speaker-board.patch"
   ]
 }

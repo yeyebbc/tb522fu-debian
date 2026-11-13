@@ -1,0 +1,48 @@
+{
+  "upstream_repository": "https://github.com/linux-msm/audioreach-topology",
+  "upstream_commit": "d6bb205aca5f4b8fa6b2f44cf8b5f6a081cbf037",
+  "license": "BSD-3-Clause",
+  "model": "TB522FU",
+  "driver": "sm8750",
+  "kernel_dai_widgets": [
+    "Secondary TDM0 Playback"
+  ],
+  "references": [
+    {
+      "repository": "https://github.com/yzddmr6/onepluspad-2pro-mainline",
+      "commit": "25325453637b1f9f4c128d969269a5a132111f78",
+      "paths": [
+        "packaging/audio/OnePlus-Pad-2-Pro.m4",
+        "packaging/audio/audioreach/module_mfc_cfg.m4",
+        "packaging/audio/audioreach/module_tdm.m4",
+        "tools/build-debs.py"
+      ],
+      "use": "Legacy TDM template, MFC configuration and structural validation; speaker coefficients independently verified against TB522FU stock ACDB."
+    },
+    {
+      "repository": "https://github.com/yzddmr6/xiaomipad-8pro-mainline",
+      "commit": "e24b3007dd4d06a660291a4f558578bde41c1743",
+      "paths": [
+        "device/audio/piano/subgraph-stream-playback.m4",
+        "tools/check-audioreach-tplg.py"
+      ],
+      "use": "Volume-free playback graph with corrected WR_SH port and generic graph-link validator."
+    }
+  ],
+  "stock_parameters": {
+    "lpaif": 0,
+    "interface": 1,
+    "rate": 48000,
+    "slots": 8,
+    "slot_width": 32,
+    "lane_mask": 2,
+    "slot_mask": 255,
+    "sync_source": 1,
+    "sync_mode": 0,
+    "sync_invert": 0,
+    "data_delay": 0,
+    "clock_id": 514
+  },
+  "hardware_tested": false,
+  "firmware_included": false
+}

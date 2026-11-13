@@ -169,6 +169,8 @@ def main():
                     'CONFIG_SPI_QCOM_GENI=m', 'CONFIG_QCOM_GPI_DMA=m', 'CONFIG_TOUCHSCREEN_NT36536_SPI=m',
                     'CONFIG_SERIAL_DEV_BUS=y', 'CONFIG_SERIAL_DEV_CTRL_TTYPORT=y',
                     'CONFIG_INPUT_LENOVO_YOGA_KEYBOARD=m',
+                    'CONFIG_QCOM_APR=m', 'CONFIG_SND_SOC_SC8280XP=m',
+                    'CONFIG_SND_SOC_AW88461=m', 'CONFIG_RESET_GPIO=m',
                     'CONFIG_PCIE_QCOM=y', 'CONFIG_PHY_QCOM_QMP_PCIE=y',
                     'CONFIG_POWER_SEQUENCING=y', 'CONFIG_POWER_SEQUENCING_QCOM_WCN=m',
                     'CONFIG_PCI_PWRCTRL_PWRSEQ=m', 'CONFIG_ATH12K=m',

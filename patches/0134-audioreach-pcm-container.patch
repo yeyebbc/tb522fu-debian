@@ -1,0 +1,59 @@
+From 8185ed964fa9ae9fb841f512c358f35847993e05 Mon Sep 17 00:00:00 2001
+From: yzddmr6 <46088090+yzddmr6@users.noreply.github.com>
+Date: Wed, 30 Sep 2026 14:25:31 +0800
+Subject: [PATCH] ASoC: qcom: audioreach: preserve the PCM sample container
+ width
+
+S24_LE stores each 24-bit sample in a 32-bit ALSA word. The PCM shared-memory and output-format messages currently describe 24-bit words instead, which disagrees with the buffer layout. Populate the existing sample-width field from ALSA and use it when forming PCM messages, retaining the significant width and Q factor.
+
+Preserve the old width fallback for callers that do not specify a container. Packet tests using the production builders and the ALSA format API reproduce the mismatch before this change and verify S16_LE, S24_LE and legacy callers afterwards.
+
+Link: https://audioreach.github.io/dev/capi_mod_dev.html#pcm
+
+Assisted-by: LLM
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+
+Port note: retain the pinned7.3 PCM channel-map context. Only the same three sample-container assignments are changed.
+---
+ sound/soc/qcom/qdsp6/audioreach.c | 4 ++--
+ sound/soc/qcom/qdsp6/q6apm-dai.c  | 1 +
+ 2 files changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/sound/soc/qcom/qdsp6/audioreach.c b/sound/soc/qcom/qdsp6/audioreach.c
+index 4abc48327e8e..df23c9fd5480 100644
+--- a/sound/soc/qcom/qdsp6/audioreach.c
++++ b/sound/soc/qcom/qdsp6/audioreach.c
+@@ -1306,7 +1306,7 @@ static int audioreach_pcm_set_media_format(struct q6apm_graph *graph,
+ 	media_cfg->interleaved = module->interleave_type;
+ 	media_cfg->num_channels = mcfg->num_channels;
+ 	media_cfg->q_factor = mcfg->bit_width - 1;
+-	media_cfg->bits_per_sample = mcfg->bit_width;
++	media_cfg->bits_per_sample = mcfg->bits_per_sample ?: mcfg->bit_width;
+ 	/* Convert the physical mapping to a logical mapping of the channels */
+ 	for (i = 0, j = 0; i < AR_PCM_MAX_NUM_CHANNEL && j < mcfg->num_channels; i++) {
+ 		if (!mcfg->channel_map[i])
+@@ -1398,7 +1398,7 @@ static int audioreach_shmem_set_media_format(struct q6apm_graph *graph,
+ 		cfg->sample_rate = mcfg->sample_rate;
+ 		cfg->bit_width = mcfg->bit_width;
+ 		cfg->alignment = PCM_LSB_ALIGNED;
+-		cfg->bits_per_sample = mcfg->bit_width;
++		cfg->bits_per_sample = mcfg->bits_per_sample ?: mcfg->bit_width;
+ 		cfg->q_factor = mcfg->bit_width - 1;
+ 		cfg->endianness = PCM_LITTLE_ENDIAN;
+ 		cfg->num_channels = mcfg->num_channels;
+diff --git a/sound/soc/qcom/qdsp6/q6apm-dai.c b/sound/soc/qcom/qdsp6/q6apm-dai.c
+index 3b4929677961..3aeac5590279 100644
+--- a/sound/soc/qcom/qdsp6/q6apm-dai.c
++++ b/sound/soc/qcom/qdsp6/q6apm-dai.c
+@@ -234,6 +234,7 @@ static int q6apm_dai_prepare(struct snd_soc_component *component,
+ 	cfg.sample_rate = runtime->rate;
+ 	cfg.num_channels = runtime->channels;
+ 	cfg.bit_width = prtd->bits_per_sample;
++	cfg.bits_per_sample = snd_pcm_format_physical_width(runtime->format);
+ 	cfg.fmt = SND_AUDIOCODEC_PCM;
+ 	ret = audioreach_set_default_channel_mapping(cfg.channel_map, runtime->channels);
+ 	if (ret)
+-- 
+2.47.3
+

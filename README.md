@@ -243,6 +243,33 @@ A temporary userspace timer invoked the Linux helper during acceptance; it is
 not included in the production overlay or kernel. The Magisk GUI Action and
 Linux desktop launcher still need user-session acceptance.
 
+## Combined Wi-Fi and speaker candidate
+
+CI25 started Wi-Fi and keyboard automatically on one tablet and reconnected
+its saved Wi-Fi profile. The selected Debian regulatory database did not match
+this kernel's signing keys; the rootfs hook now selects the upstream database
+and matching signature through Debian alternatives. NetworkManager uses a stable
+private address per network because the firmware address changed across boots.
+These two configuration fixes still require a fresh hardware test. Set a local
+regulatory country only for the device's actual operating region.
+
+The next candidate adds the six AW88461 amplifiers and the stock secondary TDM
+interface. Shared reset, per-amplifier tuning selection, 48 kHz/eight 32-bit slots,
+SD1, the TDM clock ID and stereo duplication were checked against this tablet's
+stock evidence. Firmware remains private. The amplifier volume ceiling stays
+at least 24 dB below the stock tuning gain; DSP speaker protection is not enabled.
+Speaker playback and GNOME audio integration are **not yet hardware verified**.
+Microphones, headphones and suspend remain outside this first speaker test.
+
+The `audio-topology` CI artifact includes the compiled speaker graph and UCM
+configuration. Its build checks PCM compatibility, graph links, configuration
+sizes, channel maps and coefficients. Local build:
+
+```sh
+apt-get install git python3 m4 alsa-utils
+python3 scripts/build-audio-topology.py
+```
+
 ## Sources and patches
 
 The exact-device kernel is pinned in [kernel/source.json](kernel/source.json)

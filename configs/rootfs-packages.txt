@@ -7,6 +7,8 @@ wpasupplicant
 wireless-regdb
 iw
 curl
+alsa-utils
+alsa-ucm-conf
 openssh-server
 sudo
 locales

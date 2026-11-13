@@ -101,5 +101,79 @@
     "reference_commit": "b0c05eb72e10140f87efd0e499ad840e6c3e6975",
     "license": "BSD-3-Clause device tree",
     "hardware_tested": false
+  },
+  "0130-audioreach-legacy-tdm.patch": {
+    "license": "Original source licenses and attribution retained",
+    "sha256": "afb77c58d88f9c53abf940f5ce855dc6063ff19efcd57b629560914fd254483b",
+    "hardware_tested": false,
+    "repository": "https://github.com/yzddmr6/linux-sm8750-erhai",
+    "commit": "c6e260ba6f6417b2c84811346f3e7466fad05eb3",
+    "adaptation": "Audio dependency subset; context refreshed for pinned Linux 7.3 where needed."
+  },
+  "0131-audioreach-multichannel-maps.patch": {
+    "license": "Original source licenses and attribution retained",
+    "sha256": "aee8b6aae964c070ba6893762171d7c78caa403487573443f218a739717edc70",
+    "hardware_tested": false,
+    "repository": "https://github.com/yzddmr6/linux-sm8750-erhai",
+    "commit": "dc4801b5d99e4425ca1d1d0617eddde7e5b430a9",
+    "adaptation": "Audio dependency subset; context refreshed for pinned Linux 7.3 where needed."
+  },
+  "0132-audioreach-topology-config-size.patch": {
+    "license": "Original source licenses and attribution retained",
+    "sha256": "a7da96445c3d679c37edd3f1cf7ffcdd16348ee37256524213e54458579ce580",
+    "hardware_tested": false,
+    "repository": "https://github.com/yzddmr6/linux-sm8750-erhai",
+    "commit": "4b421f5d4c91301b799379b4ee400e2fcf959258",
+    "adaptation": "Audio dependency subset; context refreshed for pinned Linux 7.3 where needed."
+  },
+  "0133-audioreach-mfc-config.patch": {
+    "license": "Original source licenses and attribution retained",
+    "sha256": "1a3d073597ee8fb110f838050b44fedda026e3d4579f4f5a2c9c9ab0a925a0a2",
+    "hardware_tested": false,
+    "repository": "https://github.com/yzddmr6/linux-sm8750-erhai",
+    "commit": "9d3f8ef205b5cb34a1a861d52e36ec27ddbce60b",
+    "adaptation": "Audio dependency subset; context refreshed for pinned Linux 7.3 where needed."
+  },
+  "0134-audioreach-pcm-container.patch": {
+    "license": "Original source licenses and attribution retained",
+    "sha256": "4dcbd9f3109852faf1a344c970fca9e393600d0fc7830cde096975a41765f3a7",
+    "hardware_tested": false,
+    "repository": "https://github.com/yzddmr6/linux-sm8750-erhai",
+    "commit": "4739a12a355673e186bf7bac8e0cf2f8e502d220",
+    "adaptation": "Audio dependency subset; context refreshed for pinned Linux 7.3 where needed."
+  },
+  "0135-import-elden-aw88461.patch": {
+    "license": "Original source licenses and attribution retained",
+    "sha256": "1613fb76fa40127f245b40e4f9a54583f655db879b7c57f180d7274e5a32826c",
+    "hardware_tested": false,
+    "repository": "https://github.com/GEEKiDoS/linux",
+    "commit": "b0c05eb72e10140f87efd0e499ad840e6c3e6975",
+    "adaptation": "Audio dependency subset; context refreshed for pinned Linux 7.3 where needed."
+  },
+  "0136-q6prm-tdm-clocks.patch": {
+    "license": "Original source licenses and attribution retained",
+    "sha256": "c2fa081fc1ff978c7ec7ea361665f9bdd7e1da67303a84cafbff892fb92aabed",
+    "hardware_tested": false,
+    "repository": "https://github.com/yzddmr6/linux-sm8750-erhai",
+    "commit": "822bf5d2d4e990052858631eda924a9d16ef6e60",
+    "adaptation": "Audio dependency subset; context refreshed for pinned Linux 7.3 where needed."
+  },
+  "0137-aw88461-shared-reset-tdm-limit.patch": {
+    "license": "Original source licenses and attribution retained",
+    "sha256": "b906e0c134d54756cc2cc30c3c136e55e7aa7bacdb7148c8682a4779ba94bafb",
+    "hardware_tested": false,
+    "source": "Local adaptation from TB522FU runtime DT, AW88461 chip IDs, private ACF and official read-only AudioReach ACDB queries; conservative gain, no speaker protection claim."
+  },
+  "0138-audioreach-legacy-tdm-clock.patch": {
+    "license": "Original source licenses and attribution retained",
+    "sha256": "21964783342c1da3085874071b61e80063fc254bd1bec1b22d7f91e6da2fa408",
+    "hardware_tested": false,
+    "source": "Local adaptation from TB522FU runtime DT, AW88461 chip IDs, private ACF and official read-only AudioReach ACDB queries; conservative gain, no speaker protection claim."
+  },
+  "0139-tb522fu-speaker-board.patch": {
+    "license": "Original source licenses and attribution retained",
+    "sha256": "b0618a7dd13b75e93fa87c0470c161763e4305c0ebaacbd2805cf771f37213b3",
+    "hardware_tested": false,
+    "source": "Local adaptation from TB522FU runtime DT, AW88461 chip IDs, private ACF and official read-only AudioReach ACDB queries; conservative gain, no speaker protection claim."
   }
 }

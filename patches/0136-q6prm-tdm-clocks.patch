@@ -1,0 +1,91 @@
+From 0a924d3137ba12ed773732ccecbad4fc5e18c04d Mon Sep 17 00:00:00 2001
+From: yzddmr6 <46088090+yzddmr6@users.noreply.github.com>
+Date: Sat, 26 Sep 2026 11:29:33 +0800
+Subject: [PATCH] ASoC: qcom: q6prm: add TDM bit clock IDs
+
+The PRM clock controller only exposes the MI2S (0x1xx), codec core
+(0x3xx) and Audio IF (0x5xx) clocks. The dt-bindings already define
+LPASS_CLK_ID_{PRI,SEC,TER,QUAD,QUIN}_TDM_{IBIT,EBIT} and
+LPASS_CLK_ID_QUIN_TDM_OSR, and q6afe-clocks.c already registers them for
+the AFE, but on AudioReach platforms a DT that references them fails to
+get the clock because the PRM table has no such entries.
+
+AudioReach gives the TDM interfaces their own bit clock IDs, separate
+from the MI2S ones: CLOCK_ID_{PRI,SEC,TER,QUAD,QUI}_TDM_{IBIT,EBIT} are
+0x200-0x209 and CLOCK_ID_QUI_TDM_OSR is 0x20a in
+spf/api/modules/audio_hw_clk_api.h of the AudioReach graph services,
+the same values the AFE uses. The secondary interface in TDM mode is
+therefore clocked through 0x202, not through the secondary MI2S bit
+clock 0x102. Add the TDM IDs to the PRM table so that TDM backends can
+vote for the clock the DSP associates with that interface.
+
+This only registers additional clocks; no existing clock ID changes.
+
+Link: https://github.com/AudioReach/audioreach-graphservices/blob/55250c3e0c2a1dbecff9fdc32b5946132e840617/spf/api/modules/audio_hw_clk_api.h
+Assisted-by: LLM
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+---
+ sound/soc/qcom/qdsp6/q6prm-clocks.c | 11 +++++++++++
+ sound/soc/qcom/qdsp6/q6prm.h        | 23 +++++++++++++++++++++++
+ 2 files changed, 34 insertions(+)
+
+diff --git a/sound/soc/qcom/qdsp6/q6prm-clocks.c b/sound/soc/qcom/qdsp6/q6prm-clocks.c
+index b4f9abbe02cb..cb1b1d720606 100644
+--- a/sound/soc/qcom/qdsp6/q6prm-clocks.c
++++ b/sound/soc/qcom/qdsp6/q6prm-clocks.c
+@@ -42,6 +42,17 @@ static const struct q6dsp_clk_init q6prm_clks[] = {
+ 	Q6PRM_CLK(LPASS_CLK_ID_INT5_MI2S_IBIT),
+ 	Q6PRM_CLK(LPASS_CLK_ID_INT6_MI2S_IBIT),
+ 	Q6PRM_CLK(LPASS_CLK_ID_QUI_MI2S_OSR),
++	Q6PRM_CLK(LPASS_CLK_ID_PRI_TDM_IBIT),
++	Q6PRM_CLK(LPASS_CLK_ID_PRI_TDM_EBIT),
++	Q6PRM_CLK(LPASS_CLK_ID_SEC_TDM_IBIT),
++	Q6PRM_CLK(LPASS_CLK_ID_SEC_TDM_EBIT),
++	Q6PRM_CLK(LPASS_CLK_ID_TER_TDM_IBIT),
++	Q6PRM_CLK(LPASS_CLK_ID_TER_TDM_EBIT),
++	Q6PRM_CLK(LPASS_CLK_ID_QUAD_TDM_IBIT),
++	Q6PRM_CLK(LPASS_CLK_ID_QUAD_TDM_EBIT),
++	Q6PRM_CLK(LPASS_CLK_ID_QUIN_TDM_IBIT),
++	Q6PRM_CLK(LPASS_CLK_ID_QUIN_TDM_EBIT),
++	Q6PRM_CLK(LPASS_CLK_ID_QUIN_TDM_OSR),
+ 	Q6PRM_CLK(LPASS_CLK_ID_MCLK_1),
+ 	Q6PRM_CLK(LPASS_CLK_ID_MCLK_2),
+ 	Q6PRM_CLK(LPASS_CLK_ID_MCLK_3),
+diff --git a/sound/soc/qcom/qdsp6/q6prm.h b/sound/soc/qcom/qdsp6/q6prm.h
+index cf619ef6561a..41337725a9b7 100644
+--- a/sound/soc/qcom/qdsp6/q6prm.h
++++ b/sound/soc/qcom/qdsp6/q6prm.h
+@@ -55,6 +55,29 @@
+ /* Clock ID for QUINARY MI2S OSR CLK  */
+ #define Q6PRM_LPASS_CLK_ID_QUI_MI2S_OSR                         0x116
+ 
++/* Clock ID for Primary TDM IBIT */
++#define Q6PRM_LPASS_CLK_ID_PRI_TDM_IBIT			0x200
++/* Clock ID for Primary TDM EBIT */
++#define Q6PRM_LPASS_CLK_ID_PRI_TDM_EBIT			0x201
++/* Clock ID for Secondary TDM IBIT */
++#define Q6PRM_LPASS_CLK_ID_SEC_TDM_IBIT			0x202
++/* Clock ID for Secondary TDM EBIT */
++#define Q6PRM_LPASS_CLK_ID_SEC_TDM_EBIT			0x203
++/* Clock ID for Tertiary TDM IBIT */
++#define Q6PRM_LPASS_CLK_ID_TER_TDM_IBIT			0x204
++/* Clock ID for Tertiary TDM EBIT */
++#define Q6PRM_LPASS_CLK_ID_TER_TDM_EBIT			0x205
++/* Clock ID for Quaternary TDM IBIT */
++#define Q6PRM_LPASS_CLK_ID_QUAD_TDM_IBIT		0x206
++/* Clock ID for Quaternary TDM EBIT */
++#define Q6PRM_LPASS_CLK_ID_QUAD_TDM_EBIT		0x207
++/* Clock ID for Quinary TDM IBIT */
++#define Q6PRM_LPASS_CLK_ID_QUIN_TDM_IBIT		0x208
++/* Clock ID for Quinary TDM EBIT */
++#define Q6PRM_LPASS_CLK_ID_QUIN_TDM_EBIT		0x209
++/* Clock ID for Quinary TDM OSR */
++#define Q6PRM_LPASS_CLK_ID_QUIN_TDM_OSR			0x20A
++
+ /* Clock ID for MCLK1 */
+ #define Q6PRM_LPASS_CLK_ID_MCLK_1                                 0x300
+ /* Clock ID for MCLK2 */
+-- 
+2.47.3
+

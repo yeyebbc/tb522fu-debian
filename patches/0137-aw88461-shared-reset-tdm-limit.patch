@@ -1,0 +1,284 @@
+From 4a5ec225d42ed411a2743f4bd35be95a4c9fbffb Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Fri, 13 Nov 2026 18:42:12 +0800
+Subject: [PATCH] ASoC: aw88461: support shared reset, stock TDM profiles and a
+ board volume ceiling
+
+---
+ .../bindings/sound/awinic,aw88395.yaml        | 11 +++
+ sound/soc/codecs/Kconfig                      |  5 +-
+ sound/soc/codecs/aw88461.c                    | 98 ++++++++++++++++---
+ 3 files changed, 98 insertions(+), 16 deletions(-)
+
+diff --git a/Documentation/devicetree/bindings/sound/awinic,aw88395.yaml b/Documentation/devicetree/bindings/sound/awinic,aw88395.yaml
+index 20a74e9d1b76..33944f2e32eb 100644
+--- a/Documentation/devicetree/bindings/sound/awinic,aw88395.yaml
++++ b/Documentation/devicetree/bindings/sound/awinic,aw88395.yaml
+@@ -53,6 +53,17 @@ properties:
+       Flag bit used to keep the phase synchronized in the case of multiple PA
+     $ref: /schemas/types.yaml#/definitions/flag
+ 
++  awinic,maximum-volume:
++    description: |
++      Board limit for the AW88461 playback volume control. Zero selects
++      maximum attenuation, 1023 selects the profile gain. Each step removes
++      one hardware attenuation unit (approximately 0.094 dB). This limit
++      reduces gain relative to the tuning profile when speaker protection
++      is unavailable.
++    $ref: /schemas/types.yaml#/definitions/uint32
++    maximum: 1023
++    default: 1023
++
+ required:
+   - compatible
+   - reg
+diff --git a/sound/soc/codecs/Kconfig b/sound/soc/codecs/Kconfig
+index 833f8c26326c..6dc9df71067a 100644
+--- a/sound/soc/codecs/Kconfig
++++ b/sound/soc/codecs/Kconfig
+@@ -665,10 +665,11 @@ config SND_SOC_AW8738
+ 	  operation mode using the Awinic-specific one-wire pulse control.
+ 
+ config SND_SOC_AW88461
+-	tristate "Awinic AW88461 I2S amplifier"
+-	depends on I2C
++	tristate "Awinic AW88461 I2S/TDM amplifier"
++	depends on I2C && RESET_CONTROLLER
+ 	select REGMAP_I2C
+ 	select GPIOLIB
++	select RESET_GPIO
+ 	select FW_LOADER
+ 	select SND_SOC_AW88395_LIB
+ 	help
+diff --git a/sound/soc/codecs/aw88461.c b/sound/soc/codecs/aw88461.c
+index 73f37c253963..84fe6196967e 100644
+--- a/sound/soc/codecs/aw88461.c
++++ b/sound/soc/codecs/aw88461.c
+@@ -6,12 +6,12 @@
+ #include <linux/bitfield.h>
+ #include <linux/delay.h>
+ #include <linux/firmware.h>
+-#include <linux/gpio/consumer.h>
+ #include <linux/i2c.h>
+ #include <linux/module.h>
+ #include <linux/mutex.h>
+ #include <linux/property.h>
+ #include <linux/regmap.h>
++#include <linux/reset.h>
+ #include <linux/unaligned.h>
+ #include <linux/workqueue.h>
+ #include <sound/pcm_params.h>
+@@ -42,17 +42,20 @@
+ 
+ struct aw88461 {
+ 	struct aw_device aw_dev;
+-	struct gpio_desc *reset;
++	struct reset_control *reset;
+ 	/* Serialize DAPM power transitions and mixer/DAI register access. */
+ 	struct mutex lock;
+ 	struct work_struct start_work;
+ 	unsigned int volume;
++	unsigned int volume_limit;
+ 	unsigned int profile_volume;
+ 	unsigned int profile_txen;
+ 	bool enabled;
+ 	bool running;
+ 	bool powered;
+ 	bool faulted;
++	bool reset_deasserted;
++	bool tdm;
+ };
+ 
+ static const struct regmap_config aw88461_regmap_config = {
+@@ -66,11 +69,20 @@ static void aw88461_reset(void *data)
+ {
+ 	struct aw88461 *amp = data;
+ 
+-	gpiod_set_value_cansleep(amp->reset, 1);
++	if (amp->reset_deasserted) {
++		reset_control_assert(amp->reset);
++		amp->reset_deasserted = false;
++	}
+ }
+ 
+ static int aw88461_fault(struct aw88461 *amp, int error)
+ {
++	/* A shared reset must not reset other active amplifiers. */
++	regmap_update_bits(amp->aw_dev.regmap, AW88461_SYSCTRL,
++			   AW88461_HMUTE | AW88461_ULS_HMUTE |
++			   AW88461_AMPPD | AW88461_PWDN | AW88461_TXEN,
++			   AW88461_HMUTE | AW88461_ULS_HMUTE |
++			   AW88461_AMPPD | AW88461_PWDN);
+ 	amp->powered = false;
+ 	amp->faulted = true;
+ 	aw88461_reset(amp);
+@@ -297,7 +309,17 @@ static int aw88461_hw_params(struct snd_pcm_substream *substream,
+ 	unsigned int frame, width;
+ 	int ret;
+ 
+-	if (params_rate(params) != 48000 || params_channels(params) != 2)
++	if (params_rate(params) != 48000)
++		return -EINVAL;
++	guard(mutex)(&amp->lock);
++	if (amp->tdm) {
++		/* The board ACF owns the TDM mode and this amplifier's slot. */
++		if (params_channels(params) != 8 || params_width(params) != 32 ||
++		    params_physical_width(params) != 32)
++			return -EINVAL;
++		return amp->faulted ? -EIO : 0;
++	}
++	if (params_channels(params) != 2)
+ 		return -EINVAL;
+ 	switch (params_width(params)) {
+ 	case 16:
+@@ -313,7 +335,6 @@ static int aw88461_hw_params(struct snd_pcm_substream *substream,
+ 		return -EINVAL;
+ 	}
+ 	frame = params_physical_width(params) == 16 ? 0 : 2;
+-	guard(mutex)(&amp->lock);
+ 	if (amp->faulted)
+ 		return -EIO;
+ 	ret = regmap_update_bits(amp->aw_dev.regmap, AW88461_I2SCTRL1,
+@@ -324,13 +345,30 @@ static int aw88461_hw_params(struct snd_pcm_substream *substream,
+ 
+ static int aw88461_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
+ {
+-	if ((fmt & SND_SOC_DAIFMT_FORMAT_MASK) != SND_SOC_DAIFMT_I2S ||
++	unsigned int format = fmt & SND_SOC_DAIFMT_FORMAT_MASK;
++
++	if ((format != SND_SOC_DAIFMT_I2S && format != SND_SOC_DAIFMT_DSP_B) ||
+ 	    (fmt & SND_SOC_DAIFMT_INV_MASK) != SND_SOC_DAIFMT_NB_NF ||
+ 	    (fmt & SND_SOC_DAIFMT_CLOCK_PROVIDER_MASK) != SND_SOC_DAIFMT_BC_FC)
+ 		return -EINVAL;
+ 	return 0;
+ }
+ 
++static int aw88461_set_tdm_slot(struct snd_soc_dai *dai, unsigned int tx_mask,
++				unsigned int rx_mask, int slots, int slot_width)
++{
++	struct aw88461 *amp = snd_soc_component_get_drvdata(dai->component);
++
++	/* Stock AW88461 profiles select one of the eight 32-bit receive slots. */
++	if (tx_mask || rx_mask != 0xff || slots != 8 || slot_width != 32)
++		return -EINVAL;
++	guard(mutex)(&amp->lock);
++	if (amp->powered || amp->faulted)
++		return -EBUSY;
++	amp->tdm = true;
++	return 0;
++}
++
+ static int aw88461_trigger(struct snd_pcm_substream *substream, int cmd,
+ 			   struct snd_soc_dai *dai)
+ {
+@@ -358,6 +396,7 @@ static int aw88461_trigger(struct snd_pcm_substream *substream, int cmd,
+ static const struct snd_soc_dai_ops aw88461_dai_ops = {
+ 	.hw_params = aw88461_hw_params,
+ 	.set_fmt = aw88461_set_fmt,
++	.set_tdm_slot = aw88461_set_tdm_slot,
+ 	.trigger = aw88461_trigger,
+ };
+ 
+@@ -366,7 +405,7 @@ static struct snd_soc_dai_driver aw88461_dai = {
+ 	.playback = {
+ 		.stream_name = "Playback",
+ 		.channels_min = 2,
+-		.channels_max = 2,
++		.channels_max = 8,
+ 		.rates = SNDRV_PCM_RATE_48000,
+ 		.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE |
+ 			   SNDRV_PCM_FMTBIT_S32_LE,
+@@ -374,6 +413,19 @@ static struct snd_soc_dai_driver aw88461_dai = {
+ 	.ops = &aw88461_dai_ops,
+ };
+ 
++static int aw88461_volume_info(struct snd_kcontrol *kcontrol,
++			       struct snd_ctl_elem_info *info)
++{
++	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
++	struct aw88461 *amp = snd_soc_component_get_drvdata(component);
++
++	info->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
++	info->count = 1;
++	info->value.integer.min = 0;
++	info->value.integer.max = amp->volume_limit;
++	return 0;
++}
++
+ static int aw88461_volume_get(struct snd_kcontrol *kcontrol,
+ 			      struct snd_ctl_elem_value *value)
+ {
+@@ -393,7 +445,7 @@ static int aw88461_volume_put(struct snd_kcontrol *kcontrol,
+ 	long volume = value->value.integer.value[0];
+ 	int ret;
+ 
+-	if (volume < 0 || volume > 1023)
++	if (volume < 0 || volume > amp->volume_limit)
+ 		return -EINVAL;
+ 	guard(mutex)(&amp->lock);
+ 	if (amp->faulted)
+@@ -410,8 +462,13 @@ static int aw88461_volume_put(struct snd_kcontrol *kcontrol,
+ }
+ 
+ static const struct snd_kcontrol_new aw88461_controls[] = {
+-	SOC_SINGLE_EXT("Playback Volume", SND_SOC_NOPM, 0, 1023, 0,
+-		       aw88461_volume_get, aw88461_volume_put),
++	{
++		.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
++		.name = "Playback Volume",
++		.info = aw88461_volume_info,
++		.get = aw88461_volume_get,
++		.put = aw88461_volume_put,
++	},
+ };
+ 
+ static int aw88461_event(struct snd_soc_dapm_widget *w,
+@@ -485,6 +542,12 @@ static int aw88461_probe(struct i2c_client *client)
+ 	amp->aw_dev.i2c = client;
+ 	amp->aw_dev.chip_id = AW88461_CHIP_ID;
+ 	amp->aw_dev.prof_info.prof_type = AW88395_DEV_NONE_TYPE_ID;
++	amp->volume_limit = 1023;
++	ret = device_property_read_u32(&client->dev, "awinic,maximum-volume",
++				      &amp->volume_limit);
++	if ((ret && device_property_present(&client->dev, "awinic,maximum-volume")) ||
++	    amp->volume_limit > 1023)
++		return -EINVAL;
+ 	ret = device_property_read_u32(&client->dev, "awinic,audio-channel", &amp->aw_dev.channel);
+ 	if (ret && device_property_present(&client->dev, "awinic,audio-channel"))
+ 		return ret;
+@@ -494,14 +557,20 @@ static int aw88461_probe(struct i2c_client *client)
+ 	amp->aw_dev.regmap = devm_regmap_init_i2c(client, &aw88461_regmap_config);
+ 	if (IS_ERR(amp->aw_dev.regmap))
+ 		return PTR_ERR(amp->aw_dev.regmap);
+-	amp->reset = devm_gpiod_get(&client->dev, "reset", GPIOD_OUT_HIGH);
++	amp->reset = devm_reset_control_get_shared(&client->dev, NULL);
+ 	if (IS_ERR(amp->reset))
+-		return dev_err_probe(&client->dev, PTR_ERR(amp->reset), "reset GPIO unavailable\n");
++		return dev_err_probe(&client->dev, PTR_ERR(amp->reset), "shared reset unavailable\n");
++	/* The GPIO reset controller initially holds the line asserted. Only the
++	 * first consumer's deassert changes it; later consumers cannot pulse it.
++	 */
++	usleep_range(1000, 1200);
++	ret = reset_control_deassert(amp->reset);
++	if (ret)
++		return ret;
++	amp->reset_deasserted = true;
+ 	ret = devm_add_action_or_reset(&client->dev, aw88461_reset, amp);
+ 	if (ret)
+ 		return ret;
+-	usleep_range(1000, 1200);
+-	gpiod_set_value_cansleep(amp->reset, 0);
+ 	usleep_range(2000, 2500);
+ 	ret = regmap_read(amp->aw_dev.regmap, AW88461_ID, &id);
+ 	if (ret)
+@@ -524,6 +593,7 @@ static void aw88461_shutdown(struct i2c_client *client)
+ 
+ 	aw88461_cancel_work(amp);
+ 	guard(mutex)(&amp->lock);
++	aw88461_stop(amp);
+ 	aw88461_reset(amp);
+ }
+ 
+-- 
+2.47.3
+

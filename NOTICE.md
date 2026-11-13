@@ -30,3 +30,17 @@ https://github.com/AkarinServer/Y700-Gen3-Droidian/tree/124f2c154a6e34a66df56afc
 Its serdev lifecycle, bounded parser and TB522FU adaptation are separate local
 work. Exact wiring and packet layout were checked against stock evidence;
 firmware, raw captures and hardware identifiers are not included.
+
+
+Audio dependency patches preserve authors and licenses from yzddmr6/linux-sm8750-erhai
+and the scoped AW88461 implementation from GEEKiDoS/linux. Exact origins and
+context adaptations are listed in patches/sources.json. Local TB522FU changes
+provide shared reset, a volume ceiling, stock TDM/clock settings and board wiring.
+No stock amplifier tuning or ACDB binary is redistributed.
+
+AudioReach templates retain the BSD-3-Clause Linaro notices. The pinned upstream
+and integration reference commits are in configs/audio/source.json. The volume-free
+stream template and graph-link checker derive from yzddmr6/xiaomipad-8pro-mainline
+(BSD-3-Clause and MIT respectively); the MFC/TDM templates and validation helpers
+derive from yzddmr6/onepluspad-2pro-mainline (BSD-3-Clause and GPL-2.0-only respectively).
+The compiled graph uses this tablet's observed slot routing with kernel channel labels.

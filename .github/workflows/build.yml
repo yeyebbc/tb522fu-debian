@@ -59,6 +59,28 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  audio:
+    name: Speaker topology
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 15
+    container: debian:trixie
+    steps:
+      - name: Install topology tools
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends git ca-certificates python3 m4 alsa-utils
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build and inspect the pinned speaker topology
+        run: python3 scripts/build-audio-topology.py
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: audio-topology
+          path: artifacts/audio/
+          if-no-files-found: error
+          retention-days: 7
+
   rootfs:
     if: github.event_name == 'workflow_dispatch' && inputs.build_rootfs
     name: Debian 13 GNOME root filesystem
