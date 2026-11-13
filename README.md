@@ -20,12 +20,14 @@ configuration retained for rollback.
 The CI35 bounded GPU test passed native display, Adreno 830 hardware pixel
 readback for210seconds, rejection of a forced software renderer, and actual
 GNOME compositor GPU activity. The Mesa26.1.6 device-table backport is pinned
-in`configs/graphics/source.json`. The next candidate enables normal display/GPU
-autoload in both disk profiles; FastRPC remains staged. Matching userspace must
+in`configs/graphics/source.json`. CI36 additionally passed normal display/GPU
+autoload, hardware GTK OpenGL/Vulkan rendering and GPU runtime suspend/resume,
+but the panel stays black after DPMS wake with DSI/CTL errors. CI36 is rejected
+for production until display wake is fixed. FastRPC remains staged. Matching userspace must
 retire the old display/touch blacklist and manual touch unit, then select the
 isolated Mesa library directory through ld.so.conf.d. Distribution packages and
-the accepted CI32 rollback remain intact. Native display/touch power transitions,
-normal startup and installed cold boot are still pending; this is not a release.
+the accepted CI32 rollback remain intact. Native display/touch power transitions and installed cold boot
+remain outstanding; this is not a release.
 
 GitHub Actions builds two kernel profiles on native ARM64 runners:
 
