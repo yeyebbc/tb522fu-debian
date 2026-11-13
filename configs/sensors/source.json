@@ -1,0 +1,32 @@
+{
+  "components": [
+    {
+      "name": "hexagonrpc",
+      "repository": "https://github.com/linux-msm/hexagonrpc.git",
+      "commit": "da7a3742ab8d5273a281b70ee11f16fb2cb6a690",
+      "patch": "configs/sensors/hexagonrpc-registry.patch",
+      "license": "GPL-3.0-or-later"
+    },
+    {
+      "name": "libssc",
+      "repository": "https://codeberg.org/DylanVanAssche/libssc.git",
+      "commit": "033e2a32095c024d6dbdfb1d4ae1db4a94be32f1",
+      "license": "GPL-3.0-or-later"
+    },
+    {
+      "name": "iio-sensor-proxy",
+      "repository": "https://gitlab.freedesktop.org/hadess/iio-sensor-proxy.git",
+      "commit": "ca0d5b08bd647afc5f8ead3ce00a44018fbc633f",
+      "patch": "configs/sensors/iio-sensor-proxy-startup.patch",
+      "license": "GPL-3.0-or-later"
+    }
+  ],
+  "patch_origin": {
+    "repository": "https://github.com/GEEKiDoS/tb322fc-linux",
+    "commit": "473f3e075cf328e094db3e79721fefeed248d42b",
+    "author": "GEEKi <geek_ds@foxmail.com>",
+    "adaptation": "hexagonrpc patch unchanged; iio-sensor-proxy imports the startup/reentrancy fixes only. Accelerometer enablement remains deferred until mount orientation is verified."
+  },
+  "hardware_tested": false
+}
+

@@ -1,5 +1,15 @@
 # Source provenance
 
+Sensor userspace sources are pinned in `configs/sensors/source.json`:
+linux-msm/hexagonrpc, Dylan Van Assche's libssc, and iio-sensor-proxy.
+All retain their GPL-3.0-or-later source notices. The registry file service
+and startup/reentrancy patches come from GEEKi's
+`GEEKiDoS/tb322fc-linux@473f3e075cf328e094db3e79721fefeed248d42b`;
+the latter imports only the startup fixes, without enabling accelerometers.
+The sensor artifact includes the exact patched source trees. Device firmware,
+sensor configuration and calibration must come from the owner's tablet and
+are not included. Building these services does not establish sensor support.
+
 | Component | Pinned source | License |
 | --- | --- | --- |
 | Mainline kernel and exact-device DTS | `arkylin/y900-linux` at `eccf7f8cde20924b8a22654f525f73f3cec0829e` | Linux file-level licenses; board DTS BSD-3-Clause |
