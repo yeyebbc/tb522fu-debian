@@ -57,6 +57,7 @@ def main():
     for patch in spec['applied_patches']:
         run(['git', '-C', source, 'apply', '--check', ROOT / patch])
         run(['git', '-C', source, 'apply', ROOT / patch])
+    run(['python3', ROOT / 'tests/check_ath12k_reg_ranges.py', source])
     epoch = capture(['git', '-C', source, 'show', '-s', '--format=%ct', 'HEAD'])
     os.environ.update(SOURCE_DATE_EPOCH=epoch, KBUILD_BUILD_TIMESTAMP='@' + epoch,
                       KBUILD_BUILD_USER='builder', KBUILD_BUILD_HOST='tb522fu-ci',

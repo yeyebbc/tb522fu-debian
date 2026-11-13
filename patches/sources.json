@@ -205,5 +205,15 @@
     "sha256": "e97ef0eb880ff6f2cfb028b1cd2131254dffc955822446865b189463b688a64f",
     "hardware_tested": false,
     "source": "Remove unused topology property; install at the filename derived by upstream AudioReach from card driver/model."
+  },
+  "0144-ath12k-per-radio-reg-ranges.patch": {
+    "source": "Ahmed Essam pending upstream fix; original authorship and attribution preserved",
+    "reference": "https://lore.kernel.org/all/20261027015919.277156-1-mrmrmidoessam@gmail.com/",
+    "review": "https://lore.kernel.org/all/87eb6978-74fe-4ec6-b76a-b09210ceea7a@oss.qualcomm.com/",
+    "reviewed_by": "Baochen Qiang",
+    "local_commit": "455d57112d2b",
+    "license": "GPL-2.0-only kernel driver",
+    "hardware_tested": false,
+    "scope": "Preserve per-radio 2.4/5/6 GHz ranges and correct NL80211 band indices; retain firmware regulatory rules"
   }
 }

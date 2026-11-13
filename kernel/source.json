@@ -40,6 +40,7 @@
     "patches/0140-q6apm-probe-callback-state.patch",
     "patches/0141-apr-publish-probe-callback.patch",
     "patches/0142-apr-drain-failed-probe.patch",
-    "patches/0143-tb522fu-standard-topology-path.patch"
+    "patches/0143-tb522fu-standard-topology-path.patch",
+    "patches/0144-ath12k-per-radio-reg-ranges.patch"
   ]
 }
