@@ -50,13 +50,9 @@
     "patches/0150-q6apm-capture-trigger-lifecycle.patch",
     "patches/0151-tb522fu-microphone-board.patch",
     "patches/0152-tb522fu-preserve-bob1-range.patch",
-    "patches/0153-ktz8869-global-enable.patch",
-    "patches/0154-tb522fu-dvt2-panel.patch",
-    "patches/0155-dpu-four-pipeline-clocks.patch",
-    "patches/0156-tb522fu-panel-supply-order.patch",
-    "patches/0157-tb522fu-staged-native-display-ssc.patch",
-    "patches/0158-tb522fu-backlight-dma-provider.patch",
-    "patches/0159-tb522fu-staged-adreno.patch",
-    "patches/0160-dsi-bonded-slave-power-off-first.patch"
+    "patches/0161-wcn7861-identification.patch",
+    "patches/0162-wcn7861-peripheral-setup.patch",
+    "patches/0163-tb522fu-bluetooth-board.patch",
+    "patches/0164-wcn7861-power-probe.patch"
   ]
 }

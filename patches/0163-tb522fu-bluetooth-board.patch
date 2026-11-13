@@ -1,0 +1,107 @@
+From 00ac650a6dae0e3c2403d472267c7fa1d51dd6db Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Sat, 14 Nov 2026 02:56:33 +0800
+Subject: [PATCH] arm64: dts: qcom: wire TB522FU WCN7861 Bluetooth
+
+Use stock SE14 pin routing, PM8550VE_F SID5 GPIO3, shared Peach power sequence and observed 8 Mbaud. Firmware and address remain private, device-specific provisioning. Preserve the CI32 display/input/audio baseline.
+---
+ .../boot/dts/qcom/sm8750-lenovo-y900-acm.dts  | 71 ++++++++++++++++++-
+ 1 file changed, 70 insertions(+), 1 deletion(-)
+
+diff --git a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+index 936582051bb5..0e6b52bf054e 100644
+--- a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
++++ b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+@@ -590,6 +590,7 @@ keyboard {
+ / {
+ 	aliases {
+ 		serial0 = &uart15;
++		serial1 = &uart14;
+ 	};
+ };
+ 
+@@ -676,8 +677,10 @@ wcn7861-pmu {
+ 
+ 		pinctrl-names = "default";
+ 		pinctrl-0 = <&wlan_en_default>, <&wlan_sw_ctrl>,
+-			    <&wlan_sw_ctrl_wl_cx>, <&wlan_host_sol>;
++			    <&wlan_sw_ctrl_wl_cx>, <&wlan_host_sol>,
++			    <&bt_uwb_en>, <&bt_fmd_clk_en>;
+ 		wlan-enable-gpios = <&tlmm 16 GPIO_ACTIVE_HIGH>;
++		bt-enable-gpios = <&pm8550ve_f_gpios 3 GPIO_ACTIVE_HIGH>;
+ 		vddio-supply = <&vreg_l3f>;
+ 		vddio1p2-supply = <&vreg_l2f>;
+ 		vddaon-supply = <&vreg_s4d_wlan>;
+@@ -990,3 +993,69 @@ tb522fu_amp3: amplifier@36 {
+ 		sound-name-prefix = "Spkr3";
+ 	};
+ };
++
++/* Stock Peach Bluetooth uses SE14 and PM8550VE_F (SPMI SID5), GPIO3.
++ * RF_CLK1 is reserved for the stock Find My Device path, not normal BT.
++ */
++&pm8550ve_f_gpios {
++	bt_uwb_en: bt-uwb-en-state {
++		pins = "gpio3";
++		function = "normal";
++		power-source = <1>;
++		bias-disable;
++		output-enable;
++		input-disable;
++	};
++
++	bt_fmd_clk_en: bt-fmd-clk-en-state {
++		pins = "gpio6";
++		function = "normal";
++		power-source = <1>;
++		bias-disable;
++		output-disable;
++		input-enable;
++	};
++};
++
++&tlmm {
++	bt_uart_default: bt-uart-default-state {
++		cts-rx-pins {
++			pins = "gpio24", "gpio27";
++			function = "qup2_se6";
++			drive-strength = <2>;
++			bias-disable;
++		};
++
++		rts-pins {
++			pins = "gpio25";
++			function = "qup2_se6";
++			drive-strength = <2>;
++			bias-pull-down;
++		};
++
++		tx-pins {
++			pins = "gpio26";
++			function = "qup2_se6";
++			drive-strength = <2>;
++			bias-pull-up;
++		};
++	};
++};
++
++&uart14 {
++	pinctrl-0 = <&bt_uart_default>;
++	status = "okay";
++
++	bluetooth {
++		compatible = "qcom,wcn7861-bt";
++		max-speed = <8000000>;
++		firmware-name = "lenovo/tb522fu/brhbtnv20.bin", "brhbtfw20.tlv";
++		vddrfacmn-supply = <&wlan_pmu_rfacmn>;
++		vddaon-supply = <&wlan_pmu_aon>;
++		vddwlcx-supply = <&wlan_pmu_wlcx>;
++		vddwlmx-supply = <&wlan_pmu_wlmx>;
++		vddrfa0p8-supply = <&wlan_pmu_rfa0p8>;
++		vddrfa1p2-supply = <&wlan_pmu_rfa1p2>;
++		vddrfa1p8-supply = <&wlan_pmu_rfa1p8>;
++	};
++};
+-- 
+2.47.3
+

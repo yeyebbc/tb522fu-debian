@@ -17,6 +17,15 @@ acoustic automation is incomplete; owner acceptance is recorded separately.
 The installed audio test timer has been removed, with the prior kernel and audio
 configuration retained for rollback.
 
+The current Bluetooth candidate adds WCN7861 peripheral/TME initialization,
+stock-verified UART14/PM8550VE_F wiring, Bluetooth LE and UHID support to the
+accepted CI32 kernel. It deliberately excludes the later display/GPU changes
+while visible wake remains unresolved. Controller code comes from GEEKiDoS's
+TB322FC work, with exact commits and scoped imports in `patches/sources.json`.
+This tablet's private firmware/calibration and address are required separately;
+none are distributed here. Local driver compilation, encoded board checks and
+patch reconstruction pass; Bluetooth hardware acceptance is still pending.
+
 The CI35 bounded GPU test passed native display, Adreno 830 hardware pixel
 readback for210seconds, rejection of a forced software renderer, and actual
 GNOME compositor GPU activity. The Mesa26.1.6 device-table backport is pinned

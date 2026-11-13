@@ -338,5 +338,37 @@
     "license": "BSD-3-Clause device tree",
     "hardware_tested": false,
     "source": "Enable the existing SM8750 Adreno830 driver/providers; stock chip ID 0x44050001 and signed-shader reservation match. Device-specific shader filename; firmware kept private."
+  },
+  "0161-wcn7861-identification.patch": {
+    "local_commit": "c4329ad8db303de4212754e9f5ba858df1f5bee2",
+    "sha256": "bc30c6eaa131b219269f996cdfd4d423e11edf792ed74d90f74663eb037ecaf3",
+    "license": "Original GPL driver and BSD device-tree licenses and attribution retained",
+    "hardware_tested": false,
+    "repository": "https://github.com/h0cheung/tb322fc-linux-kernel",
+    "commit": "dc7d14dc64c8d4f86220b30cd126b17d805c8474",
+    "scope": "Bluetooth files only; other board, camera, audio, GPU and memory changes omitted. Original Bluetooth hunks applied unchanged."
+  },
+  "0162-wcn7861-peripheral-setup.patch": {
+    "local_commit": "b654f17eac32232fd5b26161f8dac8d18b9014c8",
+    "sha256": "35d510eca24a64fe67fef3d43f8767af397cebb2e8af994c04449befb2830b16",
+    "license": "Original GPL driver and BSD device-tree licenses and attribution retained",
+    "hardware_tested": false,
+    "repository": "https://github.com/h0cheung/tb322fc-linux-kernel",
+    "commit": "ac6ae99d08b70ffad9c6733967e0ca8f52e1751d",
+    "scope": "Bluetooth files only; other board, camera, audio, GPU and memory changes omitted. Original Bluetooth hunks applied unchanged."
+  },
+  "0163-tb522fu-bluetooth-board.patch": {
+    "local_commit": "00ac650a6dae0e3c2403d472267c7fa1d51dd6db",
+    "sha256": "9abb8e675c28376476ab7a5b715c179edf2f4691e7f6c99e5a806e2a4c99d663",
+    "license": "Original GPL driver and BSD device-tree licenses and attribution retained",
+    "hardware_tested": false,
+    "source": "Local TB522FU adaptation: stock UART14 pin bias, PM8550VE_F SID5 GPIO3, 8 Mbaud, private board NVM path; required power-sequencer deferred-probe handling."
+  },
+  "0164-wcn7861-power-probe.patch": {
+    "local_commit": "3f1074206663f626eefd6dd671730e5edf8c638e",
+    "sha256": "55054b330c1f26f26193ac0fd18b7622200067412b60a1d6f5aa098bfeeeadfc",
+    "license": "Original GPL driver and BSD device-tree licenses and attribution retained",
+    "hardware_tested": false,
+    "source": "Local TB522FU adaptation: stock UART14 pin bias, PM8550VE_F SID5 GPIO3, 8 Mbaud, private board NVM path; required power-sequencer deferred-probe handling."
   }
 }

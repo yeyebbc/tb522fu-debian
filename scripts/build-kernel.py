@@ -149,13 +149,9 @@ def main():
             cmdline = cmdline.replace(' qcom_scm.probe_seconds=600', '')
         # CI24 verified Wi-Fi initialization and real 5 GHz traffic. Both disk
         # profiles now exercise normal coldplug, retaining the accepted keyboard
-        # in peripheral tests. CI35 also verified native display/GPU rendering;
-        # exercise their normal coldplug in both disk profiles. The legacy RAM
-        # probe remains manually staged. FastRPC remains diagnostic-only.
+        # in peripheral tests. The legacy RAM probe remains manually staged.
         accepted = {'lenovo_yoga_keyboard', 'pwrseq_qcom_wcn',
-                    'pci_pwrctrl_pwrseq', 'ath12k', 'ath12k_wifi7',
-                    'msm', 'dispcc_sm8750', 'ktz8866',
-                    'panel_novatek_nt36536', 'gpucc_sm8750', 'gxclkctl_kaanapali'}
+                    'pci_pwrctrl_pwrseq', 'ath12k', 'ath12k_wifi7'}
 
         def retain_unverified(match):
             names = [name for name in match[1].split(',') if name not in accepted]
@@ -169,9 +165,6 @@ def main():
                     'CONFIG_CMDLINE_FORCE=y', 'CONFIG_PANIC_TIMEOUT=5',
                     'CONFIG_DEBUG_INFO_NONE=y', 'CONFIG_USB_CONFIGFS=y',
                     'CONFIG_DRM_SIMPLEDRM=y', 'CONFIG_DRM=y', 'CONFIG_FONT_TER16x32=y', 'CONFIG_DEBUG_FS=y',
-                    'CONFIG_DRM_MSM=m', 'CONFIG_SM_DISPCC_8750=m',
-                    'CONFIG_BACKLIGHT_KTZ8866=m', 'CONFIG_QCOM_FASTRPC=m',
-                    'CONFIG_DRM_PANEL_NOVATEK_NT36536=m',
                     'CONFIG_OVERLAY_FS=y', 'CONFIG_SQUASHFS=y', 'CONFIG_SQUASHFS_ZLIB=y',
                     'CONFIG_SCSI_UFS_QCOM=m', 'CONFIG_PHY_QCOM_QMP_UFS=m',
                     'CONFIG_SPI_QCOM_GENI=m', 'CONFIG_QCOM_GPI_DMA=m', 'CONFIG_TOUCHSCREEN_NT36536_SPI=m',
@@ -204,6 +197,11 @@ def main():
                     'CONFIG_INTERCONNECT_QCOM_SM8750=y', 'CONFIG_USB_DWC3_QCOM=y']:
         assert setting in config, setting
     assert 'CONFIG_QCOM_SCM=y' in config
+    for setting in ['CONFIG_BT=m', 'CONFIG_BT_BREDR=y', 'CONFIG_BT_LE=y',
+                    'CONFIG_BT_HIDP=m', 'CONFIG_UHID=m', 'CONFIG_BT_QCA=m',
+                    'CONFIG_BT_HCIUART=m', 'CONFIG_BT_HCIUART_SERDEV=y',
+                    'CONFIG_BT_HCIUART_H4=y', 'CONFIG_BT_HCIUART_QCA=y']:
+        assert setting in config, setting
     assert '# CONFIG_CFG80211_REG_RELAX_NO_IR is not set' in config
     assert '# CONFIG_ATH_REG_DYNAMIC_USER_CERT_TESTING is not set' in config
     # PMIC coldplug must not replace Debian's saved time with its raw counter.
@@ -215,16 +213,33 @@ def main():
                for name in value.split(',')}
     assert ('lenovo_yoga_keyboard' in blocked) == (not disk)
     assert 'qcom_q6v5_pas' not in blocked
-    display_modules = {'msm', 'dispcc_sm8750', 'ktz8866', 'panel_novatek_nt36536', 'gpucc_sm8750', 'gxclkctl_kaanapali'}
-    assert display_modules.isdisjoint(blocked) if disk else display_modules <= blocked
-    assert 'fastrpc' in blocked
-    assert 'module_blacklist=' not in cmdline, 'Explicit diagnostic modprobe must remain possible'
+    # This Bluetooth candidate uses the accepted CI32 firmware framebuffer.
+    # GPU/DPMS changes remain separate until visible wake is fixed.
+    assert {'msm', 'dispcc_sm8750', 'ktz8866', 'panel_novatek_nt36536'} <= blocked
+    assert 'hci_uart' not in blocked
     wifi_modules = {'pwrseq_qcom_wcn', 'pci_pwrctrl_pwrseq', 'ath12k', 'ath12k_wifi7'}
     assert wifi_modules.isdisjoint(blocked) if disk else wifi_modules <= blocked
     if disk:
         assert 'CONFIG_EXT4_FS=y' in config
     run(make + [spec['board_dtb']])
     dtb = out / 'arch/arm64/boot/dts' / spec['board_dtb']
+    bt_uart = '/soc@0/geniqup@8c0000/serial@898000'
+    bt = bt_uart + '/bluetooth'
+    assert capture(['fdtget', '-t', 's', dtb, '/aliases', 'serial1']) == bt_uart
+    assert capture(['fdtget', '-t', 's', dtb, bt_uart, 'status']) == 'okay'
+    assert capture(['fdtget', '-t', 's', dtb, bt, 'compatible']) == 'qcom,wcn7861-bt'
+    assert capture(['fdtget', '-t', 'i', dtb, bt, 'max-speed']) == '8000000'
+    assert capture(['fdtget', '-t', 's', dtb, bt, 'firmware-name']) == (
+        'lenovo/tb522fu/brhbtnv20.bin brhbtfw20.tlv')
+    assert 'local-bd-address' not in capture(['fdtget', '-p', dtb, bt]).splitlines()
+    pmic = '/soc@0/spmi@c400000/pmic@5/gpio@8800'
+    bt_gpio = capture(['fdtget', '-t', 'x', dtb, '/wcn7861-pmu', 'bt-enable-gpios'])
+    assert bt_gpio == capture(['fdtget', '-t', 'x', dtb, pmic, 'phandle']) + ' 3 0'
+    for prop, ldo in [('vddrfacmn', 0), ('vddaon', 1), ('vddwlcx', 2),
+                      ('vddwlmx', 3), ('vddrfa0p8', 5), ('vddrfa1p2', 6),
+                      ('vddrfa1p8', 7)]:
+        assert capture(['fdtget', '-t', 'x', dtb, bt, prop + '-supply']) == capture(
+            ['fdtget', '-t', 'x', dtb, '/wcn7861-pmu/regulators/ldo' + str(ldo), 'phandle'])
     uart = '/soc@0/geniqup@8c0000/serial@89c000'
     assert capture(['fdtget', '-t', 's', dtb, '/aliases', 'serial0']) == uart
     assert capture(['fdtget', '-t', 's', dtb, uart, 'status']) == 'okay'
@@ -242,50 +257,10 @@ def main():
          'qcom/sm8750/lenovo/tb522fu/adsp.mdt qcom/sm8750/lenovo/tb522fu/adsp_dtb.mdt'),
         ('/reserved-memory/adspslpi@9ee00000', 'reg', 'x', '0 9ee00000 0 5600000'),
         ('/reserved-memory/q6-adsp-dtb@9ed80000', 'reg', 'x', '0 9ed80000 0 80000'),
-        ('/soc@0/remoteproc@6800000/glink-edge/fastrpc', 'status', 's', 'okay'),
+        ('/soc@0/remoteproc@6800000/glink-edge/fastrpc', 'status', 's', 'disabled'),
         ('/soc@0/remoteproc@6800000/glink-edge/gpr', 'status', 's', 'okay'),
     ]:
         assert capture(['fdtget', '-t', typ, dtb, node, prop]) == expected, (node, prop)
-    # Native display coldplugs in disk profiles. Preserve the firmware
-    # framebuffer until normal DRM dependency binding completes takeover.
-    display = '/soc@0/display-subsystem@ae00000'
-    panel = display + '/dsi@ae94000/panel@0'
-    touch = '/soc@0/geniqup@ac0000/spi@a90000/touchscreen@0'
-    for node in [display, '/soc@0/clock-controller@af00000',
-                 '/soc@0/geniqup@8c0000', '/soc@0/geniqup@8c0000/i2c@888000',
-                 '/soc@0/geniqup@8c0000/i2c@88c000', '/framebuffer@fc800000']:
-        assert capture(['fdtget', '-t', 's', dtb, node, 'status']) == 'okay', node
-    assert capture(['fdtget', '-t', 'x', dtb, touch, 'panel']) == capture(
-        ['fdtget', '-t', 'x', dtb, panel, 'phandle'])
-    for prop, regulator, uv in [('vddio-supply', 'ldo12', '1800000'),
-                                ('vci-supply', 'ldo13', '3000000'),
-                                ('tvdd-supply', 'ldo4', '1800000')]:
-        node = '/soc@0/rsc@16500000/regulators-b/' + regulator
-        assert capture(['fdtget', '-t', 'x', dtb, panel, prop]) == capture(
-            ['fdtget', '-t', 'x', dtb, node, 'phandle'])
-        assert capture(['fdtget', '-t', 'i', dtb, node, 'regulator-min-microvolt']) == uv
-        assert capture(['fdtget', '-t', 'i', dtb, node, 'regulator-max-microvolt']) == uv
-    assert 'vdd-supply' not in capture(['fdtget', '-p', dtb, panel]).splitlines()
-    dma = '/soc@0/dma-controller@800000'
-    assert capture(['fdtget', '-t', 's', dtb, dma, 'status']) == 'okay'
-    assert capture(['fdtget', '-t', 'x', dtb, dma, 'dma-channel-mask']) == '1e'
-    assert capture(['fdtget', '-t', 'x', dtb, dma, 'iommus']).split()[1:] == ['436', '0']
-    ref = capture(['fdtget', '-t', 'x', dtb, dma, 'phandle'])
-    for address, se in [('888000', 2), ('88c000', 3)]:
-        bus = '/soc@0/geniqup@8c0000/i2c@' + address
-        assert capture(['fdtget', '-t', 'x', dtb, bus, 'dmas']) == f'{ref} 0 {se} 3 {ref} 1 {se} 3'
-    # Stock chip ID and signed-shader reservation; disk GPU providers coldplug.
-    assert 'CONFIG_SM_GPUCC_8750=m' in config
-    gpu = '/soc@0/gpu@3d00000'
-    for node in [gpu, '/soc@0/gmu@3d6c000', '/soc@0/clock-controller@3d90000',
-                 '/soc@0/clock-controller@3d64000']:
-        assert capture(['fdtget', '-t', 's', dtb, node, 'status']) == 'okay'
-    assert capture(['fdtget', '-t', 's', dtb, gpu, 'compatible']) == 'qcom,adreno-44050001 qcom,adreno'
-    shader = gpu + '/zap-shader'
-    memory = '/reserved-memory/gpu-micro-code@9b09a000'
-    assert capture(['fdtget', '-t', 's', dtb, shader, 'firmware-name']) == 'qcom/sm8750/lenovo/tb522fu/gen80000_zap.mbn'
-    assert capture(['fdtget', '-t', 'x', dtb, shader, 'memory-region']) == capture(['fdtget', '-t', 'x', dtb, memory, 'phandle'])
-    assert capture(['fdtget', '-t', 'x', dtb, memory, 'reg']) == '0 9b09a000 0 2000'
     # Check board-specific speaker wiring and the first-test gain cap.
     assert capture(['fdtget', '-t', 's', dtb, '/sound', 'model']) == 'TB522FU'
     # Stock WCD939x rails and pin routing: do not import MTP voltages.
@@ -366,8 +341,8 @@ def main():
     explicit.update(['lenovo_yoga_keyboard', 'qcom_q6v5_pas', 'qcom_glink_smem',
                      'qrtr_smd', 'qcom_pd_mapper', 'qcom_battmgr',
                      'pwrseq_qcom_wcn', 'pci_pwrctrl_pwrseq', 'ath12k', 'ath12k_wifi7',
-                     'snd_soc_aw88461', 'snd_soc_sc8280xp', 'reset_gpio'])
-    explicit.update(display_modules | {'fastrpc'})
+                     'snd_soc_aw88461', 'snd_soc_sc8280xp', 'reset_gpio',
+                     'hci_uart', 'btqca', 'bluetooth', 'hidp', 'uhid', 'rfcomm', 'bnep'])
     for name in sorted(explicit):
         actual = capture(['modinfo', '-b', modules, '-k', release, '-F', 'name', name])
         assert actual.replace('-', '_') == name.replace('-', '_'), (name, actual)

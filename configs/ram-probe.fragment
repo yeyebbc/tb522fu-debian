@@ -41,7 +41,7 @@ CONFIG_MAGIC_SYSRQ=y
 CONFIG_NULL_TTY=y
 CONFIG_IKCONFIG=y
 CONFIG_IKCONFIG_PROC=y
-CONFIG_CMDLINE="rdinit=/init panic=5 oops=panic softlockup_panic=1 hung_task_panic=1 console=tty0 loglevel=7 fbcon=font:TER16x32 clk_ignore_unused pd_ignore_unused qcom_scm.download_mode=off qcom_scm.probe_edl_return=1 qcom_scm.probe_seconds=600 modprobe.blacklist=lenovo_yoga_keyboard,pwrseq_qcom_wcn,pci_pwrctrl_pwrseq,ath12k,ath12k_wifi7,msm,dispcc_sm8750,ktz8866,fastrpc,panel_novatek_nt36536,gpucc_sm8750,gxclkctl_kaanapali"
+CONFIG_CMDLINE="rdinit=/init panic=5 oops=panic softlockup_panic=1 hung_task_panic=1 console=tty0 loglevel=7 fbcon=font:TER16x32 clk_ignore_unused pd_ignore_unused qcom_scm.download_mode=off qcom_scm.probe_edl_return=1 qcom_scm.probe_seconds=600 modprobe.blacklist=lenovo_yoga_keyboard,pwrseq_qcom_wcn,pci_pwrctrl_pwrseq,ath12k,ath12k_wifi7"
 CONFIG_CMDLINE_FORCE=y
 CONFIG_FB=y
 # CONFIG_FB_SIMPLE is not set
@@ -110,7 +110,7 @@ CONFIG_DEBUG_INFO_NONE=y
 # CONFIG_ARCH_XGENE is not set
 # CONFIG_ARCH_ZYNQMP is not set
 
-# Native display/GPU are enabled in DT but remain modular for bounded tests.
+# RAM desktop uses only the firmware scanout; native display/GPU stay disabled.
 CONFIG_DRM=y
 CONFIG_DRM_SIMPLEDRM=y
 CONFIG_DRM_FBDEV_EMULATION=y
@@ -183,5 +183,18 @@ CONFIG_ATH_REG_DYNAMIC_USER_REG_HINTS=y
 # CONFIG_CFG80211_REG_RELAX_NO_IR is not set
 # CONFIG_ATH_REG_DYNAMIC_USER_CERT_TESTING is not set
 
-# Load GPU clock providers only after the debug/return path is ready.
-CONFIG_SM_GPUCC_8750=m
+# WCN7861 UART Bluetooth; LE HID needs UHID as well as classic HIDP.
+CONFIG_BT=m
+CONFIG_BT_BREDR=y
+CONFIG_BT_LE=y
+CONFIG_BT_RFCOMM=m
+CONFIG_BT_RFCOMM_TTY=y
+CONFIG_BT_BNEP=m
+CONFIG_BT_HIDP=m
+CONFIG_BT_HCIUART=m
+CONFIG_BT_HCIUART_SERDEV=y
+CONFIG_BT_HCIUART_H4=y
+CONFIG_BT_HCIUART_QCA=y
+CONFIG_BT_QCA=m
+CONFIG_BT_DEBUGFS=y
+CONFIG_UHID=m

@@ -1,0 +1,63 @@
+From 3f1074206663f626eefd6dd671730e5edf8c638e Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Sat, 14 Nov 2026 02:56:53 +0800
+Subject: [PATCH] Bluetooth: qca: retain WCN7861 power-sequencer probe errors
+
+A deferred shared PMU must not become a regulator-only device with no BT reset owner. Keep the donor pacing behavior while correcting its obsolete 115200 comment, and identify this controller accurately in setup logs.
+---
+ drivers/bluetooth/btqca.c   |  8 ++++----
+ drivers/bluetooth/hci_qca.c | 10 +++++++++-
+ 2 files changed, 13 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/bluetooth/btqca.c b/drivers/bluetooth/btqca.c
+index c9998631b70a..490d7697091b 100644
+--- a/drivers/bluetooth/btqca.c
++++ b/drivers/bluetooth/btqca.c
+@@ -488,10 +488,10 @@ static int qca_tlv_send_segment(struct hci_dev *hdev, int seg_size,
+ 		err = __hci_cmd_send(hdev, EDL_PATCH_CMD_OPCODE, seg_size + 2,
+ 				     cmd);
+ 		/*
+-		 * The Peach tuple exemption keeps the live transport at 115200.
+-		 * Pace unacknowledged packets so the final synchronous command is
+-		 * not queued behind the entire 219-KiB rampatch while its fixed HCI
+-		 * command timer is already running.
++		 * Pace unacknowledged Peach packets so the final synchronous
++		 * command is not queued behind the whole rampatch while its fixed
++		 * HCI command timer is already running. WCN7861 peripheral setup
++		 * has selected the operating baud before this download.
+ 		 */
+ 		if (!err && current_baud_download)
+ 			usleep_range(24000, 25000);
+diff --git a/drivers/bluetooth/hci_qca.c b/drivers/bluetooth/hci_qca.c
+index 41bb79283acd..3b163736361d 100644
+--- a/drivers/bluetooth/hci_qca.c
++++ b/drivers/bluetooth/hci_qca.c
+@@ -2288,9 +2288,11 @@ static int qca_setup(struct hci_uart *hu)
+ 		break;
+ 
+ 	case QCA_WCN7850:
+-	case QCA_WCN7861:
+ 		soc_name = "wcn7850";
+ 		break;
++	case QCA_WCN7861:
++		soc_name = "wcn7861";
++		break;
+ 
+ 	default:
+ 		soc_name = "ROME/QCA6390";
+@@ -2830,6 +2832,12 @@ static int qca_serdev_probe(struct serdev_device *serdev)
+ 			 */
+ 			qcadev->bt_power->pwrseq = devm_pwrseq_get(&serdev->dev,
+ 								   "bluetooth");
++			/* WCN7861 has no legacy regulator-only power path. */
++			if (data->soc_type == QCA_WCN7861 &&
++			    IS_ERR(qcadev->bt_power->pwrseq))
++				return dev_err_probe(&serdev->dev,
++						     PTR_ERR(qcadev->bt_power->pwrseq),
++						     "failed to acquire power sequencer\n");
+ 
+ 			/*
+ 			 * Some modules have BT_EN enabled via a hardware pull-up,
+-- 
+2.47.3
+
