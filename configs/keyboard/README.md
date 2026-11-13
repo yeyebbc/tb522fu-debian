@@ -1,16 +1,14 @@
 # White keyboard backlight candidate
 
-The revised dimming mapping is not hardware accepted or installed.
-Production remains CI39. CI41 proved physical white light and off/on, preserved
-input nodes and passed Bluetooth/Wi-Fi tests, but the three nonzero0x34settings
-looked essentially identical on camera. CI41 was not promoted. The correction
-scales equal RGB intensity fields and needs fresh physical dimming acceptance.
-The intensity cap100 is a conservative stock-example value, not a claim about
-the controller's absolute maximum.
+Production remains CI39. CI41 and CI42 proved physical white light and off/on,
+but neither tested dimming mapping produced useful visible steps. No further
+speculative dimming commands are planned. The candidate now exposes only the
+verified binary white states and still needs installed-boot acceptance.
 
-Patches0165–0169 add `lenovo:white:kbd_backlight` with a brightness range of
-0..100. Steady white uses mode1 and equal RGB components matching the LED
-brightness; the known enabled0x34value228 is used for on,0 for off. These fields come from the TB522FU stock SDK and
+Patches0165–0170 add `lenovo:white:kbd_backlight` with max_brightness1:
+0 means off,1 means steady white. Steady mode1 uses equal RGB100 when on,
+zero when off, with the known0x34enabled228/off0 command. These exact endpoint
+packets were exercised in CI42. Fields come from the TB522FU stock SDK and
 shipped keyboard module. No proprietary application or firmware is included.
 
 The UART parent owns the GPIO60 direction gate through standard RS485
@@ -22,13 +20,13 @@ request echo, matching stock kernel setting writes. An echo is transport evidenc
 not proof of illumination. Separate replies are counted without inventing their
 payload semantics. Commands have bounded timeouts and no background retries.
 
-Default requested brightness is25, restored once after the keyboard announces
+Default requested brightness is1 (on), restored once after the keyboard announces
 synchronization. Changes made while detached or with the lid closed are saved
 for the next active sync. The normal LED class exposes brightness to desktop
 software. Older receive-only device trees retain their original TX-disabled path.
-RGB effects, physical Fn+Space behavior and suspend remain unverified.
+Dimming, RGB effects, physical Fn+Space behavior and suspend remain unverified.
 
-Before promotion, verify physical off/white/brightness changes with a camera,
+Before promotion, verify physical off/white changes with a camera,
 unchanged keyboard/trackpad/lid nodes and packet decoding, no UART faults, Wi-Fi
 traffic and Bluetooth initialization/discovery after the shared UART change.
 Then verify the installed boot path and clean Android return. Keep the accepted
