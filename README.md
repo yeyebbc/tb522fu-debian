@@ -40,7 +40,9 @@ No RAM reservation, audio, panel timing or voltage changes are included.
 
 A separate manual workflow builds a [CPU-label backport](configs/cpu-label/README.md)
 for GNOME's blank ARM processor field. It uses the existing Ubuntu libgtop
-patch with Debian packaging. Tablet installation and acceptance are pending.
+patch with Debian packaging. It is installed on the test tablet; libgtop now
+returns Oryon for all eight cores, matching lscpu. Original Debian packages
+are saved for rollback. Visible GNOME System Details acceptance is pending.
 
 GitHub Actions builds two kernel profiles on native ARM64 runners:
 
