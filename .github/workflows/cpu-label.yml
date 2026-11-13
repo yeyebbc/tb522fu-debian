@@ -1,0 +1,35 @@
+name: Build Debian ARM CPU label fix
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cpu-label:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 25
+    container: debian:trixie
+    steps:
+      - name: Install Debian package build dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates git python3 build-essential dpkg-dev debhelper dh-sequence-gir dh-sequence-gnome gettext gtk-doc-tools libgirepository1.0-dev libglib2.0-dev libxau-dev libxt-dev pkgconf texinfo quilt util-linux
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build pinned libgtop CPU-name backport
+        run: python3 scripts/build-cpu-label.py
+      - name: Test package CPU names against lscpu
+        run: |
+          dpkg -i artifacts/cpu-label/libgtop2-common_*_all.deb artifacts/cpu-label/libgtop-2.0-11_*_arm64.deb artifacts/cpu-label/gir1.2-gtop-2.0_*_arm64.deb artifacts/cpu-label/libgtop2-dev_*_arm64.deb
+          cc -Wall -Wextra -Werror scripts/check-cpu-label.c -o artifacts/cpu-label/check-cpu-label $(pkg-config --cflags --libs libgtop-2.0)
+          python3 scripts/check-cpu-label.py artifacts/cpu-label/check-cpu-label > artifacts/cpu-label/cpu-label-check.json
+          cat artifacts/cpu-label/cpu-label-check.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: cpu-label-arm64
+          path: artifacts/cpu-label/
+          if-no-files-found: error
+          retention-days: 7

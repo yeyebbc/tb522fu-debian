@@ -1,0 +1,29 @@
+{
+  "debian_source_version": "2.41.3-1",
+  "candidate_version": "2.41.3-1+tb522fu1",
+  "files": [
+    {
+      "name": "libgtop2_2.41.3-1.dsc",
+      "url": "https://deb.debian.org/debian/pool/main/libg/libgtop2/libgtop2_2.41.3-1.dsc",
+      "sha256": "ba017274c72280868d30035750739505b0f899bcbba1ab2c0b739d524fb435aa"
+    },
+    {
+      "name": "libgtop2_2.41.3-1.debian.tar.xz",
+      "url": "https://deb.debian.org/debian/pool/main/libg/libgtop2/libgtop2_2.41.3-1.debian.tar.xz",
+      "sha256": "754e01b9291688f73d9930c2c8456b7a6252afa9eaf1619c7f31d030f04e7c13"
+    },
+    {
+      "name": "libgtop2_2.41.3.orig.tar.xz",
+      "url": "https://deb.debian.org/debian/pool/main/libg/libgtop2/libgtop2_2.41.3.orig.tar.xz",
+      "sha256": "775676df958e2ea2452f7568f28b2ea581063d312773dd5c0b7624c1b9b2da8c"
+    }
+  ],
+  "patch": {
+    "path": "configs/cpu-label/add-model-name-gathering-from-lscpu.patch",
+    "sha256": "0687a1e6cbf14628c248cf47cb2eaa3bc2707f3d4c5c58b83ffd1249370a5cff",
+    "origin": "https://archive.ubuntu.com/ubuntu/pool/main/libg/libgtop2/libgtop2_2.41.3-2ubuntu1.debian.tar.xz",
+    "origin_sha256": "1264f60adfa2242a92492294be1bdfd1163d06d678e967302e96f04797c065e0",
+    "upstream_merge_request": "https://gitlab.gnome.org/GNOME/libgtop/-/merge_requests/51"
+  },
+  "retirement": "Replace with the Debian package when it includes ARM CPU model discovery. No kernel or CPU frequency changes."
+}

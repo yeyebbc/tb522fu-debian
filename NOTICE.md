@@ -71,3 +71,8 @@ The callback-state guard was accepted into the sound for-7.4 tree as
  ef7062864c05. Patch0142 is a separate local follow-up addressing receive
 callback draining on probe failure, as raised in review. Original GPL source
 and author/sign-off information remain in each imported patch.
+
+The optional CPU-label package carries Andreas Glinserer and Marco Trevisan's
+libgtop model-name discovery patch unchanged from Ubuntu's source package.
+It is GPL-2.0-or-later, as is the affected libgtop source. Exact Debian and
+Ubuntu inputs and the upstream merge request are in configs/cpu-label/source.json.

@@ -30,12 +30,17 @@ the accepted CI32 rollback remain intact. Native display/touch power transitions
 remain outstanding; this is not a release.
 
 CI37 changes only bonded DSI host shutdown order: slave before master,
-matching Lenovo's display clock driver. Two bounded DPMS cycles now complete
-without the previous slave-clock, DSI, CTL or vblank errors, and GPU rendering
-continues after wake. The camera still shows a blank grey panel after wake,
-so visible wake remains unaccepted and CI32 remains the installed rollback.
-The remaining scanout versus greeter-state cause is under investigation.
+matching Lenovo's display clock driver. This removes the first slave-clock
+shutdown warnings, but visible wake still fails with a blank grey panel.
+A follow-up test clears GNOME's screen shield and requests fresh UI activity;
+the shield is inactive but DPU CTL reset, frame and vblank timeouts appear.
+CI37 is rejected for promotion; CI32 remains installed. The remaining display
+resume failure needs a separate fix.
 No RAM reservation, audio, panel timing or voltage changes are included.
+
+A separate manual workflow builds a [CPU-label backport](configs/cpu-label/README.md)
+for GNOME's blank ARM processor field. It uses the existing Ubuntu libgtop
+patch with Debian packaging. Tablet installation and acceptance are pending.
 
 GitHub Actions builds two kernel profiles on native ARM64 runners:
 
