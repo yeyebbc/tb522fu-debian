@@ -1,15 +1,18 @@
 # Debian 13 on Lenovo TB522FU
 
 Experimental native Linux port for the Lenovo Legion Y900 13 / TB522FU
-(SM8750, Snapdragon 8 Elite). The intended installation is Debian 13 ARM64
-with GNOME and 256 GiB of storage, preserving Android for dual boot.
+(SM8750, Snapdragon 8 Elite). Debian 13 ARM64 with GNOME is installed on a
+256 GiB partition on one test tablet, with Android preserved and on-device switching verified in both
+directions. This remains a development port with substantial peripheral work
+outstanding.
 
 GitHub Actions builds two kernel profiles on native ARM64 runners:
 
 - `disk-test`: an embedded BusyBox maintenance/boot environment with matching
   modules, e2fsck and a900-second independent EDL return for host restoration.
 - `installed`: the same device support with normal reboot semantics and no
-  test timer. USB debugging is opt-in. This profile is not hardware-tested yet.
+  test timer. USB debugging is opt-in. Persistent GNOME boot and on-device
+  Android/Linux switching have passed hardware tests on one tablet.
 
 Both locate Debian by GPT label, verify its256GiB geometry and installation
 marker, check ext4 and load the matching root. They never create partitions or
@@ -70,20 +73,36 @@ smaller userdata partition and booted successfully. The CI15 disk-test kernel
 from recipe `f5c8b6a5db577e786602f591ee360ad90805884c` booted that persistent
 root into a physically visible GNOME welcome screen. After the host-key unit
 ordering fix in `1e7087a`, authenticated USB SSH and a clean systemd reboot
-through host-assisted stock restoration passed. Desktop account setup and
-new physical touch acceptance on the persistent root remain pending.
+through host-assisted stock restoration passed. The CI16 installed profile
+from recipe `66a17356b8ebec2679df3ec4a4e63511a2c8f803`, built in
+[CI run 43363084665](https://github.com/yeyebbc/tb522fu-debian/actions/runs/43363084665),
+then passed repeated Android → Debian → Android switching entirely on-device.
+The Magisk Action verified and wrote the Linux boot image; the Linux helper
+restored the Android image and shut down through systemd. Full image readbacks,
+Android root preservation and a clean Debian ext4 filesystem were verified.
+GNOME was physically visible, and the user verified Next and Previous directly
+under their finger on the installed root. A separate debugging-off startup
+reached GNOME with no configured USB gadget, no SSH listener and no failed
+system units; its clean on-device return to Android also passed.
+
+An unplugged shutdown and subsequent USB-triggered cold start reached visible
+GNOME. Battery-only startup remains unresolved, and the latest Android return
+is visible but its USB data connection has not been recovered for log and
+filesystem verification. Battery telemetry currently contains invalid values.
+Desktop account setup and GUI switching also remain pending.
 
 CI15 also exposed a clock failure: fake-hwclock restored the saved date, then
 the late PMIC RTC probe set system time to 1970. The configuration now disables
 automatic RTC-to-system and system-to-RTC synchronization until the stock
 RTC offset format is understood. Debian's existing fake-hwclock load/save
-units remain responsible for the offline clock floor. This kernel change is
-awaiting build and cold-boot validation; it does not provide accurate elapsed
-time while powered off or network time synchronization.
+units remain responsible for the offline clock floor. CI16 disk-test and
+installed boots verified that the saved date survives RTC probing without
+host clock correction. This does not provide accurate elapsed time while
+powered off or network time synchronization.
 
-Native display/GPU, Wi-Fi, audio, charging, suspend and installed on-device
-Android/Linux switching remain unverified. These artifacts are development
-components, not an installer.
+Native display/GPU, brightness, Wi-Fi, audio, charging, suspend and the
+keyboard/trackpad/lid accessory remain unverified under Linux. These artifacts
+are development components, not an installer.
 
 Own-kernel recovery images trigger a firmware CrashDump on the tested Lenovo
 firmware. A standalone normal-boot entry test successfully returned to EDL,
@@ -128,20 +147,24 @@ python3 scripts/build-rootfs.py
 
 ## Device userspace layer
 
-`device/` contains the pending installation overlay: ordered touch loading,
+`device/` contains the tested installation overlay: ordered touch loading,
 200% GNOME scale, sleep disabled while power management is unverified, and
 optional SSH restricted to the USB peer with public-key authentication.
 The installer must supply this tablet's firmware, root PARTUUID and authorized
 key privately. Debugging is off unless `/etc/tb522fu/usb-debug-enabled` exists.
 Default SSH services are masked; no credentials or firmware are in the overlay.
 Touch loading, visible GNOME and authenticated USB SSH have passed a persistent
-boot; optional debugging-off behavior still needs a cold-boot check. The
+boot; a fresh kernel startup with the debugging marker absent also verified
+that neither a USB gadget nor an SSH listener was exposed. The
 image-rotation helper verifies both saved images and the current boot image,
 then writes and reads back only boot_b. File-backed failure tests verify
 rollback after a partial write, wrong readback or read error; unknown images
 are refused. `android-module/` supplies the Magisk Action entry and requires
-a clean ext4 filesystem before mounting Debian read-only. Neither switching
-path has been exercised on hardware yet.
+a clean ext4 filesystem before mounting Debian read-only. Both switching
+helpers have passed repeated on-device round trips with the installed profile.
+A temporary userspace timer invoked the Linux helper during acceptance; it is
+not included in the production overlay or kernel. The Magisk GUI Action and
+Linux desktop launcher still need user-session acceptance.
 
 ## Sources and patches
 
