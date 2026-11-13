@@ -19,6 +19,13 @@ newly configured controller. udev starts the instance again after a genuine
 device removal/addition. A boot-scoped private receipt is written under `/run`.
 
 Protocol reference: [BlueZ 5.82 MGMT API](https://github.com/bluez/bluez/blob/5.82/doc/mgmt-api.txt).
-Offline refusal and reindexing tests pass. Automatic cold-boot hardware
-acceptance is pending; earlier CI39 tests provisioned the address manually.
+Offline refusal and reindexing tests pass. The udev-started service automatically
+provisions and verifies the address in fresh bounded and installed CI39 boots,
+with no manual provisioning command in either inspector. BlueZ discovery receives
+fresh MGMT DeviceFound packets; idle commands and a full power off/on pass while
+Wi-Fi stays associated. The installed image is accepted on the test tablet.
 Pairing and reconnection with a user-selected peripheral remain untested.
+
+The initial controller setup plus address-triggered setup takes about 66 seconds;
+subsequent power reopening takes about 34 seconds. The service does not apply a
+power policy or repeat initialization to hide failures.

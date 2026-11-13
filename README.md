@@ -6,8 +6,8 @@ Experimental native Linux port for the Lenovo Legion Y900 13 / TB522FU
 directions. This remains a development port with substantial peripheral work
 outstanding.
 
-Current installed kernel: `7.3.0-tb522fu-installed-ci32`, built from recipe
-`0586b60fa80df2390857c0101266a411ec5530e5`. Automatic keyboard/trackpad startup,
+Current installed kernel: `7.3.0-tb522fu-installed-ci39`, built from recipe
+`ea5b0bb59336f1ad4d221107d9e32e07f9198aae`. Automatic keyboard/trackpad startup,
 US Wi-Fi regulation, 5 GHz association and LAN transfers have passed on this unit.
 The six-speaker path and two WCD939x analog microphones are working; the owner
 accepted audio and asked development to move to brightness and ambient-light
@@ -17,21 +17,24 @@ acoustic automation is incomplete; owner acceptance is recorded separately.
 The installed audio test timer has been removed, with the prior kernel and audio
 configuration retained for rollback.
 
-The current Bluetooth candidate adds WCN7861 peripheral/TME initialization,
-stock-verified UART14/PM8550VE_F wiring, Bluetooth LE and UHID support to the
-accepted CI32 kernel. It deliberately excludes the later display/GPU changes
-while visible wake remains unresolved. Controller code comes from GEEKiDoS's
-TB322FC work, with exact commits and scoped imports in `patches/sources.json`.
-This tablet's private firmware/calibration and address are required separately;
-none are distributed here. CI39 (recipe `ea5b0bb59336f1ad4d221107d9e32e07f9198aae`)
-passed bounded controller setup, saved-address provisioning, BlueZ discovery,
-HCI responses after 3/10 seconds idle and a full power off/on cycle. Wi-Fi
-association and gateway traffic remained working, with no matching driver faults.
-Four BlueZ device objects were listed after the scan; fresh discovery events
-will be captured separately during the next cold-start check. Android restoration
-and filesystem checks passed. Automatic address setup, installed-kernel promotion
-and pairing remain pending. Power-on currently takes about 34 seconds; firmware
-download pacing remains a documented limitation.
+Installed CI39 adds WCN7861 peripheral/TME initialization, stock-verified
+UART14/PM8550VE_F wiring, Bluetooth LE and UHID support to the accepted CI32
+baseline. Controller code comes from GEEKiDoS's TB322FC work, with exact commits
+and scoped imports in `patches/sources.json`. This tablet's private firmware,
+calibration and stock address are required separately; none are distributed here.
+
+[Automatic address provisioning](configs/bluetooth/README.md) passed a fresh
+boot through both the bounded test image and the normal dual-boot Action. The
+installed test received 14 fresh MGMT discovery packets from 9 nearby peers,
+answered HCI commands after 3/10 seconds idle, and completed power off/on while
+Wi-Fi association and gateway traffic continued. The physical GNOME greeter was
+verified on camera. Android return, stock boot checks, filesystem checks and
+removal of the temporary return timer passed. CI32 remains available for rollback.
+Pairing, peripheral traffic/reconnection and Bluetooth suspend remain untested.
+Startup currently takes about 66 seconds and power reopening about 34 seconds;
+firmware download pacing and the second setup for public-address provisioning
+remain documented limitations. Accepted audio/input code is unchanged; audio
+was not retested in this Bluetooth update at the owner's request.
 
 The CI35 bounded GPU test passed native display, Adreno 830 hardware pixel
 readback for210seconds, rejection of a forced software renderer, and actual
@@ -50,7 +53,7 @@ matching Lenovo's display clock driver. This removes the first slave-clock
 shutdown warnings, but visible wake still fails with a blank grey panel.
 A follow-up test clears GNOME's screen shield and requests fresh UI activity;
 the shield is inactive but DPU CTL reset, frame and vblank timeouts appear.
-CI37 is rejected for promotion; CI32 remains installed. The remaining display
+CI37 is rejected for promotion; installed CI39 retains the CI32 display baseline. The remaining display
 resume failure needs a separate fix.
 No RAM reservation, audio, panel timing or voltage changes are included.
 
@@ -77,7 +80,7 @@ partition. A mounted root with a wrong board marker, PARTUUID or module tree
 is still rejected; the installed profile never falls back to a maintenance shell.
 The blank-partition maintenance path and the first persistent installation
 have passed hardware tests on one tablet.
-The accepted CI32 installation still uses the firmware framebuffer;
+The accepted CI39 installation still uses the firmware framebuffer;
 the newer candidate enables native display and GPU as described above. A separate, optional workflow job builds
 Debian13 GNOME from authenticated Debian archives. The original RAM-only
 profile remains available with `scripts/build-kernel.py --profile ram`.
@@ -198,7 +201,8 @@ The Wi-Fi candidate imports the Peach (`17cb:110e`) ath12k implementation from
 [GEEKiDoS/linux](https://github.com/GEEKiDoS/linux/commit/b0c05eb72e10140f87efd0e499ad840e6c3e6975),
 including TME-L patch loading, QDSS transfer, and firmware-directed PDC votes.
 The original source attribution is retained; the import is limited to Wi-Fi
-and its power-sequencing dependencies. Bluetooth remains disabled.
+and its power-sequencing dependencies. Bluetooth was disabled in that early
+Wi-Fi candidate; CI39 support is described above.
 The board uses its own stock CNSS pinmux, supply ranges and PDC mappings.
 The upstream Qualcomm PCIe IOMMU-map parser fix preserves normal DMA isolation.
 The seven matching firmware files, including calibration, are supplied privately
