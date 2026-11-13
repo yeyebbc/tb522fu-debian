@@ -6,6 +6,17 @@ Experimental native Linux port for the Lenovo Legion Y900 13 / TB522FU
 directions. This remains a development port with substantial peripheral work
 outstanding.
 
+Current installed kernel: `7.3.0-tb522fu-installed-ci32`, built from recipe
+`0586b60fa80df2390857c0101266a411ec5530e5`. Automatic keyboard/trackpad startup,
+US Wi-Fi regulation, 5 GHz association and LAN transfers have passed on this unit.
+The six-speaker path and two WCD939x analog microphones are working; the owner
+accepted audio and asked development to move to brightness and ambient-light
+sensing. Microphone capture defaults to +12 dB digital gain. Raw stereo capture
+matched known acoustic tones with silence controls and no clipping. Full desktop
+acoustic automation is incomplete; owner acceptance is recorded separately.
+The installed audio test timer has been removed, with the prior kernel and audio
+configuration retained for rollback.
+
 GitHub Actions builds two kernel profiles on native ARM64 runners:
 
 - `disk-test`: an embedded BusyBox maintenance/boot environment with matching
@@ -137,9 +148,8 @@ also passed. The installed test returned cleanly to Android entirely on-device;
 its temporary acceptance timer was then removed and the filesystem checked.
 
 Current direction, USB voltage, runtime estimates and sustained net charging
-remain unvalidated. A charging icon alone does not establish these. Wi-Fi is
-the next development priority, followed by audio; further charging refinements
-are deferred.
+remain unvalidated. A charging icon alone does not establish these. Further
+charging refinements are deferred; brightness and ambient-light sensing are next.
 
 The Wi-Fi candidate imports the Peach (`17cb:110e`) ath12k implementation from
 [GEEKiDoS/linux](https://github.com/GEEKiDoS/linux/commit/b0c05eb72e10140f87efd0e499ad840e6c3e6975),
@@ -177,7 +187,7 @@ installed boots verified that the saved date survives RTC probing without
 host clock correction. This does not provide accurate elapsed time while
 powered off or network time synchronization.
 
-Native display/GPU, brightness, audio, sustained charging, suspend and pen input
+Native display/GPU, brightness, sustained charging, suspend and pen input
 remain unverified under Linux. These artifacts
 are development components, not an installer.
 
@@ -258,10 +268,13 @@ interface. Shared reset, per-amplifier tuning selection, 48 kHz/eight 32-bit slo
 SD1, the TDM clock ID and stereo duplication were checked against this tablet's
 stock evidence. Firmware remains private. The amplifier volume ceiling stays
 at least 24 dB below the stock tuning gain; DSP speaker protection is not enabled.
-Speaker playback and GNOME audio integration are **not yet hardware verified**.
-Microphones, headphones and suspend remain outside this first speaker test.
+Speaker output passed quiet-tone hardware tests and owner confirmation. CI32
+adds WCD939x microphone capture with stock-verified wiring and rails, correct
+AudioReach capture trigger lifecycle, and +12 dB capture gain. Raw stereo capture
+passed acoustic checks; the owner accepted desktop audio. Automated desktop
+acceptance did not complete. Headphones and suspend remain unverified.
 
-The `audio-topology` CI artifact includes the compiled speaker graph and UCM
+The `audio-topology` CI artifact includes the compiled playback/capture graph and UCM
 configuration. Its build checks PCM compatibility, graph links, configuration
 sizes, channel maps and coefficients. Local build:
 
@@ -306,4 +319,5 @@ and a probe-time GPR callback race caused the DSP readiness query to time out.
 The next candidate installs `qcom/sm8750/TB522FU-tplg.bin` and includes the
 attributed upstream callback fixes plus failed-probe receive draining.
 Wi-Fi needs an explicit local country hint for its self-managed PHY; a global
-module hint alone does not configure the radio. No speaker audio claim yet.
+module hint alone does not configure the radio. Those early speaker blockers
+were resolved before CI28; current acceptance is described at the top of this page.
