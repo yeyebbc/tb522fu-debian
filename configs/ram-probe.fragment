@@ -129,3 +129,10 @@ CONFIG_QCOM_GPI_DMA=m
 # UFS is staged manually after the isolated USB recovery path is ready.
 CONFIG_SCSI_UFS_QCOM=m
 CONFIG_PHY_QCOM_QMP_UFS=m
+
+# This Android RTC exposes a raw counter without a verified Unix-time offset.
+# Its late probe overwrote fake-hwclock's restored date with 1970 on CI15.
+# Keep the RTC available for investigation, but use Debian's saved clock until
+# its stock offset format is understood. Never write Android's RTC from NTP.
+# CONFIG_RTC_HCTOSYS is not set
+# CONFIG_RTC_SYSTOHC is not set

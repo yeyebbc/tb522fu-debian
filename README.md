@@ -18,7 +18,8 @@ read-only maintenance shell when the partition is absent or cannot be mounted
 read-only. This also permits explicit installation onto a newly created, blank
 partition. A mounted root with a wrong board marker, PARTUUID or module tree
 is still rejected; the installed profile never falls back to a maintenance shell.
-This new blank-partition path has passed host guard tests, not a hardware test.
+The blank-partition maintenance path and the first persistent installation
+have passed hardware tests on one tablet.
 SimpleDRM borrows the firmware framebuffer;
 native display and GPU remain disabled. A separate, optional workflow job builds
 Debian13 GNOME from authenticated Debian archives. The original RAM-only
@@ -63,9 +64,26 @@ attributes, capabilities and links. All twelve GPT copies stayed byte-identical.
 An explicit early EDL return restored verified stock Android. The900-second
 fallback timer was armed; this test did not wait for it to expire.
 
-No repartitioning or persistent installation has occurred. Native display/GPU,
-Wi-Fi, audio, charging, suspend and installed Android/Linux switching remain
-unverified. These artifacts are development components, not an installer.
+The 256 GiB ext4 root has been created and populated on-device, with complete
+file verification and a clean filesystem check. Android was reset for its
+smaller userdata partition and booted successfully. The CI15 disk-test kernel
+from recipe `f5c8b6a5db577e786602f591ee360ad90805884c` booted that persistent
+root into a physically visible GNOME welcome screen. After the host-key unit
+ordering fix in `1e7087a`, authenticated USB SSH and a clean systemd reboot
+through host-assisted stock restoration passed. Desktop account setup and
+new physical touch acceptance on the persistent root remain pending.
+
+CI15 also exposed a clock failure: fake-hwclock restored the saved date, then
+the late PMIC RTC probe set system time to 1970. The configuration now disables
+automatic RTC-to-system and system-to-RTC synchronization until the stock
+RTC offset format is understood. Debian's existing fake-hwclock load/save
+units remain responsible for the offline clock floor. This kernel change is
+awaiting build and cold-boot validation; it does not provide accurate elapsed
+time while powered off or network time synchronization.
+
+Native display/GPU, Wi-Fi, audio, charging, suspend and installed on-device
+Android/Linux switching remain unverified. These artifacts are development
+components, not an installer.
 
 Own-kernel recovery images trigger a firmware CrashDump on the tested Lenovo
 firmware. A standalone normal-boot entry test successfully returned to EDL,
@@ -116,7 +134,8 @@ optional SSH restricted to the USB peer with public-key authentication.
 The installer must supply this tablet's firmware, root PARTUUID and authorized
 key privately. Debugging is off unless `/etc/tb522fu/usb-debug-enabled` exists.
 Default SSH services are masked; no credentials or firmware are in the overlay.
-These files have passed syntax/unit checks, not persistent hardware validation. The
+Touch loading, visible GNOME and authenticated USB SSH have passed a persistent
+boot; optional debugging-off behavior still needs a cold-boot check. The
 image-rotation helper verifies both saved images and the current boot image,
 then writes and reads back only boot_b. File-backed failure tests verify
 rollback after a partial write, wrong readback or read error; unknown images

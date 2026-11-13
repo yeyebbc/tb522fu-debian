@@ -168,6 +168,9 @@ def main():
                     'CONFIG_INTERCONNECT_QCOM_SM8750=y', 'CONFIG_USB_DWC3_QCOM=y']:
         assert setting in config, setting
     assert 'CONFIG_QCOM_SCM=y' in config
+    # PMIC coldplug must not replace Debian's saved time with its raw counter.
+    assert '# CONFIG_RTC_HCTOSYS is not set' in config
+    assert '# CONFIG_RTC_SYSTOHC is not set' in config
     cmdline = next(s for s in config if s.startswith('CONFIG_CMDLINE='))
     assert ('qcom_scm.probe_edl_return=1' in cmdline) == (args.profile != 'installed')
     if disk:
