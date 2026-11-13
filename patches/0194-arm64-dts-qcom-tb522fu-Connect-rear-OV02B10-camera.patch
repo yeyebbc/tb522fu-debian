@@ -1,0 +1,193 @@
+From 2e801cd91731757effb4d09a01e1b6264fff14bf Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Sat, 14 Nov 2026 06:58:05 +0800
+Subject: [PATCH 194/194] arm64: dts: qcom: tb522fu: Connect rear OV02B10
+ camera
+
+Describe stock slot2 through CCI1 master0, PHY5 and CAMSS port5. Match
+MCLK3/GPIO92, resetGPIO109, CCI GPIO117/118, two regulator outputs and
+PHY5's L1F/L3G supplies. Mainline pin function names differ from downstream
+but select the same pin muxes. Active and sleep bias states match stock.
+
+L7B and L10B request exactly2.88V and1.8V; both are valid PMIC5 selectors.
+Keep L7's undocumented input supply under RPMh dependency management,
+matching the stock representation, instead of guessing a parent phandle.
+This behavior is documented by Qualcomm's RPMh binding and confirmed by
+upstream maintainer guidance. Existing BOB and shared PHY rail bounds are
+unchanged. No autofocus or other sensor is enabled.
+
+The reference sensor mode uses330MHz link frequency at24MHz MCLK. Actual
+capture and orientation remain untested. The build recipe must blacklist
+all camera modules until the debug channel and independent return are ready.
+
+References:
+https://android.googlesource.com/kernel/msm/+/c054c528cf8c53a74354cdace8507b9edd559005/Documentation/devicetree/bindings/regulator/rpmh-regulator.txt
+https://www.mail-archive.com/linux-kernel@vger.kernel.org/msg2658472.html
+
+Signed-off-by: Codex <codex@localhost>
+---
+ .../boot/dts/qcom/sm8750-lenovo-y900-acm.dts  |   2 +
+ .../dts/qcom/sm8750-lenovo-y900-camera.dtsi   | 144 ++++++++++++++++++
+ 2 files changed, 146 insertions(+)
+ create mode 100644 arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-camera.dtsi
+
+diff --git a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+index 3438b1ee2232a2faf69b5a4d8c196db3954452ea..6fe7f6366bffbe554e73e1e11db5a98f3955cd95 100644
+--- a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
++++ b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+@@ -1069,3 +1069,5 @@ bluetooth {
+ 		vddrfa1p8-supply = <&wlan_pmu_rfa1p8>;
+ 	};
+ };
++
++#include "sm8750-lenovo-y900-camera.dtsi"
+diff --git a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-camera.dtsi b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-camera.dtsi
+new file mode 100644
+index 0000000000000000000000000000000000000000..136189dc0d06e35446277640e3865a741bd613da
+--- /dev/null
++++ b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-camera.dtsi
+@@ -0,0 +1,144 @@
++// SPDX-License-Identifier: BSD-3-Clause
++/* Camera slot 2 wiring verified against the TB522FU stock runtime tree. */
++
++#include <dt-bindings/media/video-interfaces.h>
++
++&apps_rsc {
++	regulators-b {
++		/* RPMh retains ownership of the undocumented L7 input dependency. */
++		vreg_l7b_camera: ldo7 {
++			regulator-name = "vreg_l7b_camera";
++			regulator-min-microvolt = <2880000>;
++			regulator-max-microvolt = <2880000>;
++			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
++		};
++
++		vreg_l10b_camera: ldo10 {
++			regulator-name = "vreg_l10b_camera";
++			regulator-min-microvolt = <1800000>;
++			regulator-max-microvolt = <1800000>;
++			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
++		};
++	};
++};
++
++&camss {
++	status = "okay";
++};
++
++&camss_csiphy5_in_port {
++	camss_csiphy5_in: endpoint {
++		bus-type = <MEDIA_BUS_TYPE_CSI2_DPHY>;
++		clock-lanes = <0>;
++		data-lanes = <1>;
++		remote-endpoint = <&csiphy5_out>;
++	};
++};
++
++&cci1 {
++	pinctrl-names = "default", "sleep";
++	pinctrl-0 = <&camera_cci1_default>;
++	pinctrl-1 = <&camera_cci1_sleep>;
++	status = "okay";
++};
++
++&cci1_i2c0 {
++	status = "okay";
++
++	ov02b10: camera-sensor@3c {
++		compatible = "ovti,ov02b10";
++		reg = <0x3c>;
++
++		clocks = <&cambistmclkcc CAM_BIST_MCLK_CC_MCLK3_CLK>;
++		assigned-clocks = <&cambistmclkcc CAM_BIST_MCLK_CC_MCLK3_CLK>;
++		assigned-clock-rates = <24000000>;
++		reset-gpios = <&tlmm 109 GPIO_ACTIVE_LOW>;
++		avdd-supply = <&vreg_l7b_camera>;
++		dovdd-supply = <&vreg_l10b_camera>;
++
++		pinctrl-names = "default";
++		pinctrl-0 = <&camera_mclk3_default &camera_reset3_default>;
++
++		orientation = <1>; /* Rear-facing. */
++		rotation = <90>;
++
++		port {
++			ov02b10_out: endpoint {
++				bus-type = <MEDIA_BUS_TYPE_CSI2_DPHY>;
++				clock-lanes = <0>;
++				data-lanes = <1>;
++				link-frequencies = /bits/ 64 <330000000>;
++				remote-endpoint = <&csiphy5_in>;
++			};
++		};
++	};
++};
++
++&csiphy5 {
++	vdda-0p9-supply = <&vreg_l1f>;
++	vdda-1p2-supply = <&vreg_l3g>;
++	status = "okay";
++};
++
++&csiphy5_in_port {
++	csiphy5_in: endpoint {
++		bus-type = <MEDIA_BUS_TYPE_CSI2_DPHY>;
++		clock-lanes = <0>;
++		data-lanes = <1>;
++		remote-endpoint = <&ov02b10_out>;
++	};
++};
++
++&csiphy5_out_port {
++	csiphy5_out: endpoint {
++		remote-endpoint = <&camss_csiphy5_in>;
++	};
++};
++
++&tlmm {
++	camera_cci1_default: camera-cci1-default-state {
++		sda-pins {
++			pins = "gpio117";
++			function = "cci_i2c_sda";
++			drive-strength = <2>;
++			bias-pull-up;
++		};
++
++		scl-pins {
++			pins = "gpio118";
++			function = "cci_i2c_scl";
++			drive-strength = <2>;
++			bias-pull-up;
++		};
++	};
++
++	camera_cci1_sleep: camera-cci1-sleep-state {
++		sda-pins {
++			pins = "gpio117";
++			function = "cci_i2c_sda";
++			drive-strength = <2>;
++			bias-disable;
++		};
++
++		scl-pins {
++			pins = "gpio118";
++			function = "cci_i2c_scl";
++			drive-strength = <2>;
++			bias-disable;
++		};
++	};
++
++	camera_mclk3_default: camera-mclk3-default-state {
++		pins = "gpio92";
++		function = "cam_mclk";
++		drive-strength = <2>;
++		bias-disable;
++	};
++
++	camera_reset3_default: camera-reset3-default-state {
++		pins = "gpio109";
++		function = "gpio";
++		drive-strength = <2>;
++		bias-disable;
++	};
++};

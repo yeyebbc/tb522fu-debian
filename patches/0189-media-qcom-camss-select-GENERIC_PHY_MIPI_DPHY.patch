@@ -1,0 +1,39 @@
+From e09f95c44b7279f43b5504698ed3094f26ee0ec2 Mon Sep 17 00:00:00 2001
+From: Shuai Liu <847807867@qq.com>
+Date: Wed, 4 Nov 2026 09:11:00 +0800
+Subject: [PATCH 189/194] media: qcom: camss: select GENERIC_PHY_MIPI_DPHY
+
+Commit 0ee6c8a921b1 ("media: qcom: camss: Add support for PHY API
+devices") added a call to phy_mipi_dphy_get_default_config_for_hsclk()
+in camss-csiphy.c but did not select GENERIC_PHY_MIPI_DPHY, the
+invisible bool gating phy-core-mipi-dphy.c where that helper lives.
+
+With CONFIG_VIDEO_QCOM_CAMSS=y and no other driver pulling in
+GENERIC_PHY_MIPI_DPHY, the build fails at link time:
+
+  camss-csiphy.c:(.text+0x51d): undefined reference to
+  `phy_mipi_dphy_get_default_config_for_hsclk'
+
+Select GENERIC_PHY_MIPI_DPHY and drop the explicit "select GENERIC_PHY",
+which is redundant as GENERIC_PHY_MIPI_DPHY selects GENERIC_PHY
+transitively (drivers/phy/Kconfig). This matches the other MIPI D-PHY
+consumers such as rkisp1, mali-c55 and sun6i-mipi-csi2.
+
+Fixes: 0ee6c8a921b1 ("media: qcom: camss: Add support for PHY API devices")
+Signed-off-by: Shuai Liu <847807867@qq.com>
+Reviewed-by: Vladimir Zapolskiy <vladimir.zapolskiy@linaro.org>
+---
+ drivers/media/platform/qcom/camss/Kconfig | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/media/platform/qcom/camss/Kconfig b/drivers/media/platform/qcom/camss/Kconfig
+index b51745c942c9fd71a95d09993213bde4b7e877e2..e0cef2cdd0a1f2f2e226efb85d6dd8660ea4e1cd 100644
+--- a/drivers/media/platform/qcom/camss/Kconfig
++++ b/drivers/media/platform/qcom/camss/Kconfig
+@@ -7,5 +7,5 @@ config VIDEO_QCOM_CAMSS
+ 	select VIDEO_V4L2_SUBDEV_API
+ 	select VIDEOBUF2_DMA_SG
+ 	select V4L2_FWNODE
+-	select GENERIC_PHY
++	select GENERIC_PHY_MIPI_DPHY
+ 	imply PHY_QCOM_MIPI_CSI2

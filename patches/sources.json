@@ -421,5 +421,252 @@
     "source": "Unchanged upstream v2 by Birk Skyum and Vladyslav Tymoshchuk, Message-ID20261014180201.57109-1-birk.skyum@pm.me",
     "url": "https://lore.kernel.org/r/20261014180201.57109-1-birk.skyum@pm.me",
     "scope": "Cancel old in-band sleep workers/timers and reset host state during controller power-off. No firmware, pacing, timeout or retry changes."
+  },
+  "0172-dt-bindings-phy-qcom-Add-CSI2-C-PHY-DPHY-schema.patch": {
+    "local_commit": "3ef718ed7f9d744f64c2d5fc83b6e9b4eb86c1c5",
+    "sha256": "a985ab269fddbd53df7e962d8c8599f4978231e59cb9055a406f6d815c87ecb5",
+    "license": "Original source-file licenses and attribution retained",
+    "hardware_tested": false,
+    "repository": "https://github.com/torvalds/linux",
+    "commit": "42b96f94929c906956fe10f9610a091c5003d248",
+    "adaptation": "Unchanged import; stable patch ID matches original."
+  },
+  "0173-phy-qcom-mipi-csi2-Add-a-CSI2-MIPI-DPHY-driver.patch": {
+    "local_commit": "2e7f20ae87c7033c45074a596bfa648310373f98",
+    "sha256": "90593672739838af1eae65aa59331ce2824b09ba42f2c31544369b7aafcf8a47",
+    "license": "Original source-file licenses and attribution retained",
+    "hardware_tested": false,
+    "repository": "https://github.com/torvalds/linux",
+    "commit": "2bc7bb2b8e68acf09d5d691d0a9897d8f7b4994a",
+    "adaptation": "Unchanged import; stable patch ID matches original."
+  },
+  "0174-regulator-qcom-rpmh-Terminate-PM8010-regulator-data.patch": {
+    "local_commit": "c37902a4b79a6606aad5f13cbdda6b31433a52fd",
+    "sha256": "049122710ac3d8859a36bb511bdc971851c5b302aebcbe9cf0c3ecdbe22493d8",
+    "license": "Original source-file licenses and attribution retained",
+    "hardware_tested": false,
+    "source": "Local PM8010 regulator table sentinel; no regulator enabled by that patch.",
+    "references": [
+      "https://lore.kernel.org/all/20261102-kaanapali-camss-v24-0-d6b8f3f6f66f@oss.qualcomm.com/",
+      "https://lore.kernel.org/all/20260721-add-support-for-camss-on-sm8750-v6-0-a5f841061d18@oss.qualcomm.com/",
+      "https://github.com/lenovo-basements/android_kernel_lenovo_sm8750-modules/tree/e1f324632d70b2427751820cd48eefc45baab0ce/qcom/opensource/camera-kernel"
+    ]
+  },
+  "0175-phy-core-Fix-race-condition-between-_of_phy_get-and-.patch": {
+    "local_commit": "0dbe2f6d8865da66030f965cd748955d88355d53",
+    "sha256": "5c88d2342b42d597d48d702ae4fca408d54b85a8bc66151e69cc4a0820fc9e8d",
+    "license": "Original source-file licenses and attribution retained",
+    "hardware_tested": false,
+    "repository": "https://github.com/torvalds/linux",
+    "commit": "df4cdf0a63cccb51f121aea7ea52796fac94d0c5",
+    "adaptation": "Unchanged import; stable patch ID matches original."
+  },
+  "0176-phy-core-Add-phy_get_by_of_node.patch": {
+    "local_commit": "ffc14c05f5868cb7e25ca3df3285409905f88aa8",
+    "sha256": "e50bb939c058bdadf3ad3178cec052d86b0acfe4d98e90378ad98eff3be94191",
+    "license": "Original source-file licenses and attribution retained",
+    "hardware_tested": false,
+    "repository": "https://github.com/torvalds/linux",
+    "commit": "1b7ef606894ac81b5d95b51fe05475a3aedba411",
+    "adaptation": "Unchanged import; stable patch ID matches original."
+  },
+  "0177-phy-core-Add-devm_phy_get_by_of_node.patch": {
+    "local_commit": "5e336ac257007f4d4ec773f8d972f56ad28e06f5",
+    "sha256": "fe03648ee942f788ae91c5015915eaa01cfa20c2be4d8b78305d843d49c0182b",
+    "license": "Original source-file licenses and attribution retained",
+    "hardware_tested": false,
+    "repository": "https://github.com/torvalds/linux",
+    "commit": "7574a5187ba8aa72fc4b018574a721c63c55413a",
+    "adaptation": "Unchanged import; stable patch ID matches original."
+  },
+  "0178-media-qcom-camss-Add-PM-clock-support-and-integrate-.patch": {
+    "local_commit": "1ad5cefe246a494a7960ccdcf2626772cd8e8268",
+    "sha256": "8f7f67296ffc7e77ac586df164a798692c8e972ebfbea88a0d71d2441f60be2b",
+    "license": "Original source-file licenses and attribution retained",
+    "hardware_tested": false,
+    "repository": "https://github.com/torvalds/linux",
+    "commit": "e4a73365ec8c3d95237f68a0dde5132ef9888705",
+    "adaptation": "Unchanged import; stable patch ID matches original."
+  },
+  "0179-device-property-Introduce-fwnode_graph_for_each_endp.patch": {
+    "local_commit": "37b84a7ccc72e0ce75923be85e9c14c9e41d6c02",
+    "sha256": "ce3d7c7bee9293edf2e56cf9e126710acb49596776da9ddbb7886b38007bc538",
+    "license": "Original source-file licenses and attribution retained",
+    "hardware_tested": false,
+    "repository": "https://github.com/torvalds/linux",
+    "commit": "3b696f0d04fa42e58d2eacffd1365a56ac862db4",
+    "adaptation": "Unchanged import; stable patch ID matches original."
+  },
+  "0180-media-qcom-camss-use-fwnode_graph_for_each_endpoint_.patch": {
+    "local_commit": "58f279e701351e894fe8f96b8b70e8807eaa413e",
+    "sha256": "9ee4e924ffd491f6ce7081f07be47faca842b3ad9b05a52326dc4f6390ea310d",
+    "license": "Original source-file licenses and attribution retained",
+    "hardware_tested": false,
+    "repository": "https://github.com/torvalds/linux",
+    "commit": "aedd77ea8168f00687c1248cdf115071e869cf93",
+    "adaptation": "Unchanged import; stable patch ID matches original."
+  },
+  "0181-media-qcom-camss-Add-support-for-PHY-API-devices.patch": {
+    "local_commit": "55391eea108eda94edcfef06f01b8acc0f57c3c1",
+    "sha256": "e2452e1714fa228423b88d3db3bffc3e8cc4cc4d73915f3c23e30ba4cd92571c",
+    "license": "Original source-file licenses and attribution retained",
+    "hardware_tested": false,
+    "repository": "https://github.com/torvalds/linux",
+    "commit": "0ee6c8a921b13944aad03fcc30b18c6de31b8e32",
+    "adaptation": "Unchanged import; stable patch ID matches original."
+  },
+  "0182-media-qcom-camss-Use-data-lanes-starting-at-1-for-ne.patch": {
+    "local_commit": "704d66c3dd3e39a5ce9de184c1e6f07431210abf",
+    "sha256": "4af1c969389c7f0af9220df319b241dd40bb76bdcabb25e6b66ba8edd3cdd213",
+    "license": "Original source-file licenses and attribution retained",
+    "hardware_tested": false,
+    "repository": "https://github.com/torvalds/linux",
+    "commit": "ba5752445d3dd69c772560330c812ccb99ad6e18",
+    "adaptation": "Unchanged import; stable patch ID matches original."
+  },
+  "0183-phy-qcom-mipi-csi2-Parametrise-the-common-status-reg.patch": {
+    "local_commit": "56b8a2ce774aafa5e5c4c7ace7391a12c9b27754",
+    "sha256": "c3f808a3c5fc5a897bab2ec6ad3b87eedd8ab8f85872bf3cec324762c1fe01df",
+    "license": "Original source-file licenses and attribution retained",
+    "hardware_tested": false,
+    "url": "https://lore.kernel.org/all/20261102-kaanapali-camss-v24-2-d6b8f3f6f66f@oss.qualcomm.com/",
+    "adaptation": "Unchanged reviewed pending patch; stable patch ID matches original."
+  },
+  "0184-media-qcom-camss-Add-addr_update-hooks-and-guard-CSI.patch": {
+    "local_commit": "04e018ac427de01be1e0ddb6a9187c631da306c6",
+    "sha256": "d5bfd19eb0870dab0fba6e2f22c45cc7c970104c219389d245177f0c58ab3795",
+    "license": "Original source-file licenses and attribution retained",
+    "hardware_tested": false,
+    "url": "https://lore.kernel.org/all/20261102-kaanapali-camss-v24-4-d6b8f3f6f66f@oss.qualcomm.com/",
+    "adaptation": "Unchanged reviewed pending patch; stable patch ID matches original."
+  },
+  "0185-media-qcom-camss-Allow-CSI2-PHY-devices-without-CSIP.patch": {
+    "local_commit": "2277299124a955ae6c6894f09416048588899a64",
+    "sha256": "ce1213c0eabe7fb42ed4c8be914be1ad9af7231528796a6c1dcffda6ca9fe759",
+    "license": "Original source-file licenses and attribution retained",
+    "hardware_tested": false,
+    "url": "https://lore.kernel.org/all/20261102-kaanapali-camss-v24-8-d6b8f3f6f66f@oss.qualcomm.com/",
+    "adaptation": "Unchanged reviewed pending patch; stable patch ID matches original."
+  },
+  "0186-dt-bindings-phy-qcom-Describe-the-SM8750-CSI2-PHY.patch": {
+    "local_commit": "dccb77536439e6ab82d3aad9460e985de03e01c8",
+    "sha256": "41ebf2af858bd3a68e42c31ca4c75bfccaae0cbd464ab2eb1bf20d03550d649c",
+    "license": "Original source-file licenses and attribution retained",
+    "hardware_tested": false,
+    "source": "SM8750 CSI2 binding using the merged standalone PHY framework.",
+    "references": [
+      "https://lore.kernel.org/all/20261102-kaanapali-camss-v24-0-d6b8f3f6f66f@oss.qualcomm.com/",
+      "https://lore.kernel.org/all/20260721-add-support-for-camss-on-sm8750-v6-0-a5f841061d18@oss.qualcomm.com/",
+      "https://github.com/lenovo-basements/android_kernel_lenovo_sm8750-modules/tree/e1f324632d70b2427751820cd48eefc45baab0ce/qcom/opensource/camera-kernel"
+    ]
+  },
+  "0187-phy-qcom-mipi-csi2-Add-the-SM8750-v2.3.0-D-PHY-seque.patch": {
+    "local_commit": "3201b5e90e84a0f34381506a71ee64c7f08ccdbf",
+    "sha256": "3f4249d3e01dcc87cc340681545c3d0a8e520acfd27031d2c2a960fb2d7010a1",
+    "license": "Original source-file licenses and attribution retained",
+    "hardware_tested": false,
+    "source": "SM8750 v2.3.0 DPHY sequence derived from the Lenovo GPL camera-kernel, commit e1f324632d70b2427751820cd48eefc45baab0ce; original copyright retained.",
+    "references": [
+      "https://lore.kernel.org/all/20261102-kaanapali-camss-v24-0-d6b8f3f6f66f@oss.qualcomm.com/",
+      "https://lore.kernel.org/all/20260721-add-support-for-camss-on-sm8750-v6-0-a5f841061d18@oss.qualcomm.com/",
+      "https://github.com/lenovo-basements/android_kernel_lenovo_sm8750-modules/tree/e1f324632d70b2427751820cd48eefc45baab0ce/qcom/opensource/camera-kernel"
+    ]
+  },
+  "0188-media-qcom-camss-Adapt-SM8750-capture-to-separate-AU.patch": {
+    "local_commit": "5ee16beda2ad4ecf2a92f55e2184a25648adedeb",
+    "sha256": "bc7d9b7ec88f11a30ddfda39fc5993b2b9684b5a76ea92a24f531787316d87eb",
+    "license": "Original source-file licenses and attribution retained",
+    "hardware_tested": false,
+    "source": "Adapted Qualcomm SM8750 v6 CSID980/resources and Kaanapali v24 AUP/RUP lifecycle, checked against Lenovo GPL register headers. Original authors retained; review/test tags do not cover this adaptation.",
+    "references": [
+      "https://lore.kernel.org/all/20261102-kaanapali-camss-v24-0-d6b8f3f6f66f@oss.qualcomm.com/",
+      "https://lore.kernel.org/all/20260721-add-support-for-camss-on-sm8750-v6-0-a5f841061d18@oss.qualcomm.com/",
+      "https://github.com/lenovo-basements/android_kernel_lenovo_sm8750-modules/tree/e1f324632d70b2427751820cd48eefc45baab0ce/qcom/opensource/camera-kernel"
+    ]
+  },
+  "0189-media-qcom-camss-select-GENERIC_PHY_MIPI_DPHY.patch": {
+    "local_commit": "e09f95c44b7279f43b5504698ed3094f26ee0ec2",
+    "sha256": "a6159377c3049018df3db354137f9e7144b011a83b6c4d7efe0c18fbcd1a9c45",
+    "license": "Original source-file licenses and attribution retained",
+    "hardware_tested": false,
+    "url": "https://lore.kernel.org/all/tencent_C589954C94BAFF49A7B030C93F367DE1620A@qq.com/",
+    "adaptation": "Unchanged reviewed pending patch; stable patch ID matches original."
+  },
+  "0190-dt-bindings-media-Describe-OV02B10-CSI2-sensor.patch": {
+    "local_commit": "358cc938acc22c0e05fe5c0fa75ee1c5b7917825",
+    "sha256": "06d6c08c0b3f82f365906270a14d1664441293c3b3aa74c6e1e5061d612b1733",
+    "license": "Original source-file licenses and attribution retained",
+    "hardware_tested": false,
+    "source": "Local OV02B10 binding for the GPL reference driver; maintainer address is a draft placeholder.",
+    "references": [
+      "https://lore.kernel.org/all/20261102-kaanapali-camss-v24-0-d6b8f3f6f66f@oss.qualcomm.com/",
+      "https://lore.kernel.org/all/20260721-add-support-for-camss-on-sm8750-v6-0-a5f841061d18@oss.qualcomm.com/",
+      "https://github.com/lenovo-basements/android_kernel_lenovo_sm8750-modules/tree/e1f324632d70b2427751820cd48eefc45baab0ce/qcom/opensource/camera-kernel"
+    ]
+  },
+  "0191-media-i2c-Add-OV02B10-24-MHz-RAW10-bring-up-driver.patch": {
+    "local_commit": "5b5515f69077402c4b816ddfaf4ae17c16a39c18",
+    "sha256": "598755b663952c6e7889d12ead063ff13757ff52e682986d2f3453792b753388",
+    "license": "Original source-file licenses and attribution retained",
+    "hardware_tested": false,
+    "source": "Local modern V4L2 adaptation of Rockchip OV02B10 mode and MediaTek timing/controls. Copyrights retained; mode is not Lenovo-stock-equivalent.",
+    "references": [
+      "https://lore.kernel.org/all/20261102-kaanapali-camss-v24-0-d6b8f3f6f66f@oss.qualcomm.com/",
+      "https://lore.kernel.org/all/20260721-add-support-for-camss-on-sm8750-v6-0-a5f841061d18@oss.qualcomm.com/",
+      "https://github.com/lenovo-basements/android_kernel_lenovo_sm8750-modules/tree/e1f324632d70b2427751820cd48eefc45baab0ce/qcom/opensource/camera-kernel"
+    ],
+    "reference_sources": {
+      "rockchip": {
+        "repository": "https://github.com/rockchip-linux/kernel",
+        "commit": "99d20d8faae8ad9531f7c9244efe0fa3bce9d43b",
+        "path": "drivers/media/i2c/ov02b10.c"
+      },
+      "mediatek_oneplus": {
+        "repository": "https://github.com/OnePlusOSS/android_kernel_oneplus_mt6893",
+        "commit": "48f1797695e24d46986a7c87dd91dd21cbf8c342",
+        "path": "drivers/misc/mediatek/imgsensor/src/common/v1_1/ov02b10_mipi_raw/ov02b10mipiraw_Sensor.c"
+      },
+      "source_files": {
+        "ov02b10-rockchip.c": "3c9dad68b17ffea29f7a41f53ee2bd844121670f12a556a83e14244c3cb57d9e",
+        "ov02b10-oneplus.c": "bd3446e598b787e4e52bfa537f10246eaf3a73b10c737673d47b7933eaa2638d",
+        "ov02b10-oneplus-kd_imgsensor.h": "8e0c57bea34d24a16efeb1ae1d4874cc2988cbfdfad2f31452447ecb5b2697a0"
+      }
+    }
+  },
+  "0192-dt-bindings-media-Describe-SM8750-standalone-PHY-CAM.patch": {
+    "local_commit": "8b2147a0184cc9f249b1705dc0f002d82610a195",
+    "sha256": "b5b88df8c7e1fd9cefdd569f67a7b563f7817a039a1a92cc87e7a760760f80a4",
+    "license": "Original source-file licenses and attribution retained",
+    "hardware_tested": false,
+    "source": "Adapted Qualcomm Kaanapali v24 binding and SM8750 v6 example for implemented standalone-PHY CSID980/VFE980 capture.",
+    "references": [
+      "https://lore.kernel.org/all/20261102-kaanapali-camss-v24-0-d6b8f3f6f66f@oss.qualcomm.com/",
+      "https://lore.kernel.org/all/20260721-add-support-for-camss-on-sm8750-v6-0-a5f841061d18@oss.qualcomm.com/",
+      "https://github.com/lenovo-basements/android_kernel_lenovo_sm8750-modules/tree/e1f324632d70b2427751820cd48eefc45baab0ce/qcom/opensource/camera-kernel"
+    ]
+  },
+  "0193-arm64-dts-qcom-sm8750-Describe-disabled-camera-resou.patch": {
+    "local_commit": "ae8c88bc3776d3780fc1758abd76569e7964f209",
+    "sha256": "2c617685dfc532cbc6b68f4c3afc9f8d0f3e258f9ddc32e0888c3b97ea7cfea4",
+    "license": "Original source-file licenses and attribution retained",
+    "hardware_tested": false,
+    "source": "Disabled SM8750 CAMSS/CCI/PHY descriptions from Qualcomm framework structure and stock-verified register/IRQ resources.",
+    "references": [
+      "https://lore.kernel.org/all/20261102-kaanapali-camss-v24-0-d6b8f3f6f66f@oss.qualcomm.com/",
+      "https://lore.kernel.org/all/20260721-add-support-for-camss-on-sm8750-v6-0-a5f841061d18@oss.qualcomm.com/",
+      "https://github.com/lenovo-basements/android_kernel_lenovo_sm8750-modules/tree/e1f324632d70b2427751820cd48eefc45baab0ce/qcom/opensource/camera-kernel"
+    ]
+  },
+  "0194-arm64-dts-qcom-tb522fu-Connect-rear-OV02B10-camera.patch": {
+    "local_commit": "2e801cd91731757effb4d09a01e1b6264fff14bf",
+    "sha256": "4608a91bdeb8f742e8642f3479ca59f84b963bcbe9417760cec5e25412384805",
+    "license": "Original source-file licenses and attribution retained",
+    "hardware_tested": false,
+    "source": "TB522FU stock-verified slot2 wiring and voltage requests; RPMh retains undocumented parent dependency ownership. Other cameras remain disabled.",
+    "references": [
+      "https://lore.kernel.org/all/20261102-kaanapali-camss-v24-0-d6b8f3f6f66f@oss.qualcomm.com/",
+      "https://lore.kernel.org/all/20260721-add-support-for-camss-on-sm8750-v6-0-a5f841061d18@oss.qualcomm.com/",
+      "https://github.com/lenovo-basements/android_kernel_lenovo_sm8750-modules/tree/e1f324632d70b2427751820cd48eefc45baab0ce/qcom/opensource/camera-kernel"
+    ]
   }
 }

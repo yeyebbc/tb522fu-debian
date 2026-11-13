@@ -1,0 +1,351 @@
+From 3201b5e90e84a0f34381506a71ee64c7f08ccdbf Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Sat, 14 Nov 2026 06:07:39 +0800
+Subject: [PATCH 187/194] phy: qcom-mipi-csi2: Add the SM8750 v2.3.0 D-PHY
+ sequence
+
+Use the non-combo D-PHY sequence from the published SM8750 GPL camera
+driver instead of assigning the X1E80100 table to this hardware. Preserve
+all 103 table entries and lane ordering, the 209-us preparation delays,
+zero writes when deskew is disabled, and the -10 settle-count adjustment.
+Hold reset across reference-generator polling and lane programming, then
+release it with the v2.3.0 D-PHY value. Restore reset before clocks stop.
+
+Keep PHY interrupts masked because the generic PHY has no interrupt
+handler. Reject unsupported polarity/deskew configurations and invalid
+lane or settle-count settings. Hardware version reading is optional so
+this variant does not issue the X1E revision-register selector sequence.
+The CAMCC timer clock has a single supported 400-MHz rate.
+
+Source: lenovo-basements/android_kernel_lenovo_sm8750-modules
+Commit: e1f324632d70b2427751820cd48eefc45baab0ce
+Files: qcom/opensource/camera-kernel/drivers/cam_sensor_module/cam_csiphy/
+       include/cam_csiphy_2_3_0_hwreg.h, cam_csiphy_core.c, cam_csiphy_soc.c
+
+Validation: ARM64 GCC14.2 W=1 object build; checkpatch; actual candidate C
+code run against mocked MMIO, compared with independently parsed stock
+GPL tables for 24 configurations and two start/stop cycles each, plus
+14 error/timeout cases and sparse lane mapping. No hardware test or board
+DT enablement; sensor and CAMSS980 integration remain incomplete.
+---
+ drivers/phy/qualcomm/Makefile                 |   3 +-
+ .../phy/qualcomm/phy-qcom-mipi-csi2-core.c    |   4 +-
+ .../phy/qualcomm/phy-qcom-mipi-csi2-sm8750.c  | 261 ++++++++++++++++++
+ drivers/phy/qualcomm/phy-qcom-mipi-csi2.h     |   1 +
+ 4 files changed, 267 insertions(+), 2 deletions(-)
+ create mode 100644 drivers/phy/qualcomm/phy-qcom-mipi-csi2-sm8750.c
+
+diff --git a/drivers/phy/qualcomm/Makefile b/drivers/phy/qualcomm/Makefile
+index 4b5e6640a6faa05715b96cc8e9512208340fb595..8310bfb4024c4b3bb5c670b50862afea4ed99b5d 100644
+--- a/drivers/phy/qualcomm/Makefile
++++ b/drivers/phy/qualcomm/Makefile
+@@ -8,7 +8,8 @@ obj-$(CONFIG_PHY_QCOM_M31_USB)		+= phy-qcom-m31.o
+ obj-$(CONFIG_PHY_QCOM_M31_EUSB)		+= phy-qcom-m31-eusb2.o
+ 
+ phy-qcom-mipi-csi2-objs			+= phy-qcom-mipi-csi2-core.o \
+-					   phy-qcom-mipi-csi2-3ph-dphy.o
++					   phy-qcom-mipi-csi2-3ph-dphy.o \
++					   phy-qcom-mipi-csi2-sm8750.o
+ obj-$(CONFIG_PHY_QCOM_MIPI_CSI2)	+= phy-qcom-mipi-csi2.o
+ 
+ obj-$(CONFIG_PHY_QCOM_PCIE2)		+= phy-qcom-pcie2.o
+diff --git a/drivers/phy/qualcomm/phy-qcom-mipi-csi2-core.c b/drivers/phy/qualcomm/phy-qcom-mipi-csi2-core.c
+index c0a4fa20eaf0c87f6c18b35e625f5ba1769c94e7..6932afb10e81036805f0e00f09c20d8a30451e0d 100644
+--- a/drivers/phy/qualcomm/phy-qcom-mipi-csi2-core.c
++++ b/drivers/phy/qualcomm/phy-qcom-mipi-csi2-core.c
+@@ -159,7 +159,8 @@ static int phy_qcom_mipi_csi2_power_on(struct phy *phy)
+ 
+ 	ops->reset(csi2phy);
+ 
+-	ops->hw_version_read(csi2phy);
++	if (ops->hw_version_read)
++		ops->hw_version_read(csi2phy);
+ 
+ 	ret = ops->lanes_enable(csi2phy, &csi2phy->stream_cfg);
+ 	if (ret)
+@@ -443,6 +444,7 @@ static int phy_qcom_mipi_csi2_probe(struct platform_device *pdev)
+ }
+ 
+ static const struct of_device_id phy_qcom_mipi_csi2_of_match_table[] = {
++	{ .compatible	= "qcom,sm8750-csi2-phy", .data = &mipi_csi2_dphy_sm8750 },
+ 	{ .compatible	= "qcom,x1e80100-csi2-phy", .data = &mipi_csi2_dphy_4nm_x1e },
+ 	{ }
+ };
+diff --git a/drivers/phy/qualcomm/phy-qcom-mipi-csi2-sm8750.c b/drivers/phy/qualcomm/phy-qcom-mipi-csi2-sm8750.c
+new file mode 100644
+index 0000000000000000000000000000000000000000..2e271477914a13c679bcab69bf9a2f3712c90447
+--- /dev/null
++++ b/drivers/phy/qualcomm/phy-qcom-mipi-csi2-sm8750.c
+@@ -0,0 +1,261 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * Qualcomm SM8750 CSI2 PHY v2.3.0, non-combo D-PHY mode.
++ *
++ * Register sequences and reset/timing protocol derived from the GPL driver
++ * cam_csiphy_2_3_0_hwreg.h and cam_csiphy_core.c published by Lenovo.
++ * Copyright (c) 2023-2024, Qualcomm Innovation Center, Inc. All rights reserved.
++ */
++
++#include <linux/delay.h>
++#include <linux/io.h>
++#include <linux/iopoll.h>
++#include <linux/math64.h>
++#include <linux/time64.h>
++
++#include "phy-qcom-mipi-csi2.h"
++
++#define SM8750_PHY_RESET		0x1000
++#define SM8750_PHY_LANES		0x1014
++#define SM8750_PHY_POWER		0x1018
++#define SM8750_PHY_CTRL7		0x101c
++#define SM8750_PHY_MODE		0x108c
++#define SM8750_PHY_REFGEN_STATUS		0x1184
++#define SM8750_PHY_REFGEN_READY		BIT(7)
++
++#define CSIPHY_DEFAULT_PARAMS		0
++#define CSIPHY_SETTLE_CNT_LOWER_BYTE	2
++#define CSIPHY_SKEW_CAL			7
++
++/* Preserve the clock/data lane preparation order and all microsecond delays. */
++static const struct mipi_csi2phy_lane_regs sm8750_dphy_init[] = {
++	{ 0x0e94, 0x00, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0ea0, 0x00, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0e90, 0x0f, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0e98, 0x08, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0e94, 0x07, 209, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0094, 0x00, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x00a0, 0x00, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0090, 0x0f, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0098, 0x08, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0094, 0x07, 209, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0494, 0x00, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x04a0, 0x00, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0490, 0x0f, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0498, 0x08, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0494, 0x07, 209, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0894, 0x00, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x08a0, 0x00, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0890, 0x0f, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0898, 0x08, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0894, 0x07, 209, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0c94, 0x00, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0ca0, 0x00, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0c90, 0x0f, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0c98, 0x08, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0c94, 0x07, 209, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0e30, 0x00, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0e28, 0x04, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0e00, 0x80, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0e0c, 0xff, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0e38, 0x1f, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0e2c, 0x01, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0e34, 0x0f, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0e1c, 0x0a, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0e14, 0x60, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0e3c, 0xb8, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0e04, 0x0c, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0e20, 0x00, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0e08, 0x19, 0, CSIPHY_SETTLE_CNT_LOWER_BYTE },
++	{ 0x0e10, 0x52, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0030, 0x00, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0000, 0x8c, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0038, 0xfe, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x002c, 0x01, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0034, 0x0f, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x001c, 0x0a, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0014, 0x60, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x003c, 0xb8, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0004, 0x0c, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0020, 0x00, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0008, 0x19, 0, CSIPHY_SETTLE_CNT_LOWER_BYTE },
++	{ 0x0010, 0x52, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0430, 0x00, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0400, 0x8c, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0438, 0xfe, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x042c, 0x01, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0434, 0x0f, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x041c, 0x0a, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0414, 0x60, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x043c, 0xb8, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0404, 0x0c, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0420, 0x00, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0408, 0x19, 0, CSIPHY_SETTLE_CNT_LOWER_BYTE },
++	{ 0x0410, 0x52, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0830, 0x00, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0800, 0x8c, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0838, 0xfe, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x082c, 0x01, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0834, 0x0f, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x081c, 0x0a, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0814, 0x60, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x083c, 0xb8, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0804, 0x0c, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0820, 0x00, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0808, 0x19, 0, CSIPHY_SETTLE_CNT_LOWER_BYTE },
++	{ 0x0810, 0x52, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0c30, 0x00, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0c00, 0x8c, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0c38, 0xfe, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0c2c, 0x01, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0c34, 0x0f, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0c1c, 0x0a, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0c14, 0x60, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0c3c, 0xb8, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0c04, 0x0c, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0c20, 0x00, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0c08, 0x19, 0, CSIPHY_SETTLE_CNT_LOWER_BYTE },
++	{ 0x0c10, 0x52, 0, CSIPHY_DEFAULT_PARAMS },
++	{ 0x0094, 0xd7, 0, CSIPHY_SKEW_CAL },
++	{ 0x005c, 0x00, 0, CSIPHY_SKEW_CAL },
++	{ 0x0060, 0xfd, 0, CSIPHY_SKEW_CAL },
++	{ 0x0064, 0x7f, 0, CSIPHY_SKEW_CAL },
++	{ 0x0494, 0xd7, 0, CSIPHY_SKEW_CAL },
++	{ 0x045c, 0x00, 0, CSIPHY_SKEW_CAL },
++	{ 0x0460, 0xfd, 0, CSIPHY_SKEW_CAL },
++	{ 0x0464, 0x7f, 0, CSIPHY_SKEW_CAL },
++	{ 0x0894, 0xd7, 0, CSIPHY_SKEW_CAL },
++	{ 0x085c, 0x00, 0, CSIPHY_SKEW_CAL },
++	{ 0x0860, 0xfd, 0, CSIPHY_SKEW_CAL },
++	{ 0x0864, 0x7f, 0, CSIPHY_SKEW_CAL },
++	{ 0x0c94, 0xd7, 0, CSIPHY_SKEW_CAL },
++	{ 0x0c5c, 0x00, 0, CSIPHY_SKEW_CAL },
++	{ 0x0c60, 0xfd, 0, CSIPHY_SKEW_CAL },
++	{ 0x0c64, 0x7f, 0, CSIPHY_SKEW_CAL },
++};
++
++static void sm8750_dphy_reset(struct mipi_csi2phy_device *csi2phy)
++{
++	/* Keep reset asserted until the lane configuration is complete. */
++	writel(1, csi2phy->base + SM8750_PHY_RESET);
++	usleep_range(20, 25);
++}
++
++static int sm8750_dphy_lanes_enable(struct mipi_csi2phy_device *csi2phy,
++				   struct mipi_csi2phy_stream_cfg *cfg)
++{
++	const struct mipi_csi2phy_lanes_cfg *lanes = &cfg->lane_cfg;
++	u64 settle_ns, count;
++	u32 enabled, status;
++	u8 settle;
++	int i, ret;
++
++	if (cfg->link_freq <= 0 || !csi2phy->timer_clk_rate ||
++	    !cfg->num_data_lanes || cfg->num_data_lanes > CSI2_MAX_DATA_LANES)
++		return -EINVAL;
++
++	/* Deskew negotiation is not implemented; limit the per-lane rate. */
++	if (cfg->link_freq > 750000000)
++		return -EOPNOTSUPP;
++
++	if (lanes->clk.pos != CSI2_DEFAULT_CLK_LANE || lanes->clk.pol)
++		return -EOPNOTSUPP;
++
++	enabled = BIT(CSI2_DEFAULT_CLK_LANE);
++	for (i = 0; i < cfg->num_data_lanes; i++) {
++		if (lanes->data[i].pos >= CSI2_MAX_DATA_LANES)
++			return -EINVAL;
++		if (lanes->data[i].pol)
++			return -EOPNOTSUPP;
++		if (enabled & BIT(2 * lanes->data[i].pos))
++			return -EINVAL;
++		enabled |= BIT(2 * lanes->data[i].pos);
++	}
++
++	/* v2.3.0: floor((85 ns + 6 UI) * timer_rate) - 10, UI = 1/bitrate. */
++	settle_ns = 85 + div64_u64(6ULL * NSEC_PER_SEC, 2ULL * cfg->link_freq);
++	count = div_u64(settle_ns * csi2phy->timer_clk_rate, NSEC_PER_SEC);
++	if (count <= 10 || count - 10 > 0xff)
++		return -ERANGE;
++	settle = count - 10;
++
++	ret = readl_poll_timeout(csi2phy->base + SM8750_PHY_REFGEN_STATUS,
++				status, status & SM8750_PHY_REFGEN_READY, 500, 10000);
++	if (ret) {
++		dev_err(csi2phy->dev, "Reference generator not ready: %#x\n", status);
++		return ret;
++	}
++
++	writel(enabled, csi2phy->base + SM8750_PHY_LANES);
++	writel(0, csi2phy->base + 0x1084);
++	writel(0, csi2phy->base + SM8750_PHY_MODE);
++	/* The stock common sequence delays at both D-PHY and C-PHY entries. */
++	usleep_range(2, 12);
++	writel(0x7a, csi2phy->base + SM8750_PHY_CTRL7);
++	writel(1, csi2phy->base + SM8750_PHY_POWER);
++
++	for (i = 0; i < ARRAY_SIZE(sm8750_dphy_init); i++) {
++		const struct mipi_csi2phy_lane_regs *r = &sm8750_dphy_init[i];
++		u32 val = r->reg_data;
++
++		if (r->param_type == CSIPHY_SETTLE_CNT_LOWER_BYTE)
++			val = settle;
++		else if (r->param_type == CSIPHY_SKEW_CAL)
++			val = 0;
++
++		writel(val, csi2phy->base + r->reg_addr);
++		if (r->delay_us)
++			usleep_range(r->delay_us, r->delay_us + 5);
++	}
++
++	/* The generic PHY has no IRQ handler: keep the eleven sources masked. */
++	for (i = 0; i < 11; i++)
++		writel(0, csi2phy->base + 0x102c + 4 * i);
++
++	/* Non-combo D-PHY reset release, after every lane has been configured. */
++	writel(2, csi2phy->base + SM8750_PHY_RESET);
++	usleep_range(10, 15);
++
++	return 0;
++}
++
++static void sm8750_dphy_lanes_disable(struct mipi_csi2phy_device *csi2phy,
++				     struct mipi_csi2phy_stream_cfg *cfg)
++{
++	writel(0, csi2phy->base + 0x1084);
++	writel(0, csi2phy->base + SM8750_PHY_MODE);
++	usleep_range(2, 12);
++	writel(0, csi2phy->base + SM8750_PHY_CTRL7);
++	writel(0, csi2phy->base + SM8750_PHY_POWER);
++	writel(0, csi2phy->base + SM8750_PHY_LANES);
++	sm8750_dphy_reset(csi2phy);
++}
++
++static const struct mipi_csi2phy_hw_ops sm8750_dphy_ops = {
++	.reset = sm8750_dphy_reset,
++	.lanes_enable = sm8750_dphy_lanes_enable,
++	.lanes_disable = sm8750_dphy_lanes_disable,
++};
++
++static const char * const sm8750_clks[] = { "core", "timer", "ahb" };
++static const char * const sm8750_supplies[] = { "vdda-0p9", "vdda-1p2" };
++
++static const struct mipi_csi2_genpd sm8750_genpds[] = {
++	{ .name = "top", .scaled = false },
++	{ .name = "mmcx", .scaled = true },
++	{ .name = "mx", .scaled = true },
++};
++
++const struct mipi_csi2phy_soc_cfg mipi_csi2_dphy_sm8750 = {
++	.ops = &sm8750_dphy_ops,
++	.reg_info = {
++		.common_regs_offset = 0x1000,
++		.common_status_offset = 0x138,
++	},
++	.supply_names = (const char **)sm8750_supplies,
++	.num_supplies = ARRAY_SIZE(sm8750_supplies),
++	.clk_names = (const char **)sm8750_clks,
++	.num_clk = ARRAY_SIZE(sm8750_clks),
++	.genpds = sm8750_genpds,
++	.num_genpds = ARRAY_SIZE(sm8750_genpds),
++};
+diff --git a/drivers/phy/qualcomm/phy-qcom-mipi-csi2.h b/drivers/phy/qualcomm/phy-qcom-mipi-csi2.h
+index d6366f809e510c59bc4c2e1fa69e5429a09e4ef4..e76b71d7c557ce35162d4b307bfd3f0bfc1247c7 100644
+--- a/drivers/phy/qualcomm/phy-qcom-mipi-csi2.h
++++ b/drivers/phy/qualcomm/phy-qcom-mipi-csi2.h
+@@ -94,5 +94,6 @@ struct mipi_csi2phy_device {
+ };
+ 
+ extern const struct mipi_csi2phy_soc_cfg mipi_csi2_dphy_4nm_x1e;
++extern const struct mipi_csi2phy_soc_cfg mipi_csi2_dphy_sm8750;
+ 
+ #endif /* __PHY_QCOM_MIPI_CSI2_H__ */

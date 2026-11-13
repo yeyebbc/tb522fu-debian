@@ -11,7 +11,11 @@ import platform
 import re
 import shutil
 import struct
+import sys
 import subprocess
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from camera_checks import CAMERA_MODULES, check_camera_wiring
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -75,8 +79,9 @@ def main():
     assert capture(['git', '-C', source, 'rev-parse', 'HEAD']) == spec['commit']
     assert not capture(['git', '-C', source, 'status', '--porcelain']), 'Source checkout must be clean'
     for patch in spec['applied_patches']:
-        run(['git', '-C', source, 'apply', '--check', ROOT / patch])
-        run(['git', '-C', source, 'apply', ROOT / patch])
+        run(['git', '-C', source, 'apply', '--check', '--index', ROOT / patch])
+        run(['git', '-C', source, 'apply', '--index', ROOT / patch])
+    assert capture(['git', '-C', source, 'write-tree']) == spec['patched_tree'], 'Patched source tree mismatch'
     run(['python3', ROOT / 'tests/check_ath12k_reg_ranges.py', source])
     epoch = capture(['git', '-C', source, 'show', '-s', '--format=%ct', 'HEAD'])
     os.environ.update(SOURCE_DATE_EPOCH=epoch, KBUILD_BUILD_TIMESTAMP='@' + epoch,
@@ -216,6 +221,10 @@ def main():
                     'CONFIG_QCOM_PDC=y', 'CONFIG_ARM_SMMU=y', 'CONFIG_ARM_SMMU_QCOM=y',
                     'CONFIG_INTERCONNECT_QCOM_SM8750=y', 'CONFIG_USB_DWC3_QCOM=y']:
         assert setting in config, setting
+    for setting in ['CONFIG_SM_CAMCC_8750=m', 'CONFIG_I2C_QCOM_CCI=m',
+                    'CONFIG_PHY_QCOM_MIPI_CSI2=m', 'CONFIG_VIDEO_QCOM_CAMSS=m',
+                    'CONFIG_VIDEO_OV02B10=m', 'CONFIG_VIDEO_V4L2_SUBDEV_API=y']:
+        assert setting in config, setting
     assert 'CONFIG_QCOM_SCM=y' in config
     for setting in ['CONFIG_BT=m', 'CONFIG_BT_BREDR=y', 'CONFIG_BT_LE=y',
                     'CONFIG_BT_HIDP=m', 'CONFIG_UHID=m', 'CONFIG_BT_QCA=m',
@@ -237,6 +246,7 @@ def main():
     # GPU/DPMS changes remain separate until visible wake is fixed.
     assert {'msm', 'dispcc_sm8750', 'ktz8866', 'panel_novatek_nt36536'} <= blocked
     assert 'hci_uart' not in blocked
+    assert CAMERA_MODULES <= blocked, 'Camera activation must remain explicit'
     wifi_modules = {'pwrseq_qcom_wcn', 'pci_pwrctrl_pwrseq', 'ath12k', 'ath12k_wifi7'}
     assert wifi_modules.isdisjoint(blocked) if disk else wifi_modules <= blocked
     if disk:
@@ -261,6 +271,7 @@ def main():
         assert capture(['fdtget', '-t', 'x', dtb, bt, prop + '-supply']) == capture(
             ['fdtget', '-t', 'x', dtb, '/wcn7861-pmu/regulators/ldo' + str(ldo), 'phandle'])
     check_keyboard_wiring(dtb)
+    check_camera_wiring(dtb, source)
     for node, prop, typ, expected in [
         ('/soc@0/remoteproc@6800000', 'status', 's', 'okay'),
         ('/soc@0/remoteproc@6800000', 'firmware-name', 's',
@@ -353,6 +364,7 @@ def main():
                      'pwrseq_qcom_wcn', 'pci_pwrctrl_pwrseq', 'ath12k', 'ath12k_wifi7',
                      'snd_soc_aw88461', 'snd_soc_sc8280xp', 'reset_gpio',
                      'hci_uart', 'btqca', 'bluetooth', 'hidp', 'uhid', 'rfcomm', 'bnep'])
+    explicit.update(CAMERA_MODULES)
     for name in sorted(explicit):
         actual = capture(['modinfo', '-b', modules, '-k', release, '-F', 'name', name])
         assert actual.replace('-', '_') == name.replace('-', '_'), (name, actual)
@@ -382,7 +394,8 @@ def main():
     (target / 'initramfs.cpio.gz').write_bytes(gzip.compress(cpio.read_bytes(), mtime=0))
     shutil.copy2(ROOT / 'kernel/source.json', target / 'source.json')
     recipe_files = ['configs/' + s for s in scripts] + [
-        'configs/ram-probe.fragment', 'configs/udhcpd.conf', 'scripts/build-kernel.py']
+        'configs/ram-probe.fragment', 'configs/udhcpd.conf', 'scripts/build-kernel.py',
+        'scripts/camera_checks.py']
     seconds = 900 if args.profile == 'disk-test' else 600
     manifest = {'profile': args.profile, 'source': spec, 'compiler': capture([compiler, '--version']).splitlines()[0],
                 'recipe_commit': recipe_commit,

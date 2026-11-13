@@ -1,0 +1,39 @@
+From dccb77536439e6ab82d3aad9460e985de03e01c8 Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Sat, 14 Nov 2026 06:07:13 +0800
+Subject: [PATCH 186/194] dt-bindings: phy: qcom: Describe the SM8750 CSI2 PHY
+
+Add the distinct SM8750 compatible to the generic CSI2 PHY binding. It has
+the same resource interface as X1E80100, but requires its own v2.3.0
+initialization and reset sequence; it is not compatible with the X1E lane
+programming table.
+
+No board node is enabled by this binding change.
+---
+ .../devicetree/bindings/phy/qcom,x1e80100-csi2-phy.yaml     | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/Documentation/devicetree/bindings/phy/qcom,x1e80100-csi2-phy.yaml b/Documentation/devicetree/bindings/phy/qcom,x1e80100-csi2-phy.yaml
+index dc64af97da6c659628729a758316353798aa98db..9e7f5bccf5a3cc9b4fb1f1bfe5d5e0f5699be137 100644
+--- a/Documentation/devicetree/bindings/phy/qcom,x1e80100-csi2-phy.yaml
++++ b/Documentation/devicetree/bindings/phy/qcom,x1e80100-csi2-phy.yaml
+@@ -4,7 +4,7 @@
+ $id: http://devicetree.org/schemas/phy/qcom,x1e80100-csi2-phy.yaml#
+ $schema: http://devicetree.org/meta-schemas/core.yaml#
+ 
+-title: Qualcomm X1E80100 SoC CSI2 PHY
++title: Qualcomm SM8750 and X1E80100 SoC CSI2 PHY
+ 
+ maintainers:
+   - Bryan O'Donoghue <bod@kernel.org>
+@@ -16,7 +16,9 @@ description:
+ 
+ properties:
+   compatible:
+-    const: qcom,x1e80100-csi2-phy
++    enum:
++      - qcom,sm8750-csi2-phy
++      - qcom,x1e80100-csi2-phy
+ 
+   reg:
+     maxItems: 1

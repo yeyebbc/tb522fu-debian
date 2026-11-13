@@ -41,7 +41,7 @@ CONFIG_MAGIC_SYSRQ=y
 CONFIG_NULL_TTY=y
 CONFIG_IKCONFIG=y
 CONFIG_IKCONFIG_PROC=y
-CONFIG_CMDLINE="rdinit=/init panic=5 oops=panic softlockup_panic=1 hung_task_panic=1 console=tty0 loglevel=7 fbcon=font:TER16x32 clk_ignore_unused pd_ignore_unused qcom_scm.download_mode=off qcom_scm.probe_edl_return=1 qcom_scm.probe_seconds=600 modprobe.blacklist=lenovo_yoga_keyboard,pwrseq_qcom_wcn,pci_pwrctrl_pwrseq,ath12k,ath12k_wifi7,msm,dispcc_sm8750,ktz8866,panel_novatek_nt36536,fastrpc"
+CONFIG_CMDLINE="rdinit=/init panic=5 oops=panic softlockup_panic=1 hung_task_panic=1 console=tty0 loglevel=7 fbcon=font:TER16x32 clk_ignore_unused pd_ignore_unused qcom_scm.download_mode=off qcom_scm.probe_edl_return=1 qcom_scm.probe_seconds=600 modprobe.blacklist=lenovo_yoga_keyboard,pwrseq_qcom_wcn,pci_pwrctrl_pwrseq,ath12k,ath12k_wifi7,msm,dispcc_sm8750,ktz8866,panel_novatek_nt36536,fastrpc,camcc_sm8750,cambistmclkcc_sm8750,i2c_qcom_cci,phy_qcom_mipi_csi2,qcom_camss,ov02b10"
 CONFIG_CMDLINE_FORCE=y
 CONFIG_FB=y
 # CONFIG_FB_SIMPLE is not set
@@ -198,3 +198,11 @@ CONFIG_BT_HCIUART_QCA=y
 CONFIG_BT_QCA=m
 CONFIG_BT_DEBUGFS=y
 CONFIG_UHID=m
+
+# Camera candidate: keep every new driver modular and load only after recovery.
+CONFIG_SM_CAMCC_8750=m
+CONFIG_I2C_QCOM_CCI=m
+CONFIG_PHY_QCOM_MIPI_CSI2=m
+CONFIG_VIDEO_QCOM_CAMSS=m
+CONFIG_VIDEO_OV02B10=m
+CONFIG_VIDEO_V4L2_SUBDEV_API=y

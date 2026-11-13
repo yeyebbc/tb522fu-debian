@@ -1,0 +1,22 @@
+From c37902a4b79a6606aad5f13cbdda6b31433a52fd Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Sat, 14 Nov 2026 05:48:01 +0800
+Subject: [PATCH 174/194] regulator: qcom-rpmh: Terminate PM8010 regulator data
+
+rpmh_regulator_init_vreg walks the PMIC resource table until name is NULL when looking up a child node. The PM8010 table lacks that terminator, so an unknown regulator child can read past the array. Add the same empty sentinel used by the other PMIC tables before introducing this board camera supply bank.
+---
+ drivers/regulator/qcom-rpmh-regulator.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/regulator/qcom-rpmh-regulator.c b/drivers/regulator/qcom-rpmh-regulator.c
+index 25c14de3cd8b5e77b48f168d1afa0f3ad7ab9d5e..67a3fe5e2e4662c63a360d0f81d4db5f216a378c 100644
+--- a/drivers/regulator/qcom-rpmh-regulator.c
++++ b/drivers/regulator/qcom-rpmh-regulator.c
+@@ -1534,6 +1534,7 @@ static const struct rpmh_vreg_init_data pm8010_vreg_data[] = {
+ 	RPMH_VREG("ldo5",  LDO,  5, &pmic5_pldo502,   "vdd-l5"),
+ 	RPMH_VREG("ldo6",  LDO,  6, &pmic5_pldo502ln, "vdd-l6"),
+ 	RPMH_VREG("ldo7",  LDO,  7, &pmic5_pldo502,   "vdd-l7"),
++	{}
+ };
+ 
+ static const struct rpmh_vreg_init_data pm6150_vreg_data[] = {

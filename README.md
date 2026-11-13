@@ -12,6 +12,14 @@ Current installed kernel: `7.3.0-tb522fu-installed-ci44`, built from recipe
 CI39 and CI32 remain available for rollback. Android return, stock boot and
 filesystem checks passed; the temporary acceptance timer has been removed.
 
+The current source candidate adds the SM8750 camera capture pipeline and a
+24 MHz OV02B10 driver for the secondary rear camera. The first camera's board
+wiring is included, but **no camera capture is hardware-verified**. All camera
+drivers remain modular and blocked from automatic startup for bounded testing.
+The other three sensors, application integration and image quality are pending.
+The complete 80-patch stack is checked against an exact patched-tree hash.
+No firmware, camera libraries, stock dumps or calibration data are distributed.
+
 Automatic keyboard/trackpad startup, US Wi-Fi regulation, 5 GHz association and
 LAN transfers have passed on this unit. The six-speaker path and two WCD939x
 analog microphones are working and accepted by the owner. Microphone capture

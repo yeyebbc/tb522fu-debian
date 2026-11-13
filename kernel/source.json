@@ -60,6 +60,30 @@
     "patches/0168-tb522fu-keyboard-direction.patch",
     "patches/0169-tb522fu-white-intensity.patch",
     "patches/0170-tb522fu-white-switch.patch",
-    "patches/0171-qca-poweroff-ibs-reset.patch"
-  ]
+    "patches/0171-qca-poweroff-ibs-reset.patch",
+    "patches/0172-dt-bindings-phy-qcom-Add-CSI2-C-PHY-DPHY-schema.patch",
+    "patches/0173-phy-qcom-mipi-csi2-Add-a-CSI2-MIPI-DPHY-driver.patch",
+    "patches/0174-regulator-qcom-rpmh-Terminate-PM8010-regulator-data.patch",
+    "patches/0175-phy-core-Fix-race-condition-between-_of_phy_get-and-.patch",
+    "patches/0176-phy-core-Add-phy_get_by_of_node.patch",
+    "patches/0177-phy-core-Add-devm_phy_get_by_of_node.patch",
+    "patches/0178-media-qcom-camss-Add-PM-clock-support-and-integrate-.patch",
+    "patches/0179-device-property-Introduce-fwnode_graph_for_each_endp.patch",
+    "patches/0180-media-qcom-camss-use-fwnode_graph_for_each_endpoint_.patch",
+    "patches/0181-media-qcom-camss-Add-support-for-PHY-API-devices.patch",
+    "patches/0182-media-qcom-camss-Use-data-lanes-starting-at-1-for-ne.patch",
+    "patches/0183-phy-qcom-mipi-csi2-Parametrise-the-common-status-reg.patch",
+    "patches/0184-media-qcom-camss-Add-addr_update-hooks-and-guard-CSI.patch",
+    "patches/0185-media-qcom-camss-Allow-CSI2-PHY-devices-without-CSIP.patch",
+    "patches/0186-dt-bindings-phy-qcom-Describe-the-SM8750-CSI2-PHY.patch",
+    "patches/0187-phy-qcom-mipi-csi2-Add-the-SM8750-v2.3.0-D-PHY-seque.patch",
+    "patches/0188-media-qcom-camss-Adapt-SM8750-capture-to-separate-AU.patch",
+    "patches/0189-media-qcom-camss-select-GENERIC_PHY_MIPI_DPHY.patch",
+    "patches/0190-dt-bindings-media-Describe-OV02B10-CSI2-sensor.patch",
+    "patches/0191-media-i2c-Add-OV02B10-24-MHz-RAW10-bring-up-driver.patch",
+    "patches/0192-dt-bindings-media-Describe-SM8750-standalone-PHY-CAM.patch",
+    "patches/0193-arm64-dts-qcom-sm8750-Describe-disabled-camera-resou.patch",
+    "patches/0194-arm64-dts-qcom-tb522fu-Connect-rear-OV02B10-camera.patch"
+  ],
+  "patched_tree": "7a55b313fc66ef0dac7ad9e505bbcb068d29a315"
 }
