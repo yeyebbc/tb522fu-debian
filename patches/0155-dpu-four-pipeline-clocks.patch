@@ -1,0 +1,142 @@
+From 8a57d63690e7ac8d6e378e61ff48ecd3f7e7a684 Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Fri, 13 Nov 2026 23:02:34 +0800
+Subject: [PATCH] drm/msm/dpu: account for four concurrent display pipelines
+
+Share the dual-DSI DSC and virtual-plane eligibility between topology selection and CRTC capability validation. Count four mixers only when the encoder and catalog can provide them; retain the two-pipe fallback when virtual planes are disabled. Scale the full-width clock floor by the actual mixer count, while retaining the independent per-pipe clock maximum.
+
+The stock 3840x2560 120 Hz mode needs 376576200 Hz after the 1.05 factor across four pipelines, within the measured 575 MHz ceiling. The old two-pipe calculation required 753152400 Hz. ARM64 W=1 objects build; hardware validation pending.
+---
+ drivers/gpu/drm/msm/disp/dpu1/dpu_core_perf.c |  5 ++++
+ drivers/gpu/drm/msm/disp/dpu1/dpu_crtc.c      | 25 ++++++++++++++-----
+ drivers/gpu/drm/msm/disp/dpu1/dpu_encoder.c   | 17 +++++++++++--
+ drivers/gpu/drm/msm/disp/dpu1/dpu_encoder.h   |  1 +
+ 4 files changed, 40 insertions(+), 8 deletions(-)
+
+diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_core_perf.c b/drivers/gpu/drm/msm/disp/dpu1/dpu_core_perf.c
+index a658d4c431f7..b820aa7ed56b 100644
+--- a/drivers/gpu/drm/msm/disp/dpu1/dpu_core_perf.c
++++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_core_perf.c
+@@ -103,6 +103,11 @@ static u64 _dpu_core_perf_calc_clk(const struct dpu_perf_cfg *perf_cfg,
+ 	mode = &state->adjusted_mode;
+ 
+ 	mode_clk = (u64)mode->vtotal * mode->hdisplay * drm_mode_vrefresh(mode);
++	/* Mixers process horizontal parts concurrently. Plane clocks below
++	 * are already per pipe and must not be divided a second time.
++	 */
++	mode_clk = DIV_ROUND_UP_ULL(mode_clk,
++				  max(1U, dpu_crtc_get_num_lm(state)));
+ 
+ 	drm_atomic_crtc_for_each_plane(plane, crtc) {
+ 		pstate = to_dpu_plane_state(plane->state);
+diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_crtc.c b/drivers/gpu/drm/msm/disp/dpu1/dpu_crtc.c
+index 2fa64b951248..963b7265932c 100644
+--- a/drivers/gpu/drm/msm/disp/dpu1/dpu_crtc.c
++++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_crtc.c
+@@ -1701,26 +1701,39 @@ static enum drm_mode_status dpu_crtc_mode_valid(struct drm_crtc *crtc,
+ 						const struct drm_display_mode *mode)
+ {
+ 	struct dpu_kms *dpu_kms = _dpu_crtc_get_kms(crtc);
++	struct drm_encoder *encoder;
++	u32 max_mixers = dpu_kms->catalog->caps->has_3d_merge ? 2 : 1;
+ 	u64 adjusted_mode_clk;
+ 
++	/* This callback validates CRTC capability before a route is selected.
++	 * Use the same four-pipe conditions as the encoder's topology choice.
++	 * Per-pipe limits remain checked after the actual mixers are assigned.
++	 */
++	drm_for_each_encoder(encoder, crtc->dev) {
++		if ((encoder->possible_crtcs & drm_crtc_mask(crtc)) &&
++		    dpu_encoder_can_use_quad_pipe(encoder)) {
++			max_mixers = 4;
++			break;
++		}
++	}
++
+ 	/* if there is no 3d_mux block we cannot merge LMs so we cannot
+ 	 * split the large layer into 2 LMs, filter out such modes
+ 	 */
+-	if (!dpu_kms->catalog->caps->has_3d_merge &&
++	if (max_mixers == 1 &&
+ 	    mode->hdisplay > dpu_kms->catalog->caps->max_mixer_width)
+ 		return MODE_BAD_HVALUE;
+ 
+ 	adjusted_mode_clk = dpu_core_perf_adjusted_mode_clk(mode->clock,
+ 							    dpu_kms->perf.perf_cfg);
+ 
+-	if (dpu_kms->catalog->caps->has_3d_merge)
+-		adjusted_mode_clk /= 2;
++	adjusted_mode_clk = DIV_ROUND_UP_ULL(adjusted_mode_clk, max_mixers);
+ 
+ 	/*
+ 	 * The given mode, adjusted for the perf clock factor, should not exceed
+ 	 * the max core clock rate
+ 	 */
+-	y900_pr("Y900DPU %dx%d clk=%d max_core=%lu has3d=%d mixer=%u adjusted=%llu\n",
++	y900_pr("Y900DPU %dx%d clk=%d max_core=%llu has3d=%d mixer=%u adjusted=%llu\n",
+ 		mode->hdisplay, mode->vdisplay, mode->clock,
+ 		dpu_kms->perf.max_core_clk_rate,
+ 		dpu_kms->catalog->caps->has_3d_merge,
+@@ -1730,10 +1743,10 @@ static enum drm_mode_status dpu_crtc_mode_valid(struct drm_crtc *crtc,
+ 		return MODE_CLOCK_HIGH;
+ 
+ 	/*
+-	 * max crtc width is equal to the max mixer width * 2 and max height is 4K
++	 * Each available mixer processes its own horizontal part of the frame.
+ 	 */
+ 	return drm_mode_validate_size(mode,
+-				      2 * dpu_kms->catalog->caps->max_mixer_width,
++				      max_mixers * dpu_kms->catalog->caps->max_mixer_width,
+ 				      4096);
+ }
+ 
+diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder.c b/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder.c
+index d90b1137a7a4..c52c7789fc8d 100644
+--- a/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder.c
++++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder.c
+@@ -676,6 +676,20 @@ struct drm_dsc_config *dpu_encoder_get_dsc_config(struct drm_encoder *drm_enc)
+ 	return NULL;
+ }
+ 
++bool dpu_encoder_can_use_quad_pipe(struct drm_encoder *drm_enc)
++{
++	struct dpu_encoder_virt *dpu_enc = to_dpu_encoder_virt(drm_enc);
++	struct msm_drm_private *priv = drm_enc->dev->dev_private;
++	struct dpu_kms *dpu_kms = to_dpu_kms(priv->kms);
++	struct drm_dsc_config *dsc = dpu_encoder_get_dsc_config(drm_enc);
++
++	return dpu_use_virtual_planes && dsc && dsc->slice_count >= 2 &&
++		dpu_enc->disp_info.intf_type == INTF_DSI &&
++		dpu_enc->disp_info.num_of_h_tiles == 2 &&
++		dpu_kms->catalog->dsc_count >= 4 &&
++		dpu_kms->catalog->mixer_count >= 4;
++}
++
+ void dpu_encoder_update_topology(struct drm_encoder *drm_enc,
+ 				 struct msm_display_topology *topology,
+ 				 struct drm_atomic_commit *state,
+@@ -709,8 +723,7 @@ void dpu_encoder_update_topology(struct drm_encoder *drm_enc,
+ 		 */
+ 		WARN(topology->num_intf > 2,
+ 		     "DSC topology cannot support more than 2 interfaces\n");
+-		if (topology->num_intf >= 2 &&
+-		    dpu_kms->catalog->dsc_count >= 4)
++		if (dpu_encoder_can_use_quad_pipe(drm_enc))
+ 			topology->num_dsc = 4;
+ 		else if (topology->num_intf >= 2 ||
+ 			 dpu_kms->catalog->dsc_count >= 2)
+diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder.h b/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder.h
+index 3a784df6739d..4c8d9c34abca 100644
+--- a/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder.h
++++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder.h
+@@ -85,6 +85,7 @@ void dpu_encoder_phys_vid_start_video_engines(void);
+ bool dpu_encoder_is_dsc_merge(struct drm_encoder *drm_enc);
+ bool dpu_encoder_all_phys_enabled(struct drm_encoder *drm_enc);
+ bool dpu_encoder_use_dsc_merge(struct drm_encoder *drm_enc);
++bool dpu_encoder_can_use_quad_pipe(struct drm_encoder *drm_enc);
+ 
+ void dpu_encoder_update_topology(struct drm_encoder *drm_enc,
+ 				 struct msm_display_topology *topology,
+-- 
+2.47.3
+

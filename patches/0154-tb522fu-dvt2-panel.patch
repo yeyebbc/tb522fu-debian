@@ -1,0 +1,265 @@
+From fd47eaba52a06df123c99bd94cfc0b8d8f5ec5b8 Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Fri, 13 Nov 2026 22:54:42 +0800
+Subject: [PATCH] drm: prepare the TB522FU display from live stock evidence
+
+The active Android debugfs panel is BOE DVT2 despite the default-panel phandle pointing elsewhere. Replace the inherited startup sequence with all 32 live DVT2 command payloads and delays. Use the three supplies named by the active panel power table and its measured 1.8 V IO rail; stock leaves L11B disabled.
+
+Remove the inherited 750/760 MHz additions: stock clock tables and the active display performance ceiling both stop at 575 MHz. Preserve firmware scanout with the SM8750 MDSS identity-domain quirk until native takeover. Native display remains disabled pending four-pipeline clock accounting and hardware validation.
+---
+ .../boot/dts/qcom/sm8750-lenovo-y900-acm.dts  |  18 +--
+ drivers/clk/qcom/dispcc-sm8750.c              |   7 -
+ drivers/gpu/drm/panel/panel-novatek-nt36536.c | 137 +++++-------------
+ drivers/iommu/arm/arm-smmu/arm-smmu-qcom.c    |   1 +
+ 4 files changed, 37 insertions(+), 126 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+index 936582051bb5..4e12abea85b6 100644
+--- a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
++++ b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+@@ -68,7 +68,7 @@ regulators-b {
+   vreg_l17b_2p5: ldo17 { regulator-name = "vreg_l17b_2p5"; regulator-min-microvolt = <2504000>; regulator-max-microvolt = <2504000>; regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>; };
+   vreg_l4b: ldo4 { regulator-name = "vreg_l4b"; regulator-min-microvolt = <1800000>; regulator-max-microvolt = <1800000>; regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>; };
+   vreg_l11b: ldo11 { regulator-name = "vreg_l11b"; regulator-min-microvolt = <1064000>; regulator-max-microvolt = <1292000>; regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>; };
+-  vreg_l12b: ldo12 { regulator-name = "vreg_l12b"; regulator-min-microvolt = <1200000>; regulator-max-microvolt = <1800000>; regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>; };
++  vreg_l12b: ldo12 { regulator-name = "vreg_l12b"; regulator-min-microvolt = <1800000>; regulator-max-microvolt = <1800000>; regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>; };
+   vreg_l13b: ldo13 { regulator-name = "vreg_l13b"; regulator-min-microvolt = <3000000>; regulator-max-microvolt = <3000000>; regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>; };
+  };
+  regulators-d {
+@@ -194,7 +194,6 @@ panel: panel@0 {
+ 		compatible = "lenovo,y900-boe-nt36536e";
+ 		reg = <0>;
+ 
+-		vdd-supply = <&vreg_l11b>;
+ 		vddio-supply = <&vreg_l12b>;
+ 		vci-supply = <&vreg_l13b>;
+ 		tvdd-supply = <&vreg_l4b>;
+@@ -300,21 +299,6 @@ &qupv3_2 {
+ 	status = "okay";
+ };
+ 
+-/* The MDP OPP table in sm8750.dtsi stops at 575 MHz, which makes the DPU
+- * reject the panel's 3840x2560@120 mode with MODE_CLOCK_HIGH (~748 MHz are
+- * needed).  Add the next step up; the dispcc RCG table grows with it. */
+-&mdp_opp_table {
+-	opp-750000000 {
+-		opp-hz = /bits/ 64 <750000000>;
+-		required-opps = <&rpmhpd_opp_turbo>;
+-	};
+-
+-	opp-760000000 {
+-		opp-hz = /bits/ 64 <760000000>;
+-		required-opps = <&rpmhpd_opp_turbo>;
+-	};
+-};
+-
+ /*
+  * Charging stack (M207): the PMIC charger (pmih0108) is owned by the ADSP
+  * firmware, exactly like on Android.  Linux talks to it through
+diff --git a/drivers/clk/qcom/dispcc-sm8750.c b/drivers/clk/qcom/dispcc-sm8750.c
+index 4f8ed790b729..6620a45ddb6c 100644
+--- a/drivers/clk/qcom/dispcc-sm8750.c
++++ b/drivers/clk/qcom/dispcc-sm8750.c
+@@ -659,13 +659,6 @@ static const struct freq_tbl ftbl_disp_cc_mdss_mdp_clk_src[] = {
+ 	F(417000000, P_DISP_CC_PLL0_OUT_MAIN, 3, 0, 0),
+ 	F(532000000, P_DISP_CC_PLL0_OUT_MAIN, 3, 0, 0),
+ 	F(575000000, P_DISP_CC_PLL0_OUT_MAIN, 3, 0, 0),
+-	/* 3840x2560@120 on this panel needs 1.4246 GHz * 1.05 / 2 ~= 748 MHz of
+-	 * MDP core clock, which the upstream table above did not cover.  The
+-	 * VCO range is 249.6 MHz..2.5 GHz, so 1.5 GHz / 2 is in spec. */
+-	F(750000000, P_DISP_CC_PLL0_OUT_MAIN, 2, 0, 0),
+-	/* 3840x2560@120 needs 1434576 kHz * 105 / 100 / 2 = 753152 kHz; 750 MHz
+-	 * was 3 MHz short, so provide the next step. */
+-	F(760000000, P_DISP_CC_PLL0_OUT_MAIN, 2, 0, 0),
+ 	{ }
+ };
+ 
+diff --git a/drivers/gpu/drm/panel/panel-novatek-nt36536.c b/drivers/gpu/drm/panel/panel-novatek-nt36536.c
+index 6c6f2467ec35..7e32f9a5d944 100644
+--- a/drivers/gpu/drm/panel/panel-novatek-nt36536.c
++++ b/drivers/gpu/drm/panel/panel-novatek-nt36536.c
+@@ -65,7 +65,7 @@ static const char *const csot_pp8807hb1_1_supplies[] = {
+ };
+ 
+ static const char *const y900_boe_nt36536e_supplies[] = {
+-	"vdd", "vddio", "vci", "tvdd",
++	"vddio", "vci", "tvdd",
+ };
+ 
+ static inline struct novatek *to_novatek(struct drm_panel *panel)
+@@ -98,10 +98,6 @@ static int novatek_prepare(struct drm_panel *panel)
+ {
+ 	y900_dev_info(panel->dev, "Y900PREP enter\n");
+ 	struct novatek *ctx = to_novatek(panel);
+-	struct mipi_dsi_device *dsi = to_primary_dsi(ctx);
+-	struct mipi_dsi_multi_context dsi_ctx = { .dsi = dsi };
+-	struct drm_dsc_picture_parameter_set pps;
+-	struct device *dev = &dsi->dev;
+ 	int ret;
+ 
+ 	y900_dev_info(panel->dev, "Y900PREP supplies=%d\n", ctx->num_supplies);
+@@ -330,104 +326,42 @@ static int csot_pp8807hb1_1_init_seq(struct mipi_dsi_multi_context *dsi_ctx)
+ 
+ static int y900_boe_nt36536e_init_seq(struct mipi_dsi_multi_context *dsi_ctx)
+ {
+-	y900_pr("Y900YSEQ enter\n");
+-	int dcs_count = 0;
+-	/*
+-	 * Stock 0x744 ("mojito boe nt36536e dsc 38 video") on-command.
+-	 * The boot cmdline names the DVT2 node, but stock binds 0x744
+-	 * (logs/018-.../session.md).  Use that real panel sequence verbatim;
+-	 * the previous 32-command DVT2 subset omitted the source-driver and
+-	 * porch setup and never produced a picture.
+-	 */
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xff, 0x20);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xfb, 0x01);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x62, 0x25);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x63, 0x94);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xff, 0x24);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xfb, 0x01);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x5a, 0x03);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x5b, 0x44);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xff, 0x25);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xfb, 0x01);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x1f, 0x03);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x20, 0x44);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x26, 0x03);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x27, 0x44);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x33, 0x03);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x34, 0x44);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x48, 0x03);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x49, 0x44);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x50, 0x03);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x51, 0x44);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x61, 0x03);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x62, 0x44);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xff, 0x26);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xfb, 0x01);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x33, 0x72);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x34, 0x96);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x51, 0x03);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x52, 0x46);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x56, 0x03);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x58, 0x46);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x5b, 0x03);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x5c, 0x46);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x60, 0x03);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x61, 0x46);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x64, 0x03);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x65, 0x46);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x69, 0x03);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x6a, 0x46);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x72, 0x03);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x73, 0x46);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xa7, 0x04);
+-
+-	/* CABC and DSC setup */
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xff, 0x23);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xfb, 0x01);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x89, 0xa4);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x8b, 0xc1);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xff, 0x2a);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xfb, 0x01);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xbc, 0x77, 0x07);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xff, 0xf0);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xfb, 0x01);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xe6, 0x02);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xff, 0xd0);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xfb, 0x01);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x02, 0x42);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x1c, 0xaa);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x1d, 0x0a);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xff, 0x27);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xfb, 0x01);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xd0, 0x33);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xd1, 0x05);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xde, 0x43);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xdf, 0x02);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xff, 0x10);
+-
+-	/* frame control and display on */
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xfb, 0x01);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x3b,
+-	                             0x03, 0x12, 0x1a, 0x04,
+-	                             0x04, 0x01, 0x80, 0x36,
+-	                             0x36);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x60, 0x00);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x90, 0x03, 0x00);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x91,
+-	                             0xab, 0xa8, 0x00, 0x14,
+-	                             0xd2, 0x00, 0x00, 0x00,
+-	                             0x02, 0x52, 0x00, 0x0d,
+-	                             0x05, 0x7a, 0x02, 0xdd);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x92, 0x10, 0xf0);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xb2, 0x91, 0x80);
+-	dcs_count++; mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xb3, 0x40);
++	/* The active stock panel is the BOE DVT2 revision. */
++	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xff, 0x23);
++	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xfb, 0x01);
++	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x89, 0xa4);
++	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x8b, 0xc1);
++	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xff, 0x2a);
++	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xfb, 0x01);
++	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xbc, 0x77, 0x07);
++	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xff, 0xf0);
++	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xfb, 0x01);
++	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xe6, 0x02);
++	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xff, 0x27);
++	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xfb, 0x01);
++	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xd0, 0x33);
++	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xd1, 0x05, 0x00);
++	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xde, 0x43);
++	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xdf, 0x02);
++	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xff, 0xd0);
++	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xfb, 0x01);
++	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x02, 0x42);
++	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x1c, 0xaa);
++	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x1d, 0x0a);
++	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xff, 0x10);
++	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xfb, 0x01);
++	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x3b, 0x03, 0x12, 0x1a, 0x04, 0x04, 0x01, 0x80, 0x36, 0x36);
++	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x60, 0x00);
++	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x90, 0x03, 0x00);
++	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x91, 0xab, 0xa8, 0x00, 0x14, 0xd2, 0x00, 0x00, 0x00, 0x02, 0x52, 0x00, 0x0d, 0x05, 0x7a, 0x02, 0xdd);
++	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x92, 0x10, 0xf0);
++	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xb2, 0x91, 0x80);
++	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xb3, 0x40);
+ 	mipi_dsi_msleep(dsi_ctx, 16);
+ 	mipi_dsi_dcs_exit_sleep_mode_multi(dsi_ctx);
+ 	mipi_dsi_msleep(dsi_ctx, 105);
+ 	mipi_dsi_dcs_set_display_on_multi(dsi_ctx);
+ 	mipi_dsi_msleep(dsi_ctx, 20);
+-	y900_pr("Y900YSEQ count=%d\n", dcs_count);
+-	y900_pr("Y900YSEQ done err=%d\n", dsi_ctx->accum_err);
+ 
+ 	return dsi_ctx->accum_err;
+ }
+@@ -666,10 +600,9 @@ static const struct drm_dsc_config y900_boe_nt36536e_dsc_cfg = {
+ static const struct drm_display_mode y900_boe_nt36536e_modes[] = {
+ 	/*
+ 	 * Native 120 Hz timing: htotal 4180 x vtotal 2860 x 120 Hz = 1.4346 GHz
+-	 * total pixel clock (717.3 MHz per link).  The DPU core only needs
+-	 * 753 MHz for this (mode clock x perf factor / 2), which fits the 760 MHz
+-	 * OPP, and the resulting DSI bit clock (1.024 GHz) matches the vendor DT's
+-	 * qcom,mdss-dsi-panel-clockrate = 0x3d2ef148 exactly.
++	 * total pixel clock (717.3 MHz per link). Stock uses four mixers and
++	 * four DSC encoders across the two DSI interfaces. The DPU must account
++	 * for those parallel paths; the stock core clock ceiling is 575 MHz.
+ 	 */
+ 	{
+ 		.clock = (1920 + 80 + 26 + 64) * 2 *
+diff --git a/drivers/iommu/arm/arm-smmu/arm-smmu-qcom.c b/drivers/iommu/arm/arm-smmu/arm-smmu-qcom.c
+index 795e8ec7e8fa..5c641f850950 100644
+--- a/drivers/iommu/arm/arm-smmu/arm-smmu-qcom.c
++++ b/drivers/iommu/arm/arm-smmu/arm-smmu-qcom.c
+@@ -426,6 +426,7 @@ static const struct of_device_id qcom_smmu_client_of_match[] __maybe_unused = {
+ 	{ .compatible = "qcom,sm8150-mdss" },
+ 	{ .compatible = "qcom,sm8250-mdss" },
+ 	{ .compatible = "qcom,sm8450-mdss" },
++	{ .compatible = "qcom,sm8750-mdss" },
+ 	{ .compatible = "qcom,x1e80100-mdss" },
+ 	{ }
+ };
+-- 
+2.47.3
+

@@ -289,5 +289,40 @@
     "license": "BSD-3-Clause device tree",
     "hardware_tested": false,
     "source": "Local correction after CI31 BOB1 regulator-registration EINVAL; retain previously working stock operating range matching upstream SM8750 MTP. Exact downstream vote is not a mainline voltage selector."
+  },
+  "0153-ktz8869-global-enable.patch": {
+    "local_commit": "3e21d71f492ddc3755ed7eb3f9e7ad434ebe8a7e",
+    "sha256": "a25b841443d0b12fd714ff9f5c09d2661b9ede81bd22e1b245f570da0d694a88",
+    "license": "Original Linux file-level licenses and authorship retained; board DTS BSD-3-Clause",
+    "hardware_tested": false,
+    "source": "KTZ8869 manufacturer register tables and stock driver setter; separate global enable from LED sink mask."
+  },
+  "0154-tb522fu-dvt2-panel.patch": {
+    "local_commit": "fd47eaba52a06df123c99bd94cfc0b8d8f5ec5b8",
+    "sha256": "90e19f2ae60be0e0d93c32ead90e5eb5ce646d3eeb66e966f4c4b0b5855a82b1",
+    "license": "Original Linux file-level licenses and authorship retained; board DTS BSD-3-Clause",
+    "hardware_tested": false,
+    "source": "Confirmed active TB522FU BOE DVT2 initialization, three power rails and stock display clock ceiling; SM8750 SMMU identity handoff."
+  },
+  "0155-dpu-four-pipeline-clocks.patch": {
+    "local_commit": "8a57d63690e7ac8d6e378e61ff48ecd3f7e7a684",
+    "sha256": "71fb63fcfa320e1704e12bab6efe48b1364437de479d31250231bb84ff87fb59",
+    "license": "Original Linux file-level licenses and authorship retained; board DTS BSD-3-Clause",
+    "hardware_tested": false,
+    "source": "Local four-pipeline eligibility and per-mixer clock accounting; inherited virtual-plane implementation retained."
+  },
+  "0156-tb522fu-panel-supply-order.patch": {
+    "local_commit": "a00cb6f050e95ef5719d55af4b16f1c1ca03434e",
+    "sha256": "1ed53df89b69c5b1acf6cdb382c4033f2abcae69e5cd55a5045725994621905d",
+    "license": "Original Linux file-level licenses and authorship retained; board DTS BSD-3-Clause",
+    "hardware_tested": false,
+    "source": "Stock TB522FU panel supply ordering and 20 ms post-enable delays."
+  },
+  "0157-tb522fu-staged-native-display-ssc.patch": {
+    "local_commit": "8a12a8e5564ac1626b819d0c532153b54ac7eeb9",
+    "sha256": "94e983190b2fd95deb4f23e727cb3851059c54ab8ce13f07c7ea2ff7db52d945",
+    "license": "Original Linux file-level licenses and authorship retained; board DTS BSD-3-Clause",
+    "hardware_tested": false,
+    "source": "Local staged native display/SSC board enablement, panel-follower relationship and stock SE11 pin bias."
   }
 }

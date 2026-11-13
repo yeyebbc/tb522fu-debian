@@ -9,6 +9,10 @@ on:
         description: Rebuild the Debian base filesystem
         type: boolean
         default: false
+      build_audio:
+        description: Rebuild the audio topology explicitly
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -60,6 +64,7 @@ jobs:
           retention-days: 7
 
   audio:
+    if: github.event_name == 'workflow_dispatch' && inputs.build_audio
     name: Audio topology
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 15

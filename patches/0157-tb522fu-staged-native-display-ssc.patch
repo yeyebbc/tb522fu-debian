@@ -1,0 +1,81 @@
+From 8a12a8e5564ac1626b819d0c532153b54ac7eeb9 Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Fri, 13 Nov 2026 23:16:43 +0800
+Subject: [PATCH] arm64: dts: stage TB522FU native display and sensor clients
+
+Enable the audited MDSS, display clock, dual backlight buses and ADSP FastRPC nodes for module-controlled tests. Link touch to panel power and match stock SE11 pin bias. The image command line holds new display and sensor modules until USB diagnostics are available; GPU stays disabled.
+---
+ .../boot/dts/qcom/sm8750-lenovo-y900-acm.dts  | 28 +++++++++++++------
+ 1 file changed, 19 insertions(+), 9 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+index 4e12abea85b6..4d93fa849b9f 100644
+--- a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
++++ b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+@@ -436,6 +436,8 @@ touchscreen@0 {
+ 		pinctrl-0 = <&nvts_int_default>;
+ 		pinctrl-names = "default";
+ 		firmware-name = "novatek_ts_38_new_fw.bin";
++		/* Firmware reload and touch IRQs follow native panel power. */
++		panel = <&panel>;
+ 		touchscreen-size-x = <2560>;
+ 		touchscreen-size-y = <3840>;
+ 		/* Native TL=(maxX,0), TR=(maxX,maxY): invert X before swap. */
+@@ -449,11 +451,13 @@ touchscreen@0 {
+ 	};
+ };
+ 
+-/* USB-only first boot. Keep the reviewed board wiring and reserve all memory. */
++/* Staged peripherals: native display drivers remain modular and are loaded
++ * explicitly only after USB diagnostics are available in the test image.
++ */
+ &ufs_mem_hc { status = "disabled"; };
+ &ufs_mem_phy { status = "disabled"; };
+-&mdss { status = "disabled"; };
+-&dispcc { status = "disabled"; };
++&mdss { status = "okay"; };
++&dispcc { status = "okay"; };
+ &gpu { status = "disabled"; };
+ &gmu { status = "disabled"; };
+ &gpucc { status = "disabled"; };
+@@ -462,17 +466,23 @@ touchscreen@0 {
+ &spi4 { status = "okay"; };
+ &qupv3_1 { status = "okay"; };
+ &qupv3_2 { status = "disabled"; };
+-&i2c10 { status = "disabled"; };
+-&i2c11 { status = "disabled"; };
+-&{/framebuffer@fc800000} { status = "okay"; }; /* Borrowed display for the first RAM desktop. */
++&i2c10 { status = "okay"; };
++&i2c11 { status = "okay"; };
++&{/framebuffer@fc800000} { status = "okay"; }; /* Preserved until native takeover. */
++
++/* Stock SE11 SDA/SCL use external pull-ups, 2 mA and no internal bias. */
++&qup_i2c11_data_clk {
++	/delete-property/ bias-pull-up;
++	bias-disable;
++};
+ 
+ /* Stock FDT reserves only 36..39 and 74. Release only the touch pins for
+  * this staged test; keep unrelated community reservations. The GENI SPI
+  * driver stays modular and is loaded explicitly after USB logging works.
+  * Stock pinctrl uses 2 mA/pull-down for data, 6 mA/pull-down for
+  * clock, 4 mA/pull-up for CS and 8 mA/pull-up for the touch IRQ.
+- * No panel follower yet: the firmware owns the continuously active panel.
+- * Native takeover must add the panel relation before DPMS is supported.
++ * The panel relation above defers touch until the native panel is registered
++ * and makes firmware reload follow display power transitions.
+  */
+ &spi4 {
+ 	pinctrl-0 = <&nvts_spi_data_clk &nvts_spi_clk &nvts_spi_cs>;
+@@ -588,7 +598,7 @@ &remoteproc_adsp {
+ 	status = "okay";
+ 
+ 	glink-edge {
+-		fastrpc { status = "disabled"; };
++		fastrpc { status = "okay"; };
+ 		gpr { status = "disabled"; };
+ 	};
+ };
+-- 
+2.47.3
+

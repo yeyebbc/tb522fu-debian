@@ -49,6 +49,11 @@
     "patches/0149-ath12k-regdomain-before-wiphy.patch",
     "patches/0150-q6apm-capture-trigger-lifecycle.patch",
     "patches/0151-tb522fu-microphone-board.patch",
-    "patches/0152-tb522fu-preserve-bob1-range.patch"
+    "patches/0152-tb522fu-preserve-bob1-range.patch",
+    "patches/0153-ktz8869-global-enable.patch",
+    "patches/0154-tb522fu-dvt2-panel.patch",
+    "patches/0155-dpu-four-pipeline-clocks.patch",
+    "patches/0156-tb522fu-panel-supply-order.patch",
+    "patches/0157-tb522fu-staged-native-display-ssc.patch"
   ]
 }

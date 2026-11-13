@@ -1,5 +1,14 @@
 # Source provenance
 
+Display patches0153–0157 retain the pinned kernel's panel, KTZ886x and DPU
+implementations. Local changes follow the owner's active BOE DVT2 panel
+configuration and Kinetic's KTZ8869 revision04a register documentation:
+https://www.kinet-ic.com/uploads/web/KTZ8869/KTZ8869-04a.pdf .
+They correct the global-enable register, panel initialization/power sequence,
+575MHz clock ceiling, four-pipeline clock accounting and staged board binding.
+No firmware or device dump is included. Native display, brightness and SSC
+hardware validation remain pending; these drivers load manually in test images.
+
 Sensor userspace sources are pinned in `configs/sensors/source.json`:
 linux-msm/hexagonrpc, Dylan Van Assche's libssc, and iio-sensor-proxy.
 All retain their GPL-3.0-or-later source notices. The registry file service

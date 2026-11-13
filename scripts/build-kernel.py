@@ -165,6 +165,9 @@ def main():
                     'CONFIG_CMDLINE_FORCE=y', 'CONFIG_PANIC_TIMEOUT=5',
                     'CONFIG_DEBUG_INFO_NONE=y', 'CONFIG_USB_CONFIGFS=y',
                     'CONFIG_DRM_SIMPLEDRM=y', 'CONFIG_DRM=y', 'CONFIG_FONT_TER16x32=y', 'CONFIG_DEBUG_FS=y',
+                    'CONFIG_DRM_MSM=m', 'CONFIG_SM_DISPCC_8750=m',
+                    'CONFIG_BACKLIGHT_KTZ8866=m', 'CONFIG_QCOM_FASTRPC=m',
+                    'CONFIG_DRM_PANEL_NOVATEK_NT36536=m',
                     'CONFIG_OVERLAY_FS=y', 'CONFIG_SQUASHFS=y', 'CONFIG_SQUASHFS_ZLIB=y',
                     'CONFIG_SCSI_UFS_QCOM=m', 'CONFIG_PHY_QCOM_QMP_UFS=m',
                     'CONFIG_SPI_QCOM_GENI=m', 'CONFIG_QCOM_GPI_DMA=m', 'CONFIG_TOUCHSCREEN_NT36536_SPI=m',
@@ -208,6 +211,9 @@ def main():
                for name in value.split(',')}
     assert ('lenovo_yoga_keyboard' in blocked) == (not disk)
     assert 'qcom_q6v5_pas' not in blocked
+    display_modules = {'msm', 'dispcc_sm8750', 'ktz8866', 'fastrpc', 'panel_novatek_nt36536'}
+    assert display_modules <= blocked
+    assert 'module_blacklist=' not in cmdline, 'Explicit diagnostic modprobe must remain possible'
     wifi_modules = {'pwrseq_qcom_wcn', 'pci_pwrctrl_pwrseq', 'ath12k', 'ath12k_wifi7'}
     assert wifi_modules.isdisjoint(blocked) if disk else wifi_modules <= blocked
     if disk:
@@ -231,10 +237,30 @@ def main():
          'qcom/sm8750/lenovo/tb522fu/adsp.mdt qcom/sm8750/lenovo/tb522fu/adsp_dtb.mdt'),
         ('/reserved-memory/adspslpi@9ee00000', 'reg', 'x', '0 9ee00000 0 5600000'),
         ('/reserved-memory/q6-adsp-dtb@9ed80000', 'reg', 'x', '0 9ed80000 0 80000'),
-        ('/soc@0/remoteproc@6800000/glink-edge/fastrpc', 'status', 's', 'disabled'),
+        ('/soc@0/remoteproc@6800000/glink-edge/fastrpc', 'status', 's', 'okay'),
         ('/soc@0/remoteproc@6800000/glink-edge/gpr', 'status', 's', 'okay'),
     ]:
         assert capture(['fdtget', '-t', typ, dtb, node, prop]) == expected, (node, prop)
+    # Native display is enabled in DT, but its drivers load only after debug
+    # transport is up. Preserve the borrowed framebuffer until DRM takes over.
+    display = '/soc@0/display-subsystem@ae00000'
+    panel = display + '/dsi@ae94000/panel@0'
+    touch = '/soc@0/geniqup@ac0000/spi@a90000/touchscreen@0'
+    for node in [display, '/soc@0/clock-controller@af00000',
+                 '/soc@0/geniqup@8c0000', '/soc@0/geniqup@8c0000/i2c@888000',
+                 '/soc@0/geniqup@8c0000/i2c@88c000', '/framebuffer@fc800000']:
+        assert capture(['fdtget', '-t', 's', dtb, node, 'status']) == 'okay', node
+    assert capture(['fdtget', '-t', 'x', dtb, touch, 'panel']) == capture(
+        ['fdtget', '-t', 'x', dtb, panel, 'phandle'])
+    for prop, regulator, uv in [('vddio-supply', 'ldo12', '1800000'),
+                                ('vci-supply', 'ldo13', '3000000'),
+                                ('tvdd-supply', 'ldo4', '1800000')]:
+        node = '/soc@0/rsc@16500000/regulators-b/' + regulator
+        assert capture(['fdtget', '-t', 'x', dtb, panel, prop]) == capture(
+            ['fdtget', '-t', 'x', dtb, node, 'phandle'])
+        assert capture(['fdtget', '-t', 'i', dtb, node, 'regulator-min-microvolt']) == uv
+        assert capture(['fdtget', '-t', 'i', dtb, node, 'regulator-max-microvolt']) == uv
+    assert 'vdd-supply' not in capture(['fdtget', '-p', dtb, panel]).splitlines()
     # Check board-specific speaker wiring and the first-test gain cap.
     assert capture(['fdtget', '-t', 's', dtb, '/sound', 'model']) == 'TB522FU'
     # Stock WCD939x rails and pin routing: do not import MTP voltages.
@@ -316,6 +342,7 @@ def main():
                      'qrtr_smd', 'qcom_pd_mapper', 'qcom_battmgr',
                      'pwrseq_qcom_wcn', 'pci_pwrctrl_pwrseq', 'ath12k', 'ath12k_wifi7',
                      'snd_soc_aw88461', 'snd_soc_sc8280xp', 'reset_gpio'])
+    explicit.update(display_modules)
     for name in sorted(explicit):
         actual = capture(['modinfo', '-b', modules, '-k', release, '-F', 'name', name])
         assert actual.replace('-', '_') == name.replace('-', '_'), (name, actual)

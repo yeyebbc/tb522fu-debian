@@ -1,0 +1,92 @@
+From 3e21d71f492ddc3755ed7eb3f9e7ad434ebe8a7e Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Fri, 13 Nov 2026 22:47:54 +0800
+Subject: [PATCH] backlight: ktz8866: use the KTZ8869 global enable register
+
+KTZ8869 uses register 0x01 bit 0 for its global backlight enable. Register 0x08 bit 6 enables LED7, unlike KTZ8866 where it enables the backlight. Match the stock 12-bit brightness write sequence and leave all sink selections intact across blank/unblank. Reject out-of-range startup brightness before any programming.
+
+Checked against Kinetic KTZ8869 revision 04a tables 7 and 12 and the stock Lenovo brightness setter. ARM64 W=1 object build and recording-bus tests pass; hardware validation pending.
+---
+ drivers/video/backlight/ktz8866.c | 34 +++++++++++++++++++++++++++++++
+ 1 file changed, 34 insertions(+)
+
+diff --git a/drivers/video/backlight/ktz8866.c b/drivers/video/backlight/ktz8866.c
+index ce0f02c6e066..d8b1e735d155 100644
+--- a/drivers/video/backlight/ktz8866.c
++++ b/drivers/video/backlight/ktz8866.c
+@@ -39,6 +39,10 @@
+ #define BL_DIMMING 0x14
+ #define PWM_RAMP_TIME 0x15
+ 
++/* KTZ8869 moves the global enable out of the current-sink mask. */
++#define KTZ8869_BL_ENABLE 0x01
++#define KTZ8869_BL_ENABLE_BIT BIT(0)
++
+ /* definition */
+ #define BL_EN_BIT BIT(6)
+ #define BL_EN_SINKS GENMASK(5, 0)
+@@ -51,6 +55,7 @@ struct ktz8866_chip_data {
+ 	unsigned int lsb_shift;
+ 	unsigned int default_brightness;
+ 	bool write_only;
++	bool separate_enable;
+ };
+ 
+ struct ktz8866 {
+@@ -97,10 +102,36 @@ static int ktz8866_update_bits(struct ktz8866 *ktz, unsigned int reg,
+ 	return regmap_update_bits(ktz->regmap, reg, mask, val);
+ }
+ 
++static int ktz8869_set_brightness(struct ktz8866 *ktz, unsigned int brightness)
++{
++	int ret;
++
++	/* Match the stock sequence: code first, then the global enable. */
++	ret = ktz8866_write(ktz, BL_BRT_LSB, brightness & 0xf);
++	if (ret)
++		return ret;
++	ret = ktz8866_write(ktz, BL_BRT_MSB, brightness >> 4);
++	if (ret)
++		return ret;
++
++	/* Register 0x08 contains eight sink enables, not a global enable. */
++	ret = ktz8866_write(ktz, KTZ8869_BL_ENABLE,
++			    brightness ? KTZ8869_BL_ENABLE_BIT : 0);
++	if (!ret)
++		ktz->led_on = brightness != 0;
++
++	return ret;
++}
++
+ static int ktz8866_set_brightness(struct ktz8866 *ktz, unsigned int brightness)
+ {
+ 	int ret;
+ 
++	if (brightness > ktz->chip->max_brightness)
++		return -EINVAL;
++	if (ktz->chip->separate_enable)
++		return ktz8869_set_brightness(ktz, brightness);
++
+ 	if (brightness == 0) {
+ 		if (ktz->chip->write_only) {
+ 			ktz->enable_mask &= ~BL_EN_BIT;
+@@ -280,6 +311,8 @@ static int ktz8866_get_boot_brightness(struct ktz8866 *ktz, unsigned int *bright
+ 		*brightness = ktz->chip->default_brightness ?:
+ 			      DEFAULT_BRIGHTNESS;
+ 		of_property_read_u32(np, "ktz,default-brightness", brightness);
++		if (*brightness > ktz->chip->max_brightness)
++			return -EINVAL;
+ 		*sync = true;
+ 		return 0;
+ 	}
+@@ -465,6 +498,7 @@ static const struct ktz8866_chip_data ktz8869_data = {
+ 	.lsb_shift = 4,
+ 	.default_brightness = 1628,
+ 	.write_only = true,
++	.separate_enable = true,
+ };
+ 
+ static const struct of_device_id ktz8866_match_table[] = {
+-- 
+2.47.3
+
