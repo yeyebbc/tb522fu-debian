@@ -149,9 +149,13 @@ def main():
             cmdline = cmdline.replace(' qcom_scm.probe_seconds=600', '')
         # CI24 verified Wi-Fi initialization and real 5 GHz traffic. Both disk
         # profiles now exercise normal coldplug, retaining the accepted keyboard
-        # in peripheral tests. The legacy RAM probe remains manually staged.
+        # in peripheral tests. CI35 also verified native display/GPU rendering;
+        # exercise their normal coldplug in both disk profiles. The legacy RAM
+        # probe remains manually staged. FastRPC remains diagnostic-only.
         accepted = {'lenovo_yoga_keyboard', 'pwrseq_qcom_wcn',
-                    'pci_pwrctrl_pwrseq', 'ath12k', 'ath12k_wifi7'}
+                    'pci_pwrctrl_pwrseq', 'ath12k', 'ath12k_wifi7',
+                    'msm', 'dispcc_sm8750', 'ktz8866',
+                    'panel_novatek_nt36536', 'gpucc_sm8750', 'gxclkctl_kaanapali'}
 
         def retain_unverified(match):
             names = [name for name in match[1].split(',') if name not in accepted]
@@ -211,8 +215,9 @@ def main():
                for name in value.split(',')}
     assert ('lenovo_yoga_keyboard' in blocked) == (not disk)
     assert 'qcom_q6v5_pas' not in blocked
-    display_modules = {'msm', 'dispcc_sm8750', 'ktz8866', 'fastrpc', 'panel_novatek_nt36536', 'gpucc_sm8750', 'gxclkctl_kaanapali'}
-    assert display_modules <= blocked
+    display_modules = {'msm', 'dispcc_sm8750', 'ktz8866', 'panel_novatek_nt36536', 'gpucc_sm8750', 'gxclkctl_kaanapali'}
+    assert display_modules.isdisjoint(blocked) if disk else display_modules <= blocked
+    assert 'fastrpc' in blocked
     assert 'module_blacklist=' not in cmdline, 'Explicit diagnostic modprobe must remain possible'
     wifi_modules = {'pwrseq_qcom_wcn', 'pci_pwrctrl_pwrseq', 'ath12k', 'ath12k_wifi7'}
     assert wifi_modules.isdisjoint(blocked) if disk else wifi_modules <= blocked
@@ -241,8 +246,8 @@ def main():
         ('/soc@0/remoteproc@6800000/glink-edge/gpr', 'status', 's', 'okay'),
     ]:
         assert capture(['fdtget', '-t', typ, dtb, node, prop]) == expected, (node, prop)
-    # Native display is enabled in DT, but its drivers load only after debug
-    # transport is up. Preserve the borrowed framebuffer until DRM takes over.
+    # Native display coldplugs in disk profiles. Preserve the firmware
+    # framebuffer until normal DRM dependency binding completes takeover.
     display = '/soc@0/display-subsystem@ae00000'
     panel = display + '/dsi@ae94000/panel@0'
     touch = '/soc@0/geniqup@ac0000/spi@a90000/touchscreen@0'
@@ -269,7 +274,7 @@ def main():
     for address, se in [('888000', 2), ('88c000', 3)]:
         bus = '/soc@0/geniqup@8c0000/i2c@' + address
         assert capture(['fdtget', '-t', 'x', dtb, bus, 'dmas']) == f'{ref} 0 {se} 3 {ref} 1 {se} 3'
-    # Stock chip ID and signed-shader reservation, with GPU providers staged.
+    # Stock chip ID and signed-shader reservation; disk GPU providers coldplug.
     assert 'CONFIG_SM_GPUCC_8750=m' in config
     gpu = '/soc@0/gpu@3d00000'
     for node in [gpu, '/soc@0/gmu@3d6c000', '/soc@0/clock-controller@3d90000',
@@ -362,7 +367,7 @@ def main():
                      'qrtr_smd', 'qcom_pd_mapper', 'qcom_battmgr',
                      'pwrseq_qcom_wcn', 'pci_pwrctrl_pwrseq', 'ath12k', 'ath12k_wifi7',
                      'snd_soc_aw88461', 'snd_soc_sc8280xp', 'reset_gpio'])
-    explicit.update(display_modules)
+    explicit.update(display_modules | {'fastrpc'})
     for name in sorted(explicit):
         actual = capture(['modinfo', '-b', modules, '-k', release, '-F', 'name', name])
         assert actual.replace('-', '_') == name.replace('-', '_'), (name, actual)
