@@ -16,6 +16,7 @@
     "patches/0105-nt36536-stop-on-transport-failure.patch",
     "patches/0106-tb522fu-framebuffer-power-domain.patch",
     "patches/0107-tb522fu-touch-landscape.patch",
-    "patches/0108-tb522fu-staged-ufs-probe.patch"
+    "patches/0108-tb522fu-staged-ufs-probe.patch",
+    "patches/0110-tb522fu-uart-keyboard.patch"
   ]
 }

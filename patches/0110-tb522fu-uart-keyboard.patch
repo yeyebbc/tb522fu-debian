@@ -1,0 +1,832 @@
+Subject: [PATCH] input: add staged TB522FU UART keyboard and trackpad
+
+Use serdev and the standard input subsystem for the Lenovo detachable
+keyboard. Bounds-check and checksum packets before reporting keys or touch.
+Release input state on detach/lid close and follow the stock GPIO power
+sequence. TX stays disabled in this first receive-only candidate.
+
+Stock captures confirm9216008N1, active-low plug/lid GPIOs, eight-byte HID
+boot reports after command/length, and four touch slots. The codec matches
+1008 complete captured packets and passes host sanitizer cases. The driver
+object compiles for ARM64; Linux hardware input is not yet validated.
+
+diff --git a/drivers/input/misc/Kconfig b/drivers/input/misc/Kconfig
+index 169768e3d5bb..54c59b2b18d1 100644
+--- a/drivers/input/misc/Kconfig
++++ b/drivers/input/misc/Kconfig
+@@ -13,6 +13,17 @@ menuconfig INPUT_MISC
+ 
+ if INPUT_MISC
+ 
++config INPUT_LENOVO_YOGA_KEYBOARD
++	tristate "Lenovo Yoga Tab UART keyboard and trackpad"
++	depends on SERIAL_DEV_BUS && GPIOLIB && PINCTRL
++	help
++	  Support the detachable UART keyboard and trackpad on Lenovo TB522FU.
++	  This initial driver provides input and attachment/lid switches.
++	  Keyboard LED control and suspend have not been validated.
++
++	  To compile this driver as a module, choose M here: the module
++	  will be called lenovo-yoga-keyboard.
++
+ config INPUT_88PM860X_ONKEY
+ 	tristate "88PM860x ONKEY support"
+ 	depends on MFD_88PM860X
+diff --git a/drivers/input/misc/Makefile b/drivers/input/misc/Makefile
+index 1339619f0769..9e2af954f41e 100644
+--- a/drivers/input/misc/Makefile
++++ b/drivers/input/misc/Makefile
+@@ -97,3 +97,5 @@ obj-$(CONFIG_INPUT_WM831X_ON)		+= wm831x-on.o
+ obj-$(CONFIG_INPUT_XEN_KBDDEV_FRONTEND)	+= xen-kbdfront.o
+ obj-$(CONFIG_INPUT_YEALINK)		+= yealink.o
+ obj-$(CONFIG_INPUT_IDEAPAD_SLIDEBAR)	+= ideapad_slidebar.o
++
++obj-$(CONFIG_INPUT_LENOVO_YOGA_KEYBOARD) += lenovo-yoga-keyboard.o
+diff --git a/drivers/input/misc/lenovo-yoga-keyboard-protocol.h b/drivers/input/misc/lenovo-yoga-keyboard-protocol.h
+new file mode 100644
+index 000000000000..5b582c67911b
+--- /dev/null
++++ b/drivers/input/misc/lenovo-yoga-keyboard-protocol.h
+@@ -0,0 +1,174 @@
++/* SPDX-License-Identifier: GPL-2.0-only */
++/*
++ * Lenovo Yoga keyboard UART framing.
++ * Protocol reference: Lenovo's GPL owb_ppp.c, published in
++ * AkarinServer/Y700-Gen3-Droidian at 124f2c154a6e34a66df56afc08336cadd193d9f0.
++ * Framing/dictionary verified against the TB522FU stock driver and wire logs.
++ */
++#ifndef _LENOVO_YOGA_KEYBOARD_PROTOCOL_H
++#define _LENOVO_YOGA_KEYBOARD_PROTOCOL_H
++
++#include <linux/errno.h>
++#include <linux/types.h>
++
++#define LY_FRAME_MAX 255
++#define LY_CONTACTS 4
++#define LY_TOUCH_X_MAX 3211
++#define LY_TOUCH_Y_MAX 1879
++
++static const u8 ly_dictionary[64] = {
++	0xb8, 0x02, 0xd9, 0x57, 0xc6, 0x48, 0xc2, 0x13,
++	0xd7, 0xa6, 0x30, 0xbf, 0x40, 0xd3, 0x07, 0xce,
++	0xc3, 0xab, 0xfa, 0x51, 0x62, 0x18, 0xbd, 0x84,
++	0x7d, 0xca, 0xe0, 0xcf, 0xf2, 0xac, 0xbc, 0x12,
++	0xf5, 0x14, 0xd0, 0x72, 0xdc, 0x1a, 0x50, 0x00,
++	0x00, 0x32, 0xd1, 0x7b, 0x33, 0xb6, 0x10, 0xdd,
++	0x6a, 0x21, 0xeb, 0x7e, 0x52, 0x5b, 0x3d, 0x9f,
++	0x85, 0xcb, 0x1f, 0x66, 0x73, 0x96, 0xa1, 0x60,
++};
++
++struct ly_receiver {
++	u8 wire[LY_FRAME_MAX];
++	unsigned int length;
++};
++
++/* Decode the escaped body, including seed and checksum, without delimiters. */
++static inline int ly_decode(const u8 *wire, unsigned int length, u8 *payload)
++{
++	unsigned int i = 0, n = 0, last_start = 0, start;
++	u8 decoded[LY_FRAME_MAX], sum = 0, value;
++
++	if (length > LY_FRAME_MAX)
++		return -EMSGSIZE;
++	while (i < length) {
++		start = i;
++		value = wire[i++];
++		if (value == 0x7e)
++			return -EBADMSG;
++		if (value == 0x7d) {
++			if (i == length || (wire[i] != 0x5d && wire[i] != 0x5e))
++				return -EBADMSG;
++			value = wire[i++] ^ 0x20;
++		}
++		decoded[n++] = value;
++		last_start = start;
++	}
++	if (n < 3)
++		return -EBADMSG;
++	for (i = 0; i < last_start; i++)
++		sum += wire[i];
++	if (sum != decoded[n - 1])
++		return -EBADMSG;
++	for (i = 1; i < n - 1; i++)
++		payload[i - 1] = decoded[i] ^ ly_dictionary[(decoded[0] + i - 1) % 64];
++	return n - 2;
++}
++
++/* Returns a payload length, zero while incomplete, or a rejected-frame errno. */
++static inline int ly_receive_byte(struct ly_receiver *rx, u8 value, u8 *payload)
++{
++	int ret;
++
++	if (!rx->length) {
++		if (value == 0x7e)
++			rx->wire[rx->length++] = value;
++	} else if (rx->length == 1) {
++		if (value == 0xff)
++			rx->wire[rx->length++] = value;
++		else if (value != 0x7e)
++			rx->length = 0;
++	} else if (value == 0x7e) {
++		ret = ly_decode(rx->wire + 2, rx->length - 2, payload);
++		/* Permit a shared end/start flag and recover after malformed frames. */
++		rx->length = 1;
++		rx->wire[0] = 0x7e;
++		return ret;
++	} else if (rx->length >= LY_FRAME_MAX - 1) {
++		rx->length = 0;
++		return -EMSGSIZE;
++	} else {
++		rx->wire[rx->length++] = value;
++	}
++	return 0;
++}
++
++static inline int ly_put_escaped(u8 value, u8 *wire, unsigned int *length)
++{
++	unsigned int needed = (value == 0x7d || value == 0x7e) ? 2 : 1;
++
++	if (*length + needed >= LY_FRAME_MAX)
++		return -EMSGSIZE;
++	if (needed == 2) {
++		wire[(*length)++] = 0x7d;
++		wire[(*length)++] = value ^ 0x20;
++	} else {
++		wire[(*length)++] = value;
++	}
++	return 0;
++}
++
++static inline int ly_encode(const u8 *payload, unsigned int count, u8 seed, u8 *wire)
++{
++	unsigned int i, length = 3;
++	u8 sum = 0;
++	int ret;
++
++	if (!count || count > LY_FRAME_MAX - 6 || seed > 127)
++		return -EINVAL;
++	wire[0] = 0x7e;
++	wire[1] = 0x7e;
++	wire[2] = 0xff;
++	ret = ly_put_escaped(seed, wire, &length);
++	if (ret)
++		return ret;
++	for (i = 0; i < count; i++) {
++		ret = ly_put_escaped(payload[i] ^ ly_dictionary[(seed + i) % 64],
++				     wire, &length);
++		if (ret)
++			return ret;
++	}
++	for (i = 3; i < length; i++)
++		sum += wire[i];
++	ret = ly_put_escaped(sum, wire, &length);
++	if (ret)
++		return ret;
++	wire[length++] = 0x7e;
++	return length;
++}
++
++/* Reject an entire malformed input report before emitting any input events. */
++static inline bool ly_valid_keyboard(const u8 *payload, unsigned int length)
++{
++	return length == 10 && payload[0] == 0x11 && payload[1] == 8;
++}
++
++static inline bool ly_valid_consumer(const u8 *payload, unsigned int length)
++{
++	return length == 6 && payload[0] == 0x12 && payload[1] == 4;
++}
++
++static inline bool ly_valid_touch(const u8 *payload, unsigned int length)
++{
++	unsigned int contacts, i, slot, seen = 0, x, y;
++	const u8 *p;
++
++	if (length < 3 || payload[0] != 0x13 || !payload[1] ||
++	    (payload[1] - 1) % 5)
++		return false;
++	contacts = (payload[1] - 1) / 5;
++	if (contacts > LY_CONTACTS || length != 3 + contacts * 5)
++		return false;
++	for (i = 0; i < contacts; i++) {
++		p = payload + 3 + i * 5;
++		slot = p[0] >> 4;
++		x = p[1] | (p[2] << 8);
++		y = p[3] | (p[4] << 8);
++		if (slot >= LY_CONTACTS || (seen & (1U << slot)) ||
++		    x > LY_TOUCH_X_MAX || y > LY_TOUCH_Y_MAX)
++			return false;
++		seen |= 1U << slot;
++	}
++	return true;
++}
++
++#endif
+diff --git a/drivers/input/misc/lenovo-yoga-keyboard.c b/drivers/input/misc/lenovo-yoga-keyboard.c
+new file mode 100644
+index 000000000000..574e762e8828
+--- /dev/null
++++ b/drivers/input/misc/lenovo-yoga-keyboard.c
+@@ -0,0 +1,528 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * Lenovo Yoga Tab keyboard/trackpad over its half-duplex UART connection.
++ *
++ * Protocol and HID usage table adapted from Lenovo's GPL keyboard driver,
++ * published at AkarinServer/Y700-Gen3-Droidian commit
++ * 124f2c154a6e34a66df56afc08336cadd193d9f0. TB522FU report offsets, GPIOs,
++ * power sequencing and lid polarity were checked against its stock driver
++ * and live Android captures. No vendor UART hooks or firmware are included.
++ *
++ * Initial bring-up receives input only. TX remains disabled; keyboard LED
++ * control and system suspend are separate acceptance work.
++ */
++
++#include <linux/bitmap.h>
++#include <linux/delay.h>
++#include <linux/gpio/consumer.h>
++#include <linux/input.h>
++#include <linux/input/mt.h>
++#include <linux/interrupt.h>
++#include <linux/module.h>
++#include <linux/mutex.h>
++#include <linux/of.h>
++#include <linux/pinctrl/consumer.h>
++#include <linux/serdev.h>
++#include <linux/workqueue.h>
++
++#include "lenovo-yoga-keyboard-protocol.h"
++
++#define LY_BAUD 921600
++#define U KEY_UNKNOWN
++
++/* HID keyboard page -> Linux key codes, matching the stock Lenovo table. */
++static const unsigned short ly_keymap[256] = {
++	0, 0, 0, 0, 30, 48, 46, 32, 18, 33, 34, 35, 23, 36, 37, 38,
++	50, 49, 24, 25, 16, 19, 31, 20, 22, 47, 17, 45, 21, 44, 2, 3,
++	4, 5, 6, 7, 8, 9, 10, 11, 28, 1, 14, 15, 57, 12, 13, 26,
++	27, 43, 43, 39, 40, 41, 51, 52, 53, 58, 59, 60, 61, 62, 63, 64,
++	65, 66, 67, 68, 87, 88, 99, 70, 119, 110, 102, 104, 111, 107, 109, 106,
++	105, 108, 103, 69, 98, 55, 74, 78, 96, 79, 80, 81, 75, 76, 77, 71,
++	72, 73, 82, 83, 86, 127, 116, 117, 183, 184, 185, 186, 187, 188, 189, 190,
++	191, 192, 193, 194, 134, 138, 130, 132, 128, 129, 131, 137, 133, 135, 136, 113,
++	115, 114, U, U, U, 121, U, 89, 93, 124, 92, 94, 95, U, U, U,
++	122, 123, 90, 91, 85, U, U, U, U, U, U, U, 111, U, U, U,
++	U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U,
++	U, U, U, U, U, U, 179, 180, U, U, U, U, U, U, U, U,
++	U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U,
++	U, U, U, U, U, U, U, U, 111, U, U, U, U, U, U, U,
++	29, 42, 56, 125, 97, 54, 100, 126, 164, 166, 165, 163, 161, 115, 114, 113,
++	150, 158, 159, 128, 136, 177, 178, 176, 142, 152, 173, 140, U, U, U, U,
++};
++#undef U
++
++static const struct {
++	u16 usage;
++	u16 key;
++} ly_consumer_map[] = {
++	{ 0x0e2, KEY_MUTE },
++	{ 0x0ea, KEY_VOLUMEDOWN },
++	{ 0x0e9, KEY_VOLUMEUP },
++	{ 0x224, KEY_BACK },
++	{ 0x070, KEY_BRIGHTNESSDOWN },
++	{ 0x06f, KEY_BRIGHTNESSUP },
++	{ 0x38e, KEY_SCREENLOCK },
++	{ 0x390, KEY_LANGUAGE },
++	{ 0x391, KEY_MICMUTE },
++	{ 0x392, KEY_TOUCHPAD_TOGGLE },
++	{ 0x393, KEY_SEARCH },
++	{ 0x394, KEY_FULL_SCREEN },
++};
++
++struct ly_keyboard {
++	struct serdev_device *serdev;
++	struct input_dev *keyboard, *touchpad, *switches;
++	struct gpio_desc *vcc3, *vcc5, *ocp, *mode, *tx, *detect, *lid;
++	struct pinctrl *pinctrl;
++	struct pinctrl_state *wake_on, *wake_off;
++	struct delayed_work detect_work;
++	struct mutex lock;
++	struct ly_receiver receiver;
++	u8 payload[LY_FRAME_MAX];
++	DECLARE_BITMAP(keys, KEY_CNT);
++	DECLARE_BITMAP(consumer_keys, KEY_CNT);
++	DECLARE_BITMAP(reported, KEY_CNT);
++	int detect_irq, lid_irq;
++	bool opened, irqs_enabled, stopping, powered, lid_closed;
++	u64 frames, rejected, key_reports, touch_reports, sync_reports;
++};
++
++/* All input and power state changes are serialized by lock. */
++static void ly_report_keys(struct ly_keyboard *kb)
++{
++	DECLARE_BITMAP(next, KEY_CNT);
++	DECLARE_BITMAP(changed, KEY_CNT);
++	unsigned int code;
++
++	bitmap_or(next, kb->keys, kb->consumer_keys, KEY_CNT);
++	bitmap_xor(changed, next, kb->reported, KEY_CNT);
++	for_each_set_bit(code, changed, KEY_CNT)
++		input_report_key(kb->keyboard, code, test_bit(code, next));
++	input_sync(kb->keyboard);
++	bitmap_copy(kb->reported, next, KEY_CNT);
++}
++
++static void ly_release_input(struct ly_keyboard *kb)
++{
++	unsigned int slot;
++
++	bitmap_zero(kb->keys, KEY_CNT);
++	bitmap_zero(kb->consumer_keys, KEY_CNT);
++	ly_report_keys(kb);
++	for (slot = 0; slot < LY_CONTACTS; slot++) {
++		input_mt_slot(kb->touchpad, slot);
++		input_mt_report_slot_state(kb->touchpad, MT_TOOL_FINGER, false);
++	}
++	input_report_key(kb->touchpad, BTN_LEFT, 0);
++	input_report_key(kb->touchpad, BTN_RIGHT, 0);
++	input_mt_sync_frame(kb->touchpad);
++	input_sync(kb->touchpad);
++}
++
++static void ly_report_keyboard(struct ly_keyboard *kb, const u8 *data)
++{
++	unsigned int i, code;
++	bool rollover = false;
++
++	/* data is the eight-byte HID boot report: modifiers, reserved, six keys. */
++	for (i = 2; i < 8; i++)
++		if (data[i] > 0 && data[i] < 4)
++			rollover = true;
++	if (rollover)
++		return;
++	bitmap_zero(kb->keys, KEY_CNT);
++	for (i = 0; i < 8; i++)
++		if (data[0] & BIT(i))
++			__set_bit(ly_keymap[224 + i], kb->keys);
++	for (i = 2; i < 8; i++) {
++		code = ly_keymap[data[i]];
++		if (code && code != KEY_UNKNOWN)
++			__set_bit(code, kb->keys);
++	}
++	ly_report_keys(kb);
++	kb->key_reports++;
++}
++
++static void ly_report_consumer(struct ly_keyboard *kb, const u8 *data)
++{
++	unsigned int i, j, usage;
++
++	bitmap_zero(kb->consumer_keys, KEY_CNT);
++	for (i = 0; i < 4; i += 2) {
++		usage = data[i] | (data[i + 1] << 8);
++		for (j = 0; j < ARRAY_SIZE(ly_consumer_map); j++)
++			if (usage == ly_consumer_map[j].usage)
++				__set_bit(ly_consumer_map[j].key, kb->consumer_keys);
++	}
++	ly_report_keys(kb);
++}
++
++static void ly_report_touch(struct ly_keyboard *kb, const u8 *data)
++{
++	unsigned int i, contacts = (data[1] - 1) / 5;
++	const u8 *p;
++
++	for (i = 0; i < contacts; i++) {
++		p = data + 3 + 5 * i;
++		input_mt_slot(kb->touchpad, p[0] >> 4);
++		input_mt_report_slot_state(kb->touchpad,
++					   p[0] & BIT(2) ? MT_TOOL_FINGER : MT_TOOL_PALM,
++					   p[0] & BIT(0));
++		if (p[0] & BIT(0)) {
++			input_report_abs(kb->touchpad, ABS_MT_POSITION_X, p[1] | (p[2] << 8));
++			input_report_abs(kb->touchpad, ABS_MT_POSITION_Y, p[3] | (p[4] << 8));
++		}
++	}
++	input_report_key(kb->touchpad, BTN_LEFT, data[2] & BIT(0));
++	input_report_key(kb->touchpad, BTN_RIGHT, data[2] & BIT(1));
++	input_mt_sync_frame(kb->touchpad);
++	input_sync(kb->touchpad);
++	kb->touch_reports++;
++}
++
++static size_t ly_receive(struct serdev_device *serdev, const u8 *data, size_t count)
++{
++	struct ly_keyboard *kb = serdev_device_get_drvdata(serdev);
++	size_t i;
++	int length;
++
++	mutex_lock(&kb->lock);
++	if (kb->stopping || !kb->powered)
++		goto out;
++	for (i = 0; i < count; i++) {
++		length = ly_receive_byte(&kb->receiver, data[i], kb->payload);
++		if (length < 0) {
++			kb->rejected++;
++			continue;
++		}
++		if (!length)
++			continue;
++		kb->frames++;
++		if (kb->payload[0] == 0x16) {
++			kb->sync_reports++;
++			continue;
++		}
++		if (kb->lid_closed)
++			continue;
++		switch (kb->payload[0]) {
++		case 0x11:
++			if (ly_valid_keyboard(kb->payload, length))
++				ly_report_keyboard(kb, kb->payload + 2);
++			else
++				kb->rejected++;
++			break;
++		case 0x12:
++			if (ly_valid_consumer(kb->payload, length))
++				ly_report_consumer(kb, kb->payload + 2);
++			else
++				kb->rejected++;
++			break;
++		case 0x13:
++			if (ly_valid_touch(kb->payload, length))
++				ly_report_touch(kb, kb->payload);
++			else
++				kb->rejected++;
++			break;
++		}
++	}
++out:
++	mutex_unlock(&kb->lock);
++	return count;
++}
++
++static const struct serdev_device_ops ly_serdev_ops = {
++	.receive_buf = ly_receive,
++};
++
++static void ly_power_off(struct ly_keyboard *kb)
++{
++	kb->powered = false;
++	kb->receiver.length = 0;
++	gpiod_set_value_cansleep(kb->tx, 0);
++	gpiod_set_value_cansleep(kb->vcc5, 0);
++	gpiod_set_value_cansleep(kb->ocp, 0);
++	gpiod_set_value_cansleep(kb->vcc3, 0);
++	msleep(30);
++	gpiod_set_value_cansleep(kb->mode, 0);
++	if (pinctrl_select_state(kb->pinctrl, kb->wake_off))
++		dev_warn(&kb->serdev->dev, "Unable to select detached wake bias\n");
++	ly_release_input(kb);
++}
++
++static int ly_power_on(struct ly_keyboard *kb)
++{
++	int ret;
++
++	kb->receiver.length = 0;
++	gpiod_set_value_cansleep(kb->vcc5, 1);
++	usleep_range(3000, 4000);
++	gpiod_set_value_cansleep(kb->vcc3, 1);
++	gpiod_set_value_cansleep(kb->ocp, 1);
++	msleep(30);
++	gpiod_set_value_cansleep(kb->mode, !kb->lid_closed);
++	msleep(70);
++	ret = pinctrl_select_state(kb->pinctrl, kb->wake_on);
++	if (ret) {
++		ly_power_off(kb);
++		return ret;
++	}
++	kb->powered = true;
++	return 0;
++}
++
++static void ly_detect_work(struct work_struct *work)
++{
++	struct ly_keyboard *kb = container_of(to_delayed_work(work),
++					     struct ly_keyboard, detect_work);
++	int attached, ret;
++
++	mutex_lock(&kb->lock);
++	if (kb->stopping)
++		goto out;
++	attached = gpiod_get_value_cansleep(kb->detect);
++	if (attached < 0) {
++		dev_warn(&kb->serdev->dev, "Unable to read attachment: %d\n", attached);
++		goto out;
++	}
++	if (attached && !kb->powered) {
++		ret = ly_power_on(kb);
++		if (ret) {
++			dev_err(&kb->serdev->dev, "Accessory power-on failed: %d\n", ret);
++			goto out;
++		}
++	} else if (!attached && kb->powered) {
++		ly_power_off(kb);
++	}
++	input_report_switch(kb->switches, SW_TABLET_MODE, !attached);
++	input_sync(kb->switches);
++out:
++	mutex_unlock(&kb->lock);
++}
++
++static irqreturn_t ly_detect_irq(int irq, void *data)
++{
++	struct ly_keyboard *kb = data;
++
++	if (!READ_ONCE(kb->stopping))
++		mod_delayed_work(system_wq, &kb->detect_work, msecs_to_jiffies(50));
++	return IRQ_HANDLED;
++}
++
++static irqreturn_t ly_lid_irq(int irq, void *data)
++{
++	struct ly_keyboard *kb = data;
++	int closed;
++
++	mutex_lock(&kb->lock);
++	closed = gpiod_get_value_cansleep(kb->lid);
++	if (!kb->stopping && closed >= 0) {
++		kb->lid_closed = closed;
++		if (kb->powered)
++			gpiod_set_value_cansleep(kb->mode, !closed);
++		if (closed)
++			ly_release_input(kb);
++		input_report_switch(kb->switches, SW_LID, closed);
++		input_sync(kb->switches);
++	}
++	mutex_unlock(&kb->lock);
++	return IRQ_HANDLED;
++}
++
++static ssize_t statistics_show(struct device *dev, struct device_attribute *attr, char *buf)
++{
++	struct ly_keyboard *kb = dev_get_drvdata(dev);
++	ssize_t length;
++
++	mutex_lock(&kb->lock);
++	length = sysfs_emit(buf, "powered=%u lid_closed=%u frames=%llu rejected=%llu "
++			    "keys=%llu touch=%llu sync=%llu\n",
++			    kb->powered, kb->lid_closed, kb->frames, kb->rejected,
++			    kb->key_reports, kb->touch_reports, kb->sync_reports);
++	mutex_unlock(&kb->lock);
++	return length;
++}
++static DEVICE_ATTR_RO(statistics);
++
++static struct attribute *ly_attrs[] = { &dev_attr_statistics.attr, NULL };
++ATTRIBUTE_GROUPS(ly);
++
++static void ly_stop(void *data)
++{
++	struct ly_keyboard *kb = data;
++
++	WRITE_ONCE(kb->stopping, true);
++	if (kb->irqs_enabled) {
++		disable_irq(kb->detect_irq);
++		disable_irq(kb->lid_irq);
++		kb->irqs_enabled = false;
++	}
++	cancel_delayed_work_sync(&kb->detect_work);
++	mutex_lock(&kb->lock);
++	ly_power_off(kb);
++	mutex_unlock(&kb->lock);
++	if (kb->opened) {
++		serdev_device_close(kb->serdev);
++		kb->opened = false;
++	}
++}
++
++static struct input_dev *ly_input(struct ly_keyboard *kb, const char *name)
++{
++	struct input_dev *input = devm_input_allocate_device(&kb->serdev->dev);
++
++	if (input) {
++		input->name = name;
++		input->id.bustype = BUS_RS232;
++		input->id.vendor = 0x17ef;
++		input->id.product = 0x62da;
++		input->id.version = 0x0010;
++		input->dev.parent = &kb->serdev->dev;
++	}
++	return input;
++}
++
++static int ly_probe(struct serdev_device *serdev)
++{
++	struct device *dev = &serdev->dev;
++	struct ly_keyboard *kb;
++	unsigned int i;
++	int ret;
++
++	kb = devm_kzalloc(dev, sizeof(*kb), GFP_KERNEL);
++	if (!kb)
++		return -ENOMEM;
++	kb->serdev = serdev;
++	mutex_init(&kb->lock);
++	INIT_DELAYED_WORK(&kb->detect_work, ly_detect_work);
++	serdev_device_set_drvdata(serdev, kb);
++	serdev_device_set_client_ops(serdev, &ly_serdev_ops);
++	kb->vcc3 = devm_gpiod_get(dev, "vcc3-enable", GPIOD_OUT_LOW);
++	if (IS_ERR(kb->vcc3))
++		return dev_err_probe(dev, PTR_ERR(kb->vcc3), "Missing 3.3V enable\n");
++	kb->vcc5 = devm_gpiod_get(dev, "vcc5-enable", GPIOD_OUT_LOW);
++	if (IS_ERR(kb->vcc5))
++		return dev_err_probe(dev, PTR_ERR(kb->vcc5), "Missing 5V enable\n");
++	kb->ocp = devm_gpiod_get(dev, "ocp-enable", GPIOD_OUT_LOW);
++	if (IS_ERR(kb->ocp))
++		return dev_err_probe(dev, PTR_ERR(kb->ocp), "Missing OCP enable\n");
++	kb->mode = devm_gpiod_get(dev, "mode", GPIOD_OUT_LOW);
++	if (IS_ERR(kb->mode))
++		return dev_err_probe(dev, PTR_ERR(kb->mode), "Missing mode GPIO\n");
++	kb->tx = devm_gpiod_get(dev, "tx-enable", GPIOD_OUT_LOW);
++	if (IS_ERR(kb->tx))
++		return dev_err_probe(dev, PTR_ERR(kb->tx), "Missing TX enable\n");
++	kb->detect = devm_gpiod_get(dev, "detect", GPIOD_IN);
++	if (IS_ERR(kb->detect))
++		return dev_err_probe(dev, PTR_ERR(kb->detect), "Missing attachment GPIO\n");
++	kb->lid = devm_gpiod_get(dev, "lid", GPIOD_IN);
++	if (IS_ERR(kb->lid))
++		return dev_err_probe(dev, PTR_ERR(kb->lid), "Missing lid GPIO\n");
++	kb->pinctrl = devm_pinctrl_get(dev);
++	if (IS_ERR(kb->pinctrl))
++		return PTR_ERR(kb->pinctrl);
++	kb->wake_on = pinctrl_lookup_state(kb->pinctrl, "wake-on");
++	if (IS_ERR(kb->wake_on))
++		return PTR_ERR(kb->wake_on);
++	kb->wake_off = pinctrl_lookup_state(kb->pinctrl, "wake-off");
++	if (IS_ERR(kb->wake_off))
++		return PTR_ERR(kb->wake_off);
++
++	kb->keyboard = ly_input(kb, "Lenovo Yoga Tab Keyboard");
++	kb->touchpad = ly_input(kb, "Lenovo Yoga Tab Keyboard Touchpad");
++	kb->switches = ly_input(kb, "Lenovo Yoga Tab Keyboard Switches");
++	if (!kb->keyboard || !kb->touchpad || !kb->switches)
++		return -ENOMEM;
++	__set_bit(EV_REP, kb->keyboard->evbit);
++	for (i = 0; i < ARRAY_SIZE(ly_keymap); i++)
++		if (ly_keymap[i] && ly_keymap[i] != KEY_UNKNOWN)
++			input_set_capability(kb->keyboard, EV_KEY, ly_keymap[i]);
++	for (i = 0; i < ARRAY_SIZE(ly_consumer_map); i++)
++		input_set_capability(kb->keyboard, EV_KEY, ly_consumer_map[i].key);
++	input_set_capability(kb->touchpad, EV_KEY, BTN_LEFT);
++	input_set_capability(kb->touchpad, EV_KEY, BTN_RIGHT);
++	input_set_abs_params(kb->touchpad, ABS_MT_POSITION_X, 0, LY_TOUCH_X_MAX, 0, 0);
++	input_set_abs_params(kb->touchpad, ABS_MT_POSITION_Y, 0, LY_TOUCH_Y_MAX, 0, 0);
++	input_set_abs_params(kb->touchpad, ABS_MT_TOOL_TYPE, 0, MT_TOOL_PALM, 0, 0);
++	__set_bit(INPUT_PROP_BUTTONPAD, kb->touchpad->propbit);
++	ret = input_mt_init_slots(kb->touchpad, LY_CONTACTS, INPUT_MT_POINTER);
++	if (ret)
++		return ret;
++	input_set_capability(kb->switches, EV_SW, SW_LID);
++	input_set_capability(kb->switches, EV_SW, SW_TABLET_MODE);
++	ret = gpiod_get_value_cansleep(kb->lid);
++	if (ret < 0)
++		return ret;
++	kb->lid_closed = ret;
++	input_report_switch(kb->switches, SW_LID, ret);
++	input_report_switch(kb->switches, SW_TABLET_MODE, 1);
++	ret = input_register_device(kb->keyboard);
++	if (ret)
++		return ret;
++	ret = input_register_device(kb->touchpad);
++	if (ret)
++		return ret;
++	ret = input_register_device(kb->switches);
++	if (ret)
++		return ret;
++
++	kb->detect_irq = gpiod_to_irq(kb->detect);
++	if (kb->detect_irq < 0)
++		return kb->detect_irq;
++	kb->lid_irq = gpiod_to_irq(kb->lid);
++	if (kb->lid_irq < 0)
++		return kb->lid_irq;
++	ret = devm_request_threaded_irq(dev, kb->detect_irq, NULL, ly_detect_irq,
++		IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING | IRQF_ONESHOT | IRQF_NO_AUTOEN,
++		"lenovo-keyboard-detect", kb);
++	if (ret)
++		return ret;
++	ret = devm_request_threaded_irq(dev, kb->lid_irq, NULL, ly_lid_irq,
++		IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING | IRQF_ONESHOT | IRQF_NO_AUTOEN,
++		"lenovo-keyboard-lid", kb);
++	if (ret)
++		return ret;
++	ret = devm_add_action_or_reset(dev, ly_stop, kb);
++	if (ret)
++		return ret;
++	ret = serdev_device_open(serdev);
++	if (ret)
++		return ret;
++	kb->opened = true;
++	serdev_device_set_flow_control(serdev, false);
++	ret = serdev_device_set_parity(serdev, SERDEV_PARITY_NONE);
++	if (ret)
++		return ret;
++	if (serdev_device_set_baudrate(serdev, LY_BAUD) != LY_BAUD)
++		return dev_err_probe(dev, -EINVAL, "Unable to select 921600 baud\n");
++	kb->irqs_enabled = true;
++	enable_irq(kb->detect_irq);
++	enable_irq(kb->lid_irq);
++	mod_delayed_work(system_wq, &kb->detect_work, 0);
++	dev_info(dev, "UART input ready at 921600 baud; TX disabled\n");
++	return 0;
++}
++
++static void ly_shutdown(struct serdev_device *serdev)
++{
++	ly_stop(serdev_device_get_drvdata(serdev));
++}
++
++static const struct of_device_id ly_of_match[] = {
++	{ .compatible = "lenovo,tb522fu-keyboard" },
++	{ }
++};
++MODULE_DEVICE_TABLE(of, ly_of_match);
++
++static struct serdev_device_driver ly_driver = {
++	.probe = ly_probe,
++	.shutdown = ly_shutdown,
++	.driver = {
++		.name = "lenovo-yoga-keyboard",
++		.of_match_table = ly_of_match,
++		.dev_groups = ly_groups,
++	},
++};
++module_serdev_device_driver(ly_driver);
++
++MODULE_DESCRIPTION("Lenovo Yoga Tab UART keyboard and trackpad");
++MODULE_LICENSE("GPL");
+--- a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
++++ b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+@@ -517,3 +517,71 @@
+ 	status = "okay";
+ };
+ &ufs_mem_phy { status = "okay"; };
++
++/* Stock keyboard: GENI SE15, 921600 8N1, dedicated power/detect lines. */
++&tlmm {
++	gpio-reserved-ranges = <28 2>, <36 4>, <74 1>, <86 3>, <97 2>, <100 1>, <161 1>;
++
++	keyboard_tx: keyboard-tx-state {
++		pins = "gpio30";
++		function = "qup2_se7";
++		drive-strength = <2>;
++		bias-pull-up;
++	};
++	keyboard_rx: keyboard-rx-state {
++		pins = "gpio31";
++		function = "qup2_se7";
++		drive-strength = <2>;
++		bias-disable;
++	};
++	keyboard_controls: keyboard-controls-state {
++		outputs {
++			pins = "gpio42", "gpio60", "gpio105", "gpio106", "gpio110";
++			function = "gpio";
++			drive-strength = <2>;
++			bias-pull-down;
++		};
++		inputs {
++			pins = "gpio11", "gpio43";
++			function = "gpio";
++			drive-strength = <2>;
++			bias-disable;
++			input-enable;
++		};
++	};
++	keyboard_wake_on: keyboard-wake-on-state {
++		pins = "gpio108";
++		function = "gpio";
++		drive-strength = <2>;
++		bias-pull-up;
++		input-enable;
++	};
++	keyboard_wake_off: keyboard-wake-off-state {
++		pins = "gpio108";
++		function = "gpio";
++		drive-strength = <2>;
++		bias-pull-down;
++		input-enable;
++	};
++};
++
++&qupv3_2 { status = "okay"; };
++&uart15 {
++	pinctrl-0 = <&keyboard_tx &keyboard_rx>;
++	status = "okay";
++
++	keyboard {
++		compatible = "lenovo,tb522fu-keyboard";
++		vcc3-enable-gpios = <&tlmm 105 GPIO_ACTIVE_HIGH>;
++		vcc5-enable-gpios = <&tlmm 106 GPIO_ACTIVE_HIGH>;
++		ocp-enable-gpios = <&tlmm 110 GPIO_ACTIVE_HIGH>;
++		mode-gpios = <&tlmm 42 GPIO_ACTIVE_HIGH>;
++		tx-enable-gpios = <&tlmm 60 GPIO_ACTIVE_HIGH>;
++		detect-gpios = <&tlmm 43 GPIO_ACTIVE_LOW>;
++		lid-gpios = <&tlmm 11 GPIO_ACTIVE_LOW>;
++		pinctrl-names = "default", "wake-on", "wake-off";
++		pinctrl-0 = <&keyboard_controls &keyboard_wake_off>;
++		pinctrl-1 = <&keyboard_controls &keyboard_wake_on>;
++		pinctrl-2 = <&keyboard_controls &keyboard_wake_off>;
++	};
++};

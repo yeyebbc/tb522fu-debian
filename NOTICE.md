@@ -22,3 +22,11 @@ included. Touch rotation comes from physical corner taps captured on the
 owner’s device and uses standard touchscreen properties.
 
 The staged UFS probe reuses the pinned board wiring after comparison with the owner’s stock device tree. No stock binary or dump is distributed. Storage validation is pending.
+
+
+The staged Lenovo UART keyboard driver uses the framing dictionary and HID
+usage mapping from Lenovo's GPL driver, published at
+https://github.com/AkarinServer/Y700-Gen3-Droidian/tree/124f2c154a6e34a66df56afc08336cadd193d9f0/kernel/lenovo/kirby/kernel/drivers/tty/serial/lenovo_keyboard .
+Its serdev lifecycle, bounded parser and TB522FU adaptation are separate local
+work. Exact wiring and packet layout were checked against stock evidence;
+firmware, raw captures and hardware identifiers are not included.

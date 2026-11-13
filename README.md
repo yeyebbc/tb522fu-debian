@@ -86,10 +86,25 @@ reached GNOME with no configured USB gadget, no SSH listener and no failed
 system units; its clean on-device return to Android also passed.
 
 An unplugged shutdown and subsequent USB-triggered cold start reached visible
-GNOME. Battery-only startup remains unresolved, and the latest Android return
-is visible but its USB data connection has not been recovered for log and
-filesystem verification. Battery telemetry currently contains invalid values.
-Desktop account setup and GUI switching also remain pending.
+GNOME. Its debugging-off journal, clean Android return and filesystem state
+were verified after replacing a USB cable. The battery-only attempt stopped
+at the bootloader's Power-key confirmation screen, with no recorded Debian
+boot; battery-only startup still needs that confirmation tested. Local account
+setup is complete and the GNOME desktop is physically visible. GUI switching
+remains pending.
+
+
+The next candidate adds a staged UART keyboard/trackpad driver. Stock captures
+confirm the report layouts, attachment/lid polarity and the power sequence.
+The driver object compiles for ARM64 and its parser passed captured-packet
+replay and sanitizer checks; Linux keyboard input is not yet hardware tested.
+It remains a module with automatic loading blocked for the first supervised
+test. Initial support receives keys and four-contact touchpad reports, releases
+input on detach/lid close, and exposes standard lid/tablet-mode switches.
+Keyboard LED transmission and suspend support are not included yet.
+
+Battery properties currently return EAGAIN because ADSP remains disabled.
+Battery bring-up is deferred while keyboard/trackpad support is prioritized.
 
 CI15 also exposed a clock failure: fake-hwclock restored the saved date, then
 the late PMIC RTC probe set system time to 1970. The configuration now disables

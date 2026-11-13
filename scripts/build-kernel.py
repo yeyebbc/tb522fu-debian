@@ -156,6 +156,8 @@ def main():
                     'CONFIG_OVERLAY_FS=y', 'CONFIG_SQUASHFS=y', 'CONFIG_SQUASHFS_ZLIB=y',
                     'CONFIG_SCSI_UFS_QCOM=m', 'CONFIG_PHY_QCOM_QMP_UFS=m',
                     'CONFIG_SPI_QCOM_GENI=m', 'CONFIG_QCOM_GPI_DMA=m', 'CONFIG_TOUCHSCREEN_NT36536_SPI=m',
+                    'CONFIG_SERIAL_DEV_BUS=y', 'CONFIG_SERIAL_DEV_CTRL_TTYPORT=y',
+                    'CONFIG_INPUT_LENOVO_YOGA_KEYBOARD=m',
                     'CONFIG_DETECT_HUNG_TASK=y', 'CONFIG_SOFTLOCKUP_DETECTOR=y',
                     'CONFIG_USB_CONFIGFS_NCM=y', 'CONFIG_USB_CONFIGFS_ACM=y',
                     'CONFIG_PHY_QCOM_M31_EUSB=y', 'CONFIG_PHY_QCOM_EUSB2_REPEATER=y',
@@ -173,9 +175,21 @@ def main():
     assert '# CONFIG_RTC_SYSTOHC is not set' in config
     cmdline = next(s for s in config if s.startswith('CONFIG_CMDLINE='))
     assert ('qcom_scm.probe_edl_return=1' in cmdline) == (args.profile != 'installed')
+    assert 'modprobe.blacklist=lenovo_yoga_keyboard' in cmdline
     if disk:
         assert 'CONFIG_EXT4_FS=y' in config
     run(make + [spec['board_dtb']])
+    dtb = out / 'arch/arm64/boot/dts' / spec['board_dtb']
+    uart = '/soc@0/geniqup@8c0000/serial@89c000'
+    assert capture(['fdtget', '-t', 's', dtb, uart, 'status']) == 'okay'
+    assert capture(['fdtget', '-t', 's', dtb, uart + '/keyboard', 'compatible']) == 'lenovo,tb522fu-keyboard'
+    # Check the encoded GPIO number/polarity rather than unstable phandles.
+    for prop, gpio, active_low in [('vcc3-enable-gpios', 105, 0), ('vcc5-enable-gpios', 106, 0),
+                                  ('ocp-enable-gpios', 110, 0), ('mode-gpios', 42, 0),
+                                  ('tx-enable-gpios', 60, 0), ('detect-gpios', 43, 1),
+                                  ('lid-gpios', 11, 1)]:
+        cells = capture(['fdtget', '-t', 'i', dtb, uart + '/keyboard', prop]).split()
+        assert len(cells) == 3 and list(map(int, cells[1:])) == [gpio, active_low], prop
     run(make + ['Image', 'modules'])
     modules = work / 'modules'
     run(make + ['modules_install', f'INSTALL_MOD_PATH={modules}', 'INSTALL_MOD_STRIP=1'])
@@ -187,6 +201,7 @@ def main():
                              (ROOT / 'configs/ram-desktop-prepare').read_text(), re.M))
     explicit.update(re.findall(r'^modprobe -v ([\w-]+)$',
                                (ROOT / 'configs/ram-storage-probe').read_text(), re.M))
+    explicit.add('lenovo_yoga_keyboard')
     for name in sorted(explicit):
         actual = capture(['modinfo', '-b', modules, '-k', release, '-F', 'name', name])
         assert actual.replace('-', '_') == name.replace('-', '_'), (name, actual)

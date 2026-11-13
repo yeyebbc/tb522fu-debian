@@ -35,5 +35,13 @@
   "0105-nt36536-stop-on-transport-failure.patch": {
     "source": "Local transport-error propagation; vendor identification byte sequence unchanged",
     "hardware_tested": false
+  },
+  "0110-tb522fu-uart-keyboard.patch": {
+    "source": "Serdev/input adaptation of Lenovo GPL UART protocol with TB522FU stock wiring, power-sequence and live packet validation",
+    "reference_repository": "https://github.com/AkarinServer/Y700-Gen3-Droidian",
+    "reference_commit": "124f2c154a6e34a66df56afc08336cadd193d9f0",
+    "reference_path": "kernel/lenovo/kirby/kernel/drivers/tty/serial/lenovo_keyboard",
+    "license": "GPL-2.0-only driver; BSD-3-Clause board device tree",
+    "hardware_tested": false
   }
 }
