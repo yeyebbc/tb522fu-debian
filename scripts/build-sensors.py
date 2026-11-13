@@ -31,6 +31,8 @@ def sha(path):
 def main():
     if platform.machine() != 'aarch64' or not Path('/.dockerenv').exists():
         raise SystemExit('Use a disposable Debian ARM64 Docker build container')
+    recipe = capture(['git', '-c', 'safe.directory=' + str(ROOT), '-C', ROOT,
+                      'rev-parse', 'HEAD'])
     spec = json.loads((ROOT / 'configs/sensors/source.json').read_text())
     work = ROOT / 'work/sensors'
     artifacts = ROOT / 'artifacts/sensors'
@@ -99,7 +101,7 @@ def main():
     assert 'libssc.so' in linked, linked
     run(['tar', '--zstd', '-cf', artifacts / 'sensors-rootfs.tar.zst', '-C', stage, '.'])
     manifest = {
-        'recipe_commit': capture(['git', '-C', ROOT, 'rev-parse', 'HEAD']),
+        'recipe_commit': recipe,
         'hardware_tested': False,
         'private_firmware_included': False,
         'components': results,
