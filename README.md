@@ -23,8 +23,15 @@ accepted CI32 kernel. It deliberately excludes the later display/GPU changes
 while visible wake remains unresolved. Controller code comes from GEEKiDoS's
 TB322FC work, with exact commits and scoped imports in `patches/sources.json`.
 This tablet's private firmware/calibration and address are required separately;
-none are distributed here. Local driver compilation, encoded board checks and
-patch reconstruction pass; Bluetooth hardware acceptance is still pending.
+none are distributed here. CI39 (recipe `ea5b0bb59336f1ad4d221107d9e32e07f9198aae`)
+passed bounded controller setup, saved-address provisioning, BlueZ discovery,
+HCI responses after 3/10 seconds idle and a full power off/on cycle. Wi-Fi
+association and gateway traffic remained working, with no matching driver faults.
+Four BlueZ device objects were listed after the scan; fresh discovery events
+will be captured separately during the next cold-start check. Android restoration
+and filesystem checks passed. Automatic address setup, installed-kernel promotion
+and pairing remain pending. Power-on currently takes about 34 seconds; firmware
+download pacing remains a documented limitation.
 
 The CI35 bounded GPU test passed native display, Adreno 830 hardware pixel
 readback for210seconds, rejection of a forced software renderer, and actual
