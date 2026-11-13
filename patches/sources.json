@@ -43,5 +43,10 @@
     "reference_path": "kernel/lenovo/kirby/kernel/drivers/tty/serial/lenovo_keyboard",
     "license": "GPL-2.0-only driver; BSD-3-Clause board device tree",
     "hardware_tested": false
+  },
+  "0111-tb522fu-keyboard-serial-alias.patch": {
+    "source": "Local correction from CI17 hardware UART probe failure and pinned qcom_geni_serial alias allocation",
+    "license": "BSD-3-Clause board device tree",
+    "hardware_tested": false
   }
 }

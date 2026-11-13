@@ -1,0 +1,21 @@
+Subject: [PATCH] arm64: dts: qcom: assign the TB522FU keyboard UART alias
+
+The first hardware test reached GNOME but qcom_geni_serial rejected SE15
+with "Invalid line -19" before creating a serdev controller. No serial
+aliases existed; the pinned driver then used an invalid negative lower
+bound for its fallback ID allocation. Give this enabled UART a stable
+serial0 alias. Keep the accessory driver manually loaded during bring-up.
+
+--- a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
++++ b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+@@ -585,3 +585,10 @@
+ 		pinctrl-2 = <&keyboard_controls &keyboard_wake_off>;
+ 	};
+ };
++
++/* Give the keyboard UART an explicit serial-core line allocation. */
++/ {
++	aliases {
++		serial0 = &uart15;
++	};
++};

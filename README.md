@@ -103,6 +103,12 @@ test. Initial support receives keys and four-contact touchpad reports, releases
 input on detach/lid close, and exposes standard lid/tablet-mode switches.
 Keyboard LED transmission and suspend support are not included yet.
 
+The first candidate (CI17, recipe `3a790d4`) reached the GNOME login screen
+but its UART probe stopped at `Invalid line -19`, before any accessory input
+device existed. An explicit `serial0` alias fixes that missing board
+description; the build now checks the compiled alias. This correction still
+requires a new hardware test.
+
 Battery properties currently return EAGAIN because ADSP remains disabled.
 Battery bring-up is deferred while keyboard/trackpad support is prioritized.
 

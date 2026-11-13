@@ -181,6 +181,7 @@ def main():
     run(make + [spec['board_dtb']])
     dtb = out / 'arch/arm64/boot/dts' / spec['board_dtb']
     uart = '/soc@0/geniqup@8c0000/serial@89c000'
+    assert capture(['fdtget', '-t', 's', dtb, '/aliases', 'serial0']) == uart
     assert capture(['fdtget', '-t', 's', dtb, uart, 'status']) == 'okay'
     assert capture(['fdtget', '-t', 's', dtb, uart + '/keyboard', 'compatible']) == 'lenovo,tb522fu-keyboard'
     # Check the encoded GPIO number/polarity rather than unstable phandles.
