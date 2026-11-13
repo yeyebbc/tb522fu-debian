@@ -412,5 +412,14 @@
     "license": "GPL-2.0-only; existing driver authorship retained",
     "hardware_tested": false,
     "source": "Limit the LED class to the physically verified off/on white states. Both tested dimming mappings were visually indistinguishable; no further speculative lighting values. Input and UART unchanged."
+  },
+  "0171-qca-poweroff-ibs-reset.patch": {
+    "local_commit": "86ef101122de122f8f6f7e66036febbbe9f0fbe3",
+    "sha256": "3ce89f23a601244945021f59f8a127fcaca0c82708e2a181c009a7853cfa2908",
+    "license": "GPL-2.0-or-later; upstream author and co-author attribution retained",
+    "hardware_tested": false,
+    "source": "Unchanged upstream v2 by Birk Skyum and Vladyslav Tymoshchuk, Message-ID20261014180201.57109-1-birk.skyum@pm.me",
+    "url": "https://lore.kernel.org/r/20261014180201.57109-1-birk.skyum@pm.me",
+    "scope": "Cancel old in-band sleep workers/timers and reset host state during controller power-off. No firmware, pacing, timeout or retry changes."
   }
 }

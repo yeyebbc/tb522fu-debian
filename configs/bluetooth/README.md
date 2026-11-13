@@ -29,3 +29,11 @@ Pairing and reconnection with a user-selected peripheral remain untested.
 The initial controller setup plus address-triggered setup takes about 66 seconds;
 subsequent power reopening takes about 34 seconds. The service does not apply a
 power policy or repeat initialization to hide failures.
+
+A later bounded boot exposed an intermittent second-setup failure: a stray IBS
+wake acknowledgement preceded a firmware command timeout. The candidate includes
+the unchanged [upstream power-off state reset](https://lore.kernel.org/r/20261014180201.57109-1-birk.skyum@pm.me)
+which drains old sleep workers/timers and resets host state when the controller
+loses power. Automatic address setup and quick off/on regression are required
+before promotion. Production CI39 remains selected; its earlier success does
+not establish immunity to this intermittent lifecycle fault.

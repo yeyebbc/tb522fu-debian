@@ -31,3 +31,6 @@ unchanged keyboard/trackpad/lid nodes and packet decoding, no UART faults, Wi-Fi
 traffic and Bluetooth initialization/discovery after the shared UART change.
 Then verify the installed boot path and clean Android return. Keep the accepted
 kernel as rollback; do not infer hardware success from this source or CI build.
+
+The same candidate includes the attributed upstream Bluetooth IBS lifecycle fix
+(patch0171), prompted by a second-setup timeout observed in CI42.
