@@ -49,6 +49,8 @@ CONFIG_FRAMEBUFFER_CONSOLE=y
 CONFIG_FONTS=y
 CONFIG_FONT_TER16x32=y
 CONFIG_DEBUG_FS=y
+# Keep dynamic callsites off by default; enable only the tested Wi-Fi module.
+CONFIG_DYNAMIC_DEBUG=y
 
 # Keep the diagnostic build specific to Qualcomm; retain the clean reference.
 CONFIG_ARCH_QCOM=y
