@@ -1,0 +1,56 @@
+From b71ffc474bc95438e6d2def5445606c29dd7ba01 Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Sat, 14 Nov 2026 04:27:41 +0800
+Subject: [PATCH] arm64: dts: qcom: assign TB522FU keyboard direction to UART
+
+Move verified GPIO60 to UART15 RTS ownership. Stock asserts it at least 450 microseconds before DMA and releases at DMA completion; use the standard 1ms pre-send and zero post-send delay, with RX active for echo. Preserve baud, accessory power, input and lid wiring.
+---
+ .../boot/dts/qcom/sm8750-lenovo-y900-acm.dts     | 16 +++++++++++++---
+ 1 file changed, 13 insertions(+), 3 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+index 0e6b52bf054e..3438b1ee2232 100644
+--- a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
++++ b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+@@ -534,9 +534,15 @@ keyboard_rx: keyboard-rx-state {
+ 		drive-strength = <2>;
+ 		bias-disable;
+ 	};
++	keyboard_direction: keyboard-direction-state {
++		pins = "gpio60";
++		function = "gpio";
++		drive-strength = <2>;
++		bias-pull-down;
++	};
+ 	keyboard_controls: keyboard-controls-state {
+ 		outputs {
+-			pins = "gpio42", "gpio60", "gpio105", "gpio106", "gpio110";
++			pins = "gpio42", "gpio105", "gpio106", "gpio110";
+ 			function = "gpio";
+ 			drive-strength = <2>;
+ 			bias-pull-down;
+@@ -567,7 +573,12 @@ keyboard_wake_off: keyboard-wake-off-state {
+ 
+ &qupv3_2 { status = "okay"; };
+ &uart15 {
+-	pinctrl-0 = <&keyboard_tx &keyboard_rx>;
++	pinctrl-0 = <&keyboard_tx &keyboard_rx &keyboard_direction>;
++	rts-gpios = <&tlmm 60 GPIO_ACTIVE_HIGH>;
++	linux,rs485-enabled-at-boot-time;
++	rs485-rx-during-tx;
++	/* Stock requires 450us setup; the standard property uses milliseconds. */
++	rs485-rts-delay = <1 0>;
+ 	status = "okay";
+ 
+ 	keyboard {
+@@ -576,7 +587,6 @@ keyboard {
+ 		vcc5-enable-gpios = <&tlmm 106 GPIO_ACTIVE_HIGH>;
+ 		ocp-enable-gpios = <&tlmm 110 GPIO_ACTIVE_HIGH>;
+ 		mode-gpios = <&tlmm 42 GPIO_ACTIVE_HIGH>;
+-		tx-enable-gpios = <&tlmm 60 GPIO_ACTIVE_HIGH>;
+ 		detect-gpios = <&tlmm 43 GPIO_ACTIVE_LOW>;
+ 		lid-gpios = <&tlmm 11 GPIO_ACTIVE_LOW>;
+ 		pinctrl-names = "default", "wake-on", "wake-off";
+-- 
+2.47.3
+

@@ -1,0 +1,335 @@
+From 6e238a18c4104be39a476cbaace9ab384b9ab59a Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Sat, 14 Nov 2026 04:27:41 +0800
+Subject: [PATCH] Input: lenovo-yoga-keyboard: add white keyboard backlight
+
+Expose the stock steady RGB mode and 0..228 brightness range through a white kbd_backlight LED. Match the stock kernel setting path by validating the full padded request echo, with bounded writes and no background retries. Preserve legacy receive-only DTs, restore the requested level once on keyboard sync, and serialize transmit against accessory power and removal.
+---
+ drivers/input/misc/Kconfig                |   7 +-
+ drivers/input/misc/lenovo-yoga-keyboard.c | 170 +++++++++++++++++++++-
+ 2 files changed, 169 insertions(+), 8 deletions(-)
+
+diff --git a/drivers/input/misc/Kconfig b/drivers/input/misc/Kconfig
+index 54c59b2b18d1..053015747b24 100644
+--- a/drivers/input/misc/Kconfig
++++ b/drivers/input/misc/Kconfig
+@@ -16,10 +16,11 @@ if INPUT_MISC
+ config INPUT_LENOVO_YOGA_KEYBOARD
+ 	tristate "Lenovo Yoga Tab UART keyboard and trackpad"
+ 	depends on SERIAL_DEV_BUS && GPIOLIB && PINCTRL
++	select NEW_LEDS
++	select LEDS_CLASS
+ 	help
+-	  Support the detachable UART keyboard and trackpad on Lenovo TB522FU.
+-	  This initial driver provides input and attachment/lid switches.
+-	  Keyboard LED control and suspend have not been validated.
++	  Support the detachable UART keyboard and trackpad on Lenovo TB522FU,
++	  its attachment/lid switches and white keyboard backlight.
+ 
+ 	  To compile this driver as a module, choose M here: the module
+ 	  will be called lenovo-yoga-keyboard.
+diff --git a/drivers/input/misc/lenovo-yoga-keyboard.c b/drivers/input/misc/lenovo-yoga-keyboard.c
+index a202c64796a7..1496b6810fd3 100644
+--- a/drivers/input/misc/lenovo-yoga-keyboard.c
++++ b/drivers/input/misc/lenovo-yoga-keyboard.c
+@@ -8,16 +8,18 @@
+  * power sequencing and lid polarity were checked against its stock driver
+  * and live Android captures. No vendor UART hooks or firmware are included.
+  *
+- * Initial bring-up receives input only. TX remains disabled; keyboard LED
+- * control and system suspend are separate acceptance work.
++ * The white backlight uses stock steady-RGB and brightness commands. The UART
++ * controller owns half-duplex direction timing; legacy DTs remain RX-only.
+  */
+ 
+ #include <linux/bitmap.h>
++#include <linux/completion.h>
+ #include <linux/delay.h>
+ #include <linux/gpio/consumer.h>
+ #include <linux/input.h>
+ #include <linux/input/mt.h>
+ #include <linux/interrupt.h>
++#include <linux/leds.h>
+ #include <linux/module.h>
+ #include <linux/mutex.h>
+ #include <linux/of.h>
+@@ -28,6 +30,8 @@
+ #include "lenovo-yoga-keyboard-protocol.h"
+ 
+ #define LY_BAUD 921600
++#define LY_COMMAND_SIZE 14
++#define LY_BACKLIGHT_MAX 228
+ #define U KEY_UNKNOWN
+ 
+ /* HID keyboard page -> Linux key codes, matching the stock Lenovo table. */
+@@ -76,7 +80,14 @@ struct ly_keyboard {
+ 	struct pinctrl *pinctrl;
+ 	struct pinctrl_state *wake_on, *wake_off;
+ 	struct delayed_work detect_work;
+-	struct mutex lock;
++	struct mutex lock, tx_lock;
++	struct completion echo_complete;
++	struct led_classdev backlight;
++	struct work_struct backlight_work;
++	u8 expected_echo[LY_COMMAND_SIZE];
++	bool waiting_echo, restore_backlight;
++	unsigned int backlight_level;
++	u64 tx_echoes, tx_errors, replies;
+ 	struct ly_receiver receiver;
+ 	u8 payload[LY_FRAME_MAX];
+ 	DECLARE_BITMAP(keys, KEY_CNT);
+@@ -196,8 +207,22 @@ static size_t ly_receive(struct serdev_device *serdev, const u8 *data, size_t co
+ 		if (!length)
+ 			continue;
+ 		kb->frames++;
++		if (kb->waiting_echo && length == LY_COMMAND_SIZE &&
++		    !memcmp(kb->payload, kb->expected_echo, LY_COMMAND_SIZE)) {
++			kb->waiting_echo = false;
++			kb->tx_echoes++;
++			complete(&kb->echo_complete);
++			continue;
++		}
++		if (kb->payload[0] == 0x6b) {
++			kb->replies++;
++			dev_dbg(&serdev->dev, "Parameter response: %*ph\n", length, kb->payload);
++			continue;
++		}
+ 		if (kb->payload[0] == 0x16) {
+ 			kb->sync_reports++;
++			if (kb->restore_backlight && !kb->tx && !kb->lid_closed)
++				schedule_work(&kb->backlight_work);
+ 			continue;
+ 		}
+ 		if (kb->lid_closed)
+@@ -230,12 +255,110 @@ static size_t ly_receive(struct serdev_device *serdev, const u8 *data, size_t co
+ 
+ static const struct serdev_device_ops ly_serdev_ops = {
+ 	.receive_buf = ly_receive,
++	.write_wakeup = serdev_device_write_wakeup,
+ };
+ 
++/* tx_lock keeps power stable; release lock while RX delivers the local echo. */
++static int ly_command(struct ly_keyboard *kb, const u8 *command)
++{
++	u8 wire[LY_FRAME_MAX];
++	int length, ret;
++
++	length = ly_encode(command, LY_COMMAND_SIZE, 0, wire);
++	if (length < 0)
++		return length;
++
++	mutex_lock(&kb->lock);
++	if (kb->stopping || !kb->powered || kb->lid_closed) {
++		mutex_unlock(&kb->lock);
++		return -ENODEV;
++	}
++	reinit_completion(&kb->echo_complete);
++	memcpy(kb->expected_echo, command, LY_COMMAND_SIZE);
++	kb->waiting_echo = true;
++	mutex_unlock(&kb->lock);
++
++	ret = serdev_device_write(kb->serdev, wire, length, msecs_to_jiffies(500));
++	if (ret == length) {
++		ret = wait_for_completion_timeout(&kb->echo_complete, msecs_to_jiffies(500));
++		ret = ret ? 0 : -ETIMEDOUT;
++	} else if (ret >= 0) {
++		ret = -EIO;
++	}
++	if (ret)
++		serdev_device_write_flush(kb->serdev);
++
++	mutex_lock(&kb->lock);
++	kb->waiting_echo = false;
++	if (ret)
++		kb->tx_errors++;
++	mutex_unlock(&kb->lock);
++	return ret;
++}
++
++/* Caller holds tx_lock. Stock setting writes require an echo, not a reply. */
++static int ly_apply_backlight(struct ly_keyboard *kb, unsigned int level)
++{
++	/* Stock steady mode, equal RGB components, no animation parameter. */
++	const u8 white[LY_COMMAND_SIZE] = { 0x6a, 9, 0x39, 7, 1, 100, 100, 100 };
++	u8 brightness[LY_COMMAND_SIZE] = { 0x6a, 3, 0x34, 1, level };
++	int ret;
++
++	ret = ly_command(kb, white);
++	if (!ret)
++		ret = ly_command(kb, brightness);
++	mutex_lock(&kb->lock);
++	/* A failed command is not retried periodically by sync traffic. */
++	kb->restore_backlight = false;
++	mutex_unlock(&kb->lock);
++	return ret;
++}
++
++static int ly_set_backlight(struct led_classdev *led, enum led_brightness level)
++{
++	struct ly_keyboard *kb = container_of(led, struct ly_keyboard, backlight);
++	bool apply;
++	int ret = 0;
++
++	mutex_lock(&kb->tx_lock);
++	mutex_lock(&kb->lock);
++	kb->backlight_level = level;
++	apply = kb->powered && !kb->lid_closed && !kb->stopping;
++	kb->restore_backlight = !kb->stopping;
++	mutex_unlock(&kb->lock);
++	if (apply)
++		ret = ly_apply_backlight(kb, level);
++	mutex_unlock(&kb->tx_lock);
++	return ret;
++}
++
++static void ly_backlight_work(struct work_struct *work)
++{
++	struct ly_keyboard *kb = container_of(work, struct ly_keyboard, backlight_work);
++	unsigned int level;
++	bool restore;
++	int ret;
++
++	mutex_lock(&kb->tx_lock);
++	mutex_lock(&kb->lock);
++	restore = kb->restore_backlight && kb->powered &&
++		  !kb->lid_closed && !kb->stopping;
++	level = kb->backlight_level;
++	mutex_unlock(&kb->lock);
++	if (restore) {
++		ret = ly_apply_backlight(kb, level);
++		if (ret)
++			dev_warn(&kb->serdev->dev, "Backlight restore failed: %d\n", ret);
++	}
++	mutex_unlock(&kb->tx_lock);
++}
++
+ static void ly_power_off(struct ly_keyboard *kb)
+ {
+ 	kb->powered = false;
+ 	kb->receiver.length = 0;
++	if (kb->opened && !kb->tx)
++		serdev_device_write_flush(kb->serdev);
+ 	gpiod_set_value_cansleep(kb->tx, 0);
+ 	gpiod_set_value_cansleep(kb->vcc5, 0);
+ 	gpiod_set_value_cansleep(kb->ocp, 0);
+@@ -265,6 +388,7 @@ static int ly_power_on(struct ly_keyboard *kb)
+ 		return ret;
+ 	}
+ 	kb->powered = true;
++	kb->restore_backlight = true;
+ 	return 0;
+ }
+ 
+@@ -274,6 +398,7 @@ static void ly_detect_work(struct work_struct *work)
+ 					     struct ly_keyboard, detect_work);
+ 	int attached, ret;
+ 
++	mutex_lock(&kb->tx_lock);
+ 	mutex_lock(&kb->lock);
+ 	if (kb->stopping)
+ 		goto out;
+@@ -295,6 +420,7 @@ static void ly_detect_work(struct work_struct *work)
+ 	input_sync(kb->switches);
+ out:
+ 	mutex_unlock(&kb->lock);
++	mutex_unlock(&kb->tx_lock);
+ }
+ 
+ static irqreturn_t ly_detect_irq(int irq, void *data)
+@@ -319,6 +445,8 @@ static irqreturn_t ly_lid_irq(int irq, void *data)
+ 			gpiod_set_value_cansleep(kb->mode, !closed);
+ 		if (closed)
+ 			ly_release_input(kb);
++		else
++			kb->restore_backlight = true;
+ 		input_report_switch(kb->switches, SW_LID, closed);
+ 		input_sync(kb->switches);
+ 	}
+@@ -336,6 +464,8 @@ static ssize_t statistics_show(struct device *dev, struct device_attribute *attr
+ 			    "keys=%llu touch=%llu sync=%llu\n",
+ 			    kb->powered, kb->lid_closed, kb->frames, kb->rejected,
+ 			    kb->key_reports, kb->touch_reports, kb->sync_reports);
++	length += sysfs_emit_at(buf, length, "echoes=%llu tx_errors=%llu replies=%llu\n",
++			       kb->tx_echoes, kb->tx_errors, kb->replies);
+ 	mutex_unlock(&kb->lock);
+ 	return length;
+ }
+@@ -348,6 +478,8 @@ static void ly_stop(void *data)
+ {
+ 	struct ly_keyboard *kb = data;
+ 
++	if (READ_ONCE(kb->stopping))
++		return;
+ 	WRITE_ONCE(kb->stopping, true);
+ 	if (kb->irqs_enabled) {
+ 		disable_irq(kb->detect_irq);
+@@ -355,9 +487,12 @@ static void ly_stop(void *data)
+ 		kb->irqs_enabled = false;
+ 	}
+ 	cancel_delayed_work_sync(&kb->detect_work);
++	cancel_work_sync(&kb->backlight_work);
++	mutex_lock(&kb->tx_lock);
+ 	mutex_lock(&kb->lock);
+ 	ly_power_off(kb);
+ 	mutex_unlock(&kb->lock);
++	mutex_unlock(&kb->tx_lock);
+ 	if (kb->opened) {
+ 		serdev_device_close(kb->serdev);
+ 		kb->opened = false;
+@@ -391,6 +526,9 @@ static int ly_probe(struct serdev_device *serdev)
+ 		return -ENOMEM;
+ 	kb->serdev = serdev;
+ 	mutex_init(&kb->lock);
++	mutex_init(&kb->tx_lock);
++	init_completion(&kb->echo_complete);
++	INIT_WORK(&kb->backlight_work, ly_backlight_work);
+ 	INIT_DELAYED_WORK(&kb->detect_work, ly_detect_work);
+ 	serdev_device_set_drvdata(serdev, kb);
+ 	serdev_device_set_client_ops(serdev, &ly_serdev_ops);
+@@ -406,7 +544,7 @@ static int ly_probe(struct serdev_device *serdev)
+ 	kb->mode = devm_gpiod_get(dev, "mode", GPIOD_OUT_LOW);
+ 	if (IS_ERR(kb->mode))
+ 		return dev_err_probe(dev, PTR_ERR(kb->mode), "Missing mode GPIO\n");
+-	kb->tx = devm_gpiod_get(dev, "tx-enable", GPIOD_OUT_LOW);
++	kb->tx = devm_gpiod_get_optional(dev, "tx-enable", GPIOD_OUT_LOW);
+ 	if (IS_ERR(kb->tx))
+ 		return dev_err_probe(dev, PTR_ERR(kb->tx), "Missing TX enable\n");
+ 	kb->detect = devm_gpiod_get(dev, "detect", GPIOD_IN);
+@@ -492,11 +630,33 @@ static int ly_probe(struct serdev_device *serdev)
+ 		return ret;
+ 	if (serdev_device_set_baudrate(serdev, LY_BAUD) != LY_BAUD)
+ 		return dev_err_probe(dev, -EINVAL, "Unable to select 921600 baud\n");
++	if (!kb->tx) {
++		struct device_node *uart = of_get_parent(dev->of_node);
++		bool direction = of_property_present(uart, "rts-gpios") &&
++			of_property_present(uart, "linux,rs485-enabled-at-boot-time");
++
++		of_node_put(uart);
++		if (!direction)
++			return dev_err_probe(dev, -EINVAL, "Missing UART direction control\n");
++		kb->backlight.name = "lenovo:white:kbd_backlight";
++		kb->backlight.max_brightness = LY_BACKLIGHT_MAX;
++		kb->backlight.brightness_set_blocking = ly_set_backlight;
++		kb->backlight_level = LY_BACKLIGHT_MAX / 4;
++		kb->backlight.brightness = kb->backlight_level;
++		ret = devm_led_classdev_register(dev, &kb->backlight);
++		if (ret)
++			return ret;
++	}
++	/* Stop RX/work before devres unregisters the LED on removal. */
++	ret = devm_add_action_or_reset(dev, ly_stop, kb);
++	if (ret)
++		return ret;
+ 	kb->irqs_enabled = true;
+ 	enable_irq(kb->detect_irq);
+ 	enable_irq(kb->lid_irq);
+ 	mod_delayed_work(system_wq, &kb->detect_work, 0);
+-	dev_info(dev, "UART input ready at 921600 baud; TX disabled\n");
++	dev_info(dev, "UART input ready at 921600 baud; backlight %s\n",
++		 kb->tx ? "disabled (legacy DT)" : "enabled");
+ 	return 0;
+ }
+ 
+-- 
+2.47.3
+

@@ -370,5 +370,33 @@
     "license": "Original GPL driver and BSD device-tree licenses and attribution retained",
     "hardware_tested": false,
     "source": "Local TB522FU adaptation: stock UART14 pin bias, PM8550VE_F SID5 GPIO3, 8 Mbaud, private board NVM path; required power-sequencer deferred-probe handling."
+  },
+  "0165-qcom-geni-rs485-binding.patch": {
+    "local_commit": "4beed6352c4a50c57f1e4d73316defc6b2feba50",
+    "sha256": "cc3a59157d9d874d0f4e7f510d5b121765daa930371850e40b0b9048a8978b3d",
+    "license": "Original Linux file-level licenses and attribution retained",
+    "hardware_tested": false,
+    "source": "Local extension of the generic serial/RS485 schema for an optional non-sleeping direction GPIO."
+  },
+  "0166-qcom-geni-rs485-direction.patch": {
+    "local_commit": "830c9b21d998eebe8f6cda8f6a357339bc874276",
+    "sha256": "b10420a39a0d88f9cca6b14cc321342dbe3289b5e71eb82d55b881da88a0a6c4",
+    "license": "Original Linux file-level licenses and attribution retained",
+    "hardware_tested": false,
+    "source": "Local qcom-geni DMA direction control using standard RS485 properties and hrtimer lifecycle patterns already used by upstream serial drivers."
+  },
+  "0167-tb522fu-white-keyboard-light.patch": {
+    "local_commit": "6e238a18c4104be39a476cbaace9ab384b9ab59a",
+    "sha256": "9036dd230889e9715292629ea548a07b88e9a782d1efa3936e6af26103d7fe83",
+    "license": "Original Linux file-level licenses and attribution retained",
+    "hardware_tested": false,
+    "source": "Local white LED implementation from TB522FU stock keyboard SDK packet fields and shipped kernel echo semantics. Existing GPL codec and input attribution retained; no vendor binaries distributed."
+  },
+  "0168-tb522fu-keyboard-direction.patch": {
+    "local_commit": "b71ffc474bc95438e6d2def5445606c29dd7ba01",
+    "sha256": "ae4c135c1537055dcc777ea68f4e851eaf3e3db15a072115431dfb52a2731888",
+    "license": "Original Linux file-level licenses and attribution retained",
+    "hardware_tested": false,
+    "source": "Stock-verified TB522FU UART15 GPIO60 gate, 450us minimum setup rounded to standard 1ms, immediate DMA-completion release."
   }
 }

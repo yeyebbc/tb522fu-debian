@@ -36,6 +36,10 @@ firmware download pacing and the second setup for public-address provisioning
 remain documented limitations. Accepted audio/input code is unchanged; audio
 was not retested in this Bluetooth update at the owner's request.
 
+A [white keyboard backlight candidate](configs/keyboard/README.md) is now in the
+source recipe. It adds standard LED control and GPIO RS485 direction timing;
+it has not passed a hardware boot or replaced installed CI39.
+
 The CI35 bounded GPU test passed native display, Adreno 830 hardware pixel
 readback for210seconds, rejection of a forced software renderer, and actual
 GNOME compositor GPU activity. The Mesa26.1.6 device-table backport is pinned

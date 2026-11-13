@@ -1,0 +1,334 @@
+From 830c9b21d998eebe8f6cda8f6a357339bc874276 Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Sat, 14 Nov 2026 04:27:40 +0800
+Subject: [PATCH] serial: qcom-geni: support timed GPIO RS485 direction control
+
+Use a non-sleeping RTS GPIO for external half-duplex gates and an hrtimer for standard pre/post-send delays. Keep direction asserted across chained DMA transfers, cancel delayed sends on stop and shutdown, and report the actual busy state when draining. Advertise RS485 only on DMA UART ports; receive remains enabled during transmit.
+---
+ drivers/tty/serial/qcom_geni_serial.c | 196 +++++++++++++++++++++-----
+ 1 file changed, 161 insertions(+), 35 deletions(-)
+
+diff --git a/drivers/tty/serial/qcom_geni_serial.c b/drivers/tty/serial/qcom_geni_serial.c
+index a851b8f0ef04..48f07e014be9 100644
+--- a/drivers/tty/serial/qcom_geni_serial.c
++++ b/drivers/tty/serial/qcom_geni_serial.c
+@@ -13,6 +13,8 @@
+ #include <linux/clk.h>
+ #include <linux/console.h>
+ #include <linux/dma-mapping.h>
++#include <linux/gpio/consumer.h>
++#include <linux/hrtimer.h>
+ #include <linux/io.h>
+ #include <linux/iopoll.h>
+ #include <linux/irq.h>
+@@ -130,6 +132,13 @@ struct qcom_geni_private_data {
+ 	unsigned int write_cached_bytes_cnt;
+ };
+ 
++enum qcom_geni_rs485_state {
++	GENI_RS485_IDLE,
++	GENI_RS485_BEFORE_SEND,
++	GENI_RS485_SENDING,
++	GENI_RS485_AFTER_SEND,
++};
++
+ struct qcom_geni_serial_port {
+ 	struct uart_port uport;
+ 	struct geni_se se;
+@@ -149,6 +158,10 @@ struct qcom_geni_serial_port {
+ 	unsigned int tx_remaining;
+ 	unsigned int tx_queued;
+ 	bool tx_dma_stale;
++	struct gpio_desc *rts_gpio;
++	struct hrtimer rs485_timer;
++	ktime_t rs485_deadline;
++	enum qcom_geni_rs485_state rs485_state;
+ 	int wakeup_irq;
+ 	bool rx_tx_swap;
+ 	bool cts_rts_swap;
+@@ -166,6 +179,7 @@ static struct uart_driver qcom_geni_console_driver;
+ static struct uart_driver qcom_geni_uart_driver;
+ 
+ static void qcom_geni_serial_stop_tx_dma(struct uart_port *uport);
++static void qcom_geni_serial_start_tx_dma(struct uart_port *uport);
+ static void __qcom_geni_serial_cancel_tx_cmd(struct uart_port *uport);
+ static void qcom_geni_serial_cancel_tx_cmd(struct uart_port *uport);
+ static int qcom_geni_serial_port_setup(struct uart_port *uport);
+@@ -187,30 +201,113 @@ static struct qcom_geni_serial_port qcom_geni_console_port = {
+ };
+ 
+ static const struct serial_rs485 qcom_geni_rs485_supported = {
+-	.flags = SER_RS485_ENABLED | SER_RS485_RTS_AFTER_SEND | SER_RS485_RTS_ON_SEND,
++	.flags = SER_RS485_ENABLED | SER_RS485_RTS_AFTER_SEND |
++		 SER_RS485_RTS_ON_SEND | SER_RS485_RX_DURING_TX,
++	.delay_rts_before_send = 1,
++	.delay_rts_after_send = 1,
+ };
+ 
+-/**
+- * qcom_geni_set_rs485_mode - Set RTS pin state for RS485 mode
+- * @uport: UART port
+- * @flag: RS485 flag to determine RTS polarity
+- *
+- * Enables manual RTS control for RS485. Sets RTS to READY or NOT_READY
+- * based on the specified flag if RS485 mode is enabled.
+- */
+-static void qcom_geni_set_rs485_mode(struct uart_port *uport, u32 flag)
++/* Caller holds the port lock. RTS is a direction signal in RS485 mode. */
++static void qcom_geni_rs485_set_rts(struct uart_port *uport, bool high)
++{
++	struct qcom_geni_serial_port *port = to_dev_port(uport);
++	u32 rfr = UART_MANUAL_RFR_EN;
++
++	if (port->rts_gpio) {
++		gpiod_set_value(port->rts_gpio, high);
++		return;
++	}
++
++	rfr |= high ? UART_RFR_NOT_READY : UART_RFR_READY;
++	writel(rfr, uport->membase + SE_UART_MANUAL_RFR);
++}
++
++static void qcom_geni_rs485_idle(struct uart_port *uport)
+ {
++	struct qcom_geni_serial_port *port = to_dev_port(uport);
++
++	port->rs485_state = GENI_RS485_IDLE;
++	if (uport->rs485.flags & SER_RS485_ENABLED)
++		qcom_geni_rs485_set_rts(uport, uport->rs485.flags & SER_RS485_RTS_AFTER_SEND);
++}
++
++static void qcom_geni_rs485_arm(struct qcom_geni_serial_port *port,
++				unsigned int delay_ms)
++{
++	port->rs485_deadline = ktime_add_ms(ktime_get(), delay_ms);
++	hrtimer_start(&port->rs485_timer, port->rs485_deadline, HRTIMER_MODE_ABS);
++}
++
++static void qcom_geni_rs485_finish(struct uart_port *uport)
++{
++	struct qcom_geni_serial_port *port = to_dev_port(uport);
++
+ 	if (!(uport->rs485.flags & SER_RS485_ENABLED))
+ 		return;
++	if (uport->rs485.delay_rts_after_send) {
++		port->rs485_state = GENI_RS485_AFTER_SEND;
++		qcom_geni_rs485_arm(port, uport->rs485.delay_rts_after_send);
++	} else {
++		qcom_geni_rs485_idle(uport);
++	}
++}
+ 
+-	u32 rfr = UART_MANUAL_RFR_EN;
++/* Return false while the direction signal is settling. */
++static bool qcom_geni_rs485_start(struct uart_port *uport)
++{
++	struct qcom_geni_serial_port *port = to_dev_port(uport);
+ 
+-	if (uport->rs485.flags & flag)
+-		rfr |= UART_RFR_NOT_READY;
+-	else
+-		rfr |= UART_RFR_READY;
++	if (!(uport->rs485.flags & SER_RS485_ENABLED))
++		return true;
++	if (port->rs485_state == GENI_RS485_BEFORE_SEND)
++		return false;
++	if (port->rs485_state == GENI_RS485_AFTER_SEND) {
++		hrtimer_try_to_cancel(&port->rs485_timer);
++		port->rs485_state = GENI_RS485_SENDING;
++	}
++	if (port->rs485_state == GENI_RS485_SENDING)
++		return true;
+ 
+-	writel(rfr, uport->membase + SE_UART_MANUAL_RFR);
++	qcom_geni_rs485_set_rts(uport, uport->rs485.flags & SER_RS485_RTS_ON_SEND);
++	port->rs485_state = GENI_RS485_SENDING;
++	if (uport->rs485.delay_rts_before_send) {
++		port->rs485_state = GENI_RS485_BEFORE_SEND;
++		qcom_geni_rs485_arm(port, uport->rs485.delay_rts_before_send);
++		return false;
++	}
++	return true;
++}
++
++static enum hrtimer_restart qcom_geni_rs485_timer(struct hrtimer *timer)
++{
++	struct qcom_geni_serial_port *port = container_of(timer,
++					struct qcom_geni_serial_port, rs485_timer);
++	struct uart_port *uport = &port->uport;
++	enum hrtimer_restart ret = HRTIMER_NORESTART;
++	unsigned long flags;
++
++	uart_port_lock_irqsave(uport, &flags);
++	if (port->rs485_state != GENI_RS485_BEFORE_SEND &&
++	    port->rs485_state != GENI_RS485_AFTER_SEND)
++		goto out;
++
++	/* An old callback may have waited on the lock while a new delay began. */
++	if (ktime_before(ktime_get(), port->rs485_deadline)) {
++		hrtimer_set_expires(timer, port->rs485_deadline);
++		ret = HRTIMER_RESTART;
++		goto out;
++	}
++	if (port->rs485_state == GENI_RS485_BEFORE_SEND &&
++	    uport->state && !uport->suspended && !uart_tx_stopped(uport) &&
++	    !kfifo_is_empty(&uport->state->port.xmit_fifo)) {
++		port->rs485_state = GENI_RS485_SENDING;
++		qcom_geni_serial_start_tx_dma(uport);
++	} else {
++		qcom_geni_rs485_idle(uport);
++	}
++out:
++	uart_port_unlock_irqrestore(uport, flags);
++	return ret;
+ }
+ 
+ static int qcom_geni_serial_request_port(struct uart_port *uport)
+@@ -790,7 +887,11 @@ static void handle_rx_uart(struct uart_port *uport, u32 bytes)
+ 
+ static unsigned int qcom_geni_serial_tx_empty(struct uart_port *uport)
+ {
+-	return !readl(uport->membase + SE_GENI_TX_FIFO_STATUS);
++	struct qcom_geni_serial_port *port = to_dev_port(uport);
++
++	return !port->tx_dma_addr && port->rs485_state == GENI_RS485_IDLE &&
++	       !qcom_geni_serial_main_active(uport) &&
++	       !readl(uport->membase + SE_GENI_TX_FIFO_STATUS);
+ }
+ 
+ static void qcom_geni_serial_flush_buffer_dma(struct uart_port *uport)
+@@ -821,6 +922,9 @@ static void qcom_geni_serial_stop_tx_dma(struct uart_port *uport)
+ 				      port->tx_remaining);
+ 		port->tx_dma_addr = 0;
+ 	}
++
++	hrtimer_try_to_cancel(&port->rs485_timer);
++	qcom_geni_rs485_idle(uport);
+ }
+ 
+ static void qcom_geni_serial_start_tx_dma(struct uart_port *uport)
+@@ -842,7 +946,8 @@ static void qcom_geni_serial_start_tx_dma(struct uart_port *uport)
+ 
+ 	trace_geni_serial_tx_data(uport->dev, tail, xmit_size);
+ 
+-	qcom_geni_set_rs485_mode(uport, SER_RS485_RTS_ON_SEND);
++	if (!qcom_geni_rs485_start(uport))
++		return;
+ 
+ 	qcom_geni_serial_setup_tx(uport, xmit_size);
+ 
+@@ -1190,8 +1295,10 @@ static void qcom_geni_serial_handle_tx_dma(struct uart_port *uport)
+ 	port->tx_remaining = 0;
+ 	port->tx_dma_stale = false;
+ 
+-	if (!kfifo_is_empty(&tport->xmit_fifo))
++	if (!uart_tx_stopped(uport) && !kfifo_is_empty(&tport->xmit_fifo))
+ 		qcom_geni_serial_start_tx_dma(uport);
++	if (!port->tx_dma_addr)
++		qcom_geni_rs485_finish(uport);
+ 
+ 	if (kfifo_len(&tport->xmit_fifo) < WAKEUP_CHARS)
+ 		uart_write_wakeup(uport);
+@@ -1251,10 +1358,8 @@ static irqreturn_t qcom_geni_serial_isr(int isr, void *dev)
+ 		goto handle_rx;
+ 
+ 	if (dma) {
+-		if (dma_tx_status & TX_DMA_DONE) {
++		if ((dma_tx_status & TX_DMA_DONE) && port->tx_dma_addr)
+ 			qcom_geni_serial_handle_tx_dma(uport);
+-			qcom_geni_set_rs485_mode(uport, SER_RS485_RTS_AFTER_SEND);
+-		}
+ 	} else if (m_irq_status & m_irq_en &
+ 		   (M_TX_FIFO_WATERMARK_EN | M_CMD_DONE_EN)) {
+ 		qcom_geni_serial_handle_tx_fifo(uport,
+@@ -1334,6 +1439,7 @@ static void qcom_geni_serial_shutdown(struct uart_port *uport)
+ 
+ 	qcom_geni_serial_cancel_tx_cmd(uport);
+ 	uart_port_unlock_irq(uport);
++	hrtimer_cancel(&port->rs485_timer);
+ 
+ 	pm_runtime_put_sync(uport->dev);
+ }
+@@ -1804,21 +1910,22 @@ static struct uart_driver qcom_geni_uart_driver = {
+ 	.nr = CONFIG_SERIAL_QCOM_GENI_UART_PORTS,
+ };
+ 
+-/**
+- * qcom_geni_rs485_config - Configure RS485 settings for the UART port
+- * @uport: Pointer to the UART port structure
+- * @termios: Pointer to the termios structure
+- * @rs485: Pointer to the RS485 configuration structure
+- * This function configures the RTS (Request to Send) pin behavior for RS485 mode.
+- * When RS485 mode is enabled, the RTS pin is kept in default ACTIVE HIGH state.
+- * Return: Always returns 0.
+- */
+-
+ static int qcom_geni_rs485_config(struct uart_port *uport,
+ 				  struct ktermios *termios, struct serial_rs485 *rs485)
+ {
+-	qcom_geni_set_rs485_mode(uport, SER_RS485_ENABLED);
++	struct qcom_geni_serial_port *port = to_dev_port(uport);
+ 
++	if (port->rs485_state != GENI_RS485_IDLE || port->tx_dma_addr ||
++	    (termios && qcom_geni_serial_main_active(uport)))
++		return -EBUSY;
++
++	/* This controller keeps RX active while transmitting. */
++	if (rs485->flags & SER_RS485_ENABLED) {
++		rs485->flags |= SER_RS485_RX_DURING_TX;
++		qcom_geni_rs485_set_rts(uport, rs485->flags & SER_RS485_RTS_AFTER_SEND);
++	} else {
++		qcom_geni_rs485_set_rts(uport, false);
++	}
+ 	return 0;
+ }
+ 
+@@ -1930,8 +2037,23 @@ static int qcom_geni_serial_probe(struct platform_device *pdev)
+ 
+ 	uport->mapbase = res->start;
+ 
+-	uport->rs485_config = qcom_geni_rs485_config;
+-	uport->rs485_supported = qcom_geni_rs485_supported;
++	hrtimer_setup(&port->rs485_timer, qcom_geni_rs485_timer,
++		      CLOCK_MONOTONIC, HRTIMER_MODE_ABS);
++	if (!data->console) {
++		uport->rs485_config = qcom_geni_rs485_config;
++		uport->rs485_supported = qcom_geni_rs485_supported;
++		port->rts_gpio = devm_gpiod_get_optional(&pdev->dev, "rts", GPIOD_OUT_LOW);
++		if (IS_ERR(port->rts_gpio)) {
++			ret = dev_err_probe(&pdev->dev, PTR_ERR(port->rts_gpio),
++					    "Unable to request RTS GPIO\n");
++			goto error;
++		}
++		if (port->rts_gpio && gpiod_cansleep(port->rts_gpio)) {
++			ret = dev_err_probe(&pdev->dev, -EINVAL,
++					    "RTS GPIO must support atomic access\n");
++			goto error;
++		}
++	}
+ 	port->tx_fifo_depth = DEF_FIFO_DEPTH_WORDS;
+ 	port->rx_fifo_depth = DEF_FIFO_DEPTH_WORDS;
+ 	port->tx_fifo_width = DEF_FIFO_WIDTH_BITS;
+@@ -2049,6 +2171,7 @@ static void qcom_geni_serial_remove(struct platform_device *pdev)
+ 	device_init_wakeup(&pdev->dev, false);
+ 	ida_free(&port_ida, uport->line);
+ 	uart_remove_one_port(drv, &port->uport);
++	hrtimer_cancel(&port->rs485_timer);
+ 
+ 	if (port->rx_dma_addr) {
+ 		dma_unmap_single(pdev->dev.parent, port->rx_dma_addr,
+@@ -2184,8 +2307,11 @@ static void qcom_geni_serial_sys_shutdown(struct platform_device *pdev)
+ 	if (pm_runtime_status_suspended(uport->dev))
+ 		return;
+ 
++	uart_port_lock_irq(uport);
+ 	qcom_geni_serial_stop_tx(uport);
+ 	qcom_geni_serial_stop_rx(uport);
++	uart_port_unlock_irq(uport);
++	hrtimer_cancel(&port->rs485_timer);
+ }
+ 
+ static const struct of_device_id qcom_geni_serial_match_table[] = {
+-- 
+2.47.3
+

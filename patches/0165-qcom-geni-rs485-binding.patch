@@ -1,0 +1,36 @@
+From 4beed6352c4a50c57f1e4d73316defc6b2feba50 Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Sat, 14 Nov 2026 04:27:40 +0800
+Subject: [PATCH] dt-bindings: serial: qcom-geni: describe GPIO RS485 direction
+ control
+
+---
+ .../devicetree/bindings/serial/qcom,serial-geni-qcom.yaml    | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/Documentation/devicetree/bindings/serial/qcom,serial-geni-qcom.yaml b/Documentation/devicetree/bindings/serial/qcom,serial-geni-qcom.yaml
+index ed7b3909d87d..91605c3e9a26 100644
+--- a/Documentation/devicetree/bindings/serial/qcom,serial-geni-qcom.yaml
++++ b/Documentation/devicetree/bindings/serial/qcom,serial-geni-qcom.yaml
+@@ -12,6 +12,7 @@ maintainers:
+ 
+ allOf:
+   - $ref: /schemas/serial/serial.yaml#
++  - $ref: /schemas/serial/rs485.yaml#
+   - $ref: /schemas/soc/qcom/qcom,se-common-props.yaml#
+ 
+ properties:
+@@ -57,6 +58,10 @@ properties:
+   reg:
+     maxItems: 1
+ 
++  rts-gpios:
++    description: Optional non-sleeping GPIO for RS485 direction control.
++    maxItems: 1
++
+ required:
+   - compatible
+   - clocks
+-- 
+2.47.3
+

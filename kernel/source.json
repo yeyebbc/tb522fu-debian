@@ -53,6 +53,10 @@
     "patches/0161-wcn7861-identification.patch",
     "patches/0162-wcn7861-peripheral-setup.patch",
     "patches/0163-tb522fu-bluetooth-board.patch",
-    "patches/0164-wcn7861-power-probe.patch"
+    "patches/0164-wcn7861-power-probe.patch",
+    "patches/0165-qcom-geni-rs485-binding.patch",
+    "patches/0166-qcom-geni-rs485-direction.patch",
+    "patches/0167-tb522fu-white-keyboard-light.patch",
+    "patches/0168-tb522fu-keyboard-direction.patch"
   ]
 }
