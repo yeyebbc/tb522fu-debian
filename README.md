@@ -6,42 +6,43 @@ Experimental native Linux port for the Lenovo Legion Y900 13 / TB522FU
 directions. This remains a development port with substantial peripheral work
 outstanding.
 
-Current installed kernel: `7.3.0-tb522fu-installed-ci39`, built from recipe
-`ea5b0bb59336f1ad4d221107d9e32e07f9198aae`. Automatic keyboard/trackpad startup,
-US Wi-Fi regulation, 5 GHz association and LAN transfers have passed on this unit.
-The six-speaker path and two WCD939x analog microphones are working; the owner
-accepted audio and asked development to move to brightness and ambient-light
-sensing. Microphone capture defaults to +12 dB digital gain. Raw stereo capture
-matched known acoustic tones with silence controls and no clipping. Full desktop
-acoustic automation is incomplete; owner acceptance is recorded separately.
-The installed audio test timer has been removed, with the prior kernel and audio
-configuration retained for rollback.
+Current installed kernel: `7.3.0-tb522fu-installed-ci44`, built from recipe
+`0a1847dd0b67991af502bfea9da36c5db50be3c4`. The installed image SHA256 is
+`02adcbeb01e7742b3999a6ac5d2082cee3d10ad8c1a780612acd84c3f3d6468e`.
+CI39 and CI32 remain available for rollback. Android return, stock boot and
+filesystem checks passed; the temporary acceptance timer has been removed.
 
-Installed CI39 adds WCN7861 peripheral/TME initialization, stock-verified
-UART14/PM8550VE_F wiring, Bluetooth LE and UHID support to the accepted CI32
-baseline. Controller code comes from GEEKiDoS's TB322FC work, with exact commits
-and scoped imports in `patches/sources.json`. This tablet's private firmware,
-calibration and stock address are required separately; none are distributed here.
+Automatic keyboard/trackpad startup, US Wi-Fi regulation, 5 GHz association and
+LAN transfers have passed on this unit. The six-speaker path and two WCD939x
+analog microphones are working and accepted by the owner. Microphone capture
+defaults to +12 dB digital gain. Audio was not retested in the latest update at
+the owner's request; earlier desktop acoustic automation remains incomplete.
 
-[Automatic address provisioning](configs/bluetooth/README.md) passed a fresh
-boot through both the bounded test image and the normal dual-boot Action. The
-installed test received 14 fresh MGMT discovery packets from 9 nearby peers,
-answered HCI commands after 3/10 seconds idle, and completed power off/on while
-Wi-Fi association and gateway traffic continued. The physical GNOME greeter was
-verified on camera. Android return, stock boot checks, filesystem checks and
-removal of the temporary return timer passed. CI32 remains available for rollback.
+CI44 adds [white keyboard lighting](configs/keyboard/README.md) through the
+standard `lenovo:white:kbd_backlight` LED interface. It exposes only off/on,
+with white enabled by default. Camera recordings of bounded and normal installed
+boots show three successful off/on cycles and visible GNOME. Both attempted
+dimming mappings produced indistinguishable nonzero levels, so dimming is not
+advertised. Physical Fn+Space, typing after this transport update and suspend
+remain unverified. The accepted input decoder and reconnect delay are unchanged.
+
+[Bluetooth automatic address provisioning](configs/bluetooth/README.md), fresh
+discovery, idle HCI responses and quick off/on passed through both boot paths.
+The installed test received 19 fresh MGMT discovery packets from 11 nearby peers,
+reopened after a 0.500-second powered-off interval, then received an actual HCI
+response after idle. Both host IBS states reset to asleep; Wi-Fi association
+and 5/5 gateway pings passed, with no relevant driver errors. CI44 carries the
+unchanged [upstream power-off IBS reset](https://lore.kernel.org/r/20261014180201.57109-1-birk.skyum@pm.me)
+after a later CI42 test exposed an intermittent second-setup firmware timeout.
 Pairing, peripheral traffic/reconnection and Bluetooth suspend remain untested.
-Startup currently takes about 66 seconds and power reopening about 34 seconds;
-firmware download pacing and the second setup for public-address provisioning
-remain documented limitations. Accepted audio/input code is unchanged; audio
-was not retested in this Bluetooth update at the owner's request.
+Startup takes about 65 seconds and power reopening about 32–34 seconds; download
+pacing and the second setup for public-address provisioning are unchanged.
 
-A [white keyboard backlight candidate](configs/keyboard/README.md) is now in the
-source recipe. It adds standard LED control and GPIO RS485 direction timing;
-CI41 passed white/off-on and wireless regression, but its brightness steps were
-visually indistinguishable. CI42 also failed to show dimming through equal RGB
-intensity. The candidate now exposes only the verified binary white on/off
-control. Installed CI39 remains unchanged until normal-boot acceptance.
+The controller implementation retains GEEKiDoS's TB322FC provenance and the IBS
+fix retains Birk Skyum/Vladyslav Tymoshchuk attribution in `patches/sources.json`.
+Private firmware, calibration and the tablet's stock address are required
+separately; none are distributed here. Wi-Fi-only US settings do not change
+Bluetooth calibration or the user's system locale.
 
 The CI35 bounded GPU test passed native display, Adreno 830 hardware pixel
 readback for210seconds, rejection of a forced software renderer, and actual

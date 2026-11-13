@@ -1,9 +1,9 @@
-# White keyboard backlight candidate
+# White keyboard backlight
 
-Production remains CI39. CI41 and CI42 proved physical white light and off/on,
-but neither tested dimming mapping produced useful visible steps. No further
-speculative dimming commands are planned. The candidate now exposes only the
-verified binary white states and still needs installed-boot acceptance.
+Installed CI44 passed recorded white off/on and normal-boot acceptance.
+The LED is binary: no dimming is advertised. CI41 and CI42 both produced
+visually indistinguishable nonzero dimming steps; those mappings were not
+promoted. No further speculative dimming commands are planned.
 
 Patches0165–0170 add `lenovo:white:kbd_backlight` with max_brightness1:
 0 means off,1 means steady white. Steady mode1 uses equal RGB100 when on,
@@ -26,11 +26,10 @@ for the next active sync. The normal LED class exposes brightness to desktop
 software. Older receive-only device trees retain their original TX-disabled path.
 Dimming, RGB effects, physical Fn+Space behavior and suspend remain unverified.
 
-Before promotion, verify physical off/white changes with a camera,
-unchanged keyboard/trackpad/lid nodes and packet decoding, no UART faults, Wi-Fi
-traffic and Bluetooth initialization/discovery after the shared UART change.
-Then verify the installed boot path and clean Android return. Keep the accepted
-kernel as rollback; do not infer hardware success from this source or CI build.
-
-The same candidate includes the attributed upstream Bluetooth IBS lifecycle fix
-(patch0171), prompted by a second-setup timeout observed in CI42.
+Bounded and normal installed CI44 tests verified three physical off/white
+cycles, visible GNOME, preserved input nodes and packet decoding, no relevant
+UART faults, Wi-Fi traffic and Bluetooth automatic setup/discovery/idle/quick
+power reopening. Android return and full filesystem checks passed. CI39 is
+retained for rollback. Physical typing/Fn+Space and suspend still need testing.
+The same build includes the attributed upstream Bluetooth IBS lifecycle fix
+(patch0171) following the CI42 second-setup timeout.

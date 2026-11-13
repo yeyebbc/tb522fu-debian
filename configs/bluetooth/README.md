@@ -30,10 +30,13 @@ The initial controller setup plus address-triggered setup takes about 66 seconds
 subsequent power reopening takes about 34 seconds. The service does not apply a
 power policy or repeat initialization to hide failures.
 
-A later bounded boot exposed an intermittent second-setup failure: a stray IBS
-wake acknowledgement preceded a firmware command timeout. The candidate includes
-the unchanged [upstream power-off state reset](https://lore.kernel.org/r/20261014180201.57109-1-birk.skyum@pm.me)
+A later bounded CI42 boot exposed an intermittent second-setup failure: a stray
+IBS wake acknowledgement preceded a firmware command timeout. Installed CI44
+includes the unchanged [upstream power-off state reset](https://lore.kernel.org/r/20261014180201.57109-1-birk.skyum@pm.me),
 which drains old sleep workers/timers and resets host state when the controller
-loses power. Automatic address setup and quick off/on regression are required
-before promotion. Production CI39 remains selected; its earlier success does
-not establish immunity to this intermittent lifecycle fault.
+loses power. Automatic address setup, fresh discovery, idle HCI replies and
+quick off/on passed in both bounded and normal installed boots. The normal test
+measured both host IBS states asleep after power-off, a0.500-second off interval,
+and a real HCI reply after reopening. Wi-Fi remained associated. No firmware,
+calibration, pacing, timeout or retry changes were made. Pairing, peripheral
+traffic/reconnect and suspend remain untested.
