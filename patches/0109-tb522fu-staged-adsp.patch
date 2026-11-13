@@ -19,7 +19,7 @@ manifest checks; firmware is supplied privately, never included here.
 +/* Stage the stock ADSP battery service. Its 86 MiB image and 512 KiB
 + * configuration carveouts match the captured runtime tree. Keep all firmware
 + * private and board-scoped; DSP audio/compute clients are separate bring-up.
-+ * The disk-test profile blocks automatic PAS loading until USB/return checks.
++ * Board-specific firmware must be installed before automatic PAS loading.
 + */
 +&remoteproc_adsp {
 +	firmware-name = "qcom/sm8750/lenovo/tb522fu/adsp.mdt",

@@ -114,18 +114,24 @@ acceptance timer returned cleanly to Android using the on-device switch helper.
 The acceptance timer was then removed. Bounded probes retain explicit loading.
 The existing GNOME two-finger right-click preference is preserved.
 
-Battery properties in the tested kernel return EAGAIN because ADSP is disabled.
-This staged candidate enables ADSP PAS with privately supplied stock firmware
-under `qcom/sm8750/lenovo/tb522fu/`. Its 86 MiB image and 512 KiB configuration
-regions match the stock runtime tree. Firmware hashes and split MDT segment
-bounds are checked locally; proprietary files are never published.
+CI20 recipe `4575d23` verified the first explicit ADSP load using privately
+supplied stock firmware under `qcom/sm8750/lenovo/tb522fu/`. The 86 MiB image
+and 512 KiB configuration regions match the stock runtime tree; firmware
+hashes and split MDT bounds were checked locally. Proprietary files are never
+published. GPR/FastRPC clients remain disabled.
 
-PAS remains blocked from automatic loading in every profile. The first test
-loads it explicitly after USB access and the independent EDL return are verified.
-GPR/FastRPC DT children stay disabled. The pinned GLINK code matches available
-children only, and those clients have no RPMSG name fallback. Service startup,
-battery readings and charging behavior are not yet validated. The first target
-is telemetry, without direct charger-register writes or charging-limit changes.
+ADSP reached running state and its charger service came up. Battery properties
+changed from EAGAIN to 84%, 4.247 V and 22 degrees C, consistent with adjacent
+stock Android readings. UPower reported no warning, and the physical screen's
+red battery warning cleared. The test returned cleanly through EDL and stock
+Android restoration. No direct charger registers or charging limits were written.
+
+The next candidate allows automatic ADSP loading, first tested in the bounded
+profile. It also adapts the upstream-discussed full-charge unit fix to the two
+populated full-charge properties; empty/current-charge properties stay guarded.
+Automatic startup and the full-charge values still require hardware acceptance.
+Current direction, USB voltage, runtime estimates, unplug behavior and sustained
+net charging remain unvalidated. A charging icon alone does not establish these.
 
 CI15 also exposed a clock failure: fake-hwclock restored the saved date, then
 the late PMIC RTC probe set system time to 1970. The configuration now disables

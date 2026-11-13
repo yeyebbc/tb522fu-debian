@@ -1,0 +1,39 @@
+Subject: [PATCH] power: supply: qcom_battmgr: allow property-get full-charge values
+
+SM8350/SM8550 property-get firmware does not populate the information
+response's unit field. Its default mWh value wrongly rejects charge_full
+and charge_full_design after successfully requesting those charge values.
+This is observed as ENODATA and zero energy in UPower on TB522FU.
+
+Based on the issue and fix proposed by Jan-Michael Brummer:
+https://lore.kernel.org/r/20260829054546.86210-2-jan.brummer@tabos.org
+
+Unlike setting the unit globally, limit the exception to the two populated
+full-charge properties. Leave CHARGE_NOW and CHARGE_EMPTY guarded, addressing
+the concern raised in upstream review. No firmware writes or new properties.
+The original GPL-2.0-only driver license and attribution remain unchanged.
+
+diff --git a/drivers/power/supply/qcom_battmgr.c b/drivers/power/supply/qcom_battmgr.c
+index ad1e47cc6cfa..e1316c33d8cf 100644
+--- a/drivers/power/supply/qcom_battmgr.c
++++ b/drivers/power/supply/qcom_battmgr.c
+@@ -568,12 +568,17 @@ static int qcom_battmgr_bat_get_property(struct power_supply *psy,
+ 		val->intval = battmgr->status.power_now;
+ 		break;
+ 	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
+-		if (unit != QCOM_BATTMGR_UNIT_mAh)
++		/* Property-get firmware reports charge without BATTMGR_BAT_INFO. */
++		if (unit != QCOM_BATTMGR_UNIT_mAh &&
++		    battmgr->variant != QCOM_BATTMGR_SM8350 &&
++		    battmgr->variant != QCOM_BATTMGR_SM8550)
+ 			return -ENODATA;
+ 		val->intval = battmgr->info.design_capacity;
+ 		break;
+ 	case POWER_SUPPLY_PROP_CHARGE_FULL:
+-		if (unit != QCOM_BATTMGR_UNIT_mAh)
++		if (unit != QCOM_BATTMGR_UNIT_mAh &&
++		    battmgr->variant != QCOM_BATTMGR_SM8350 &&
++		    battmgr->variant != QCOM_BATTMGR_SM8550)
+ 			return -ENODATA;
+ 		val->intval = battmgr->info.last_full_capacity;
+ 		break;
