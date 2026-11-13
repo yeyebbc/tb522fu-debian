@@ -29,6 +29,12 @@ isolated Mesa library directory through ld.so.conf.d. Distribution packages and
 the accepted CI32 rollback remain intact. Native display/touch power transitions and installed cold boot
 remain outstanding; this is not a release.
 
+The next candidate changes only bonded DSI host shutdown order: slave before
+master, matching Lenovo's display clock driver. CI36's first failure was three
+slave branch clocks stuck on during screen-off, before the wake errors. The
+correction is cross-compiled but not yet hardware validated; no RAM reservation,
+audio, panel timing or voltage changes are included.
+
 GitHub Actions builds two kernel profiles on native ARM64 runners:
 
 - `disk-test`: an embedded BusyBox maintenance/boot environment with matching

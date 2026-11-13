@@ -1,0 +1,49 @@
+From e29e6465b84942e866f375911e260fda5c7f2399 Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Sat, 14 Nov 2026 01:37:49 +0800
+Subject: [PATCH] drm/msm/dsi: stop bonded slave host before master on disable
+
+The normal post-disable path powered the master host off before the slave, although the bridge error unwind already used slave-first order. The 7nm master PLL unprepare gates both PHY global clocks, leaving the slave branch clocks unable to acknowledge their halt if its source is removed first.
+
+Match the slave-before-master ordering documented by dsi_display_link_clk_disable and dsi_display_core_clk_disable in Lenovo SM8750 display source e1f324632d70b2427751820cd48eefc45baab0ce. On TB522FU the first DPMS off warned that pclk1, byte1_intf and byte1 were stuck on, before the subsequent wake DSI errors.
+
+Change only host power-off ordering. No timing, voltage, PLL, CTL or memory changes. Cross-compilation passed; hardware validation pending.
+---
+ drivers/gpu/drm/msm/dsi/dsi_manager.c | 14 ++++++++++----
+ 1 file changed, 10 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/gpu/drm/msm/dsi/dsi_manager.c b/drivers/gpu/drm/msm/dsi/dsi_manager.c
+index 2ffa18c61f90..ced6ab37cbdb 100644
+--- a/drivers/gpu/drm/msm/dsi/dsi_manager.c
++++ b/drivers/gpu/drm/msm/dsi/dsi_manager.c
+@@ -457,10 +457,12 @@ static void dsi_mgr_bridge_post_disable(struct drm_bridge *bridge,
+ 	/* Save PHY status if it is a clock source */
+ 	msm_dsi_phy_pll_save_state(msm_dsi->phy);
+ 
+-	ret = msm_dsi_host_power_off(host);
+-	if (ret)
+-		pr_err("%s: host %d power off failed,%d\n", __func__, id, ret);
+-
++	/*
++	 * Stop the slave link clocks before their master clock source. The
++	 * master's PLL unprepare also gates the slave PHY global clock, so
++	 * powering the master off first can strand the slave branch clocks.
++	 * Keep the same order as the bridge error unwind above.
++	 */
+ 	if (is_bonded_dsi && msm_dsi1) {
+ 		ret = msm_dsi_host_power_off(msm_dsi1->host);
+ 		if (ret)
+@@ -468,6 +470,10 @@ static void dsi_mgr_bridge_post_disable(struct drm_bridge *bridge,
+ 								__func__, ret);
+ 	}
+ 
++	ret = msm_dsi_host_power_off(host);
++	if (ret)
++		pr_err("%s: host %d power off failed,%d\n", __func__, id, ret);
++
+ disable_phy:
+ 	dsi_mgr_phy_disable(id);
+ }
+-- 
+2.47.3
+
