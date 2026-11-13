@@ -1,0 +1,24 @@
+# Per-device Bluetooth identity
+
+The WCN7861 controller needs its stock public address after registration. Keep
+the address in `/etc/tb522fu/bluetooth-address`, a root-owned mode0600 file,
+containing one colon-separated address from this device's stock Android data.
+Neither the address nor the firmware/calibration belongs in this repository.
+
+`device/` includes a udev rule, a systemd template and a bounded oneshot helper.
+The rule matches the board UART; the helper additionally validates the live
+device tree and HCI ancestry. It uses Linux MGMT to configure only a controller
+missing exactly its public address. Already configured controllers are checked
+without modification; a different address fails. Other adapters are ignored.
+BlueZ retains its normal power, discovery and pairing policy. No periodic
+keepalive, reset, firmware rewrite or global locale setting is involved.
+
+The template is ordered before `bluetooth.service` when both are starting.
+If BlueZ is already running, its standard IndexAdded handling discovers the
+newly configured controller. udev starts the instance again after a genuine
+device removal/addition. A boot-scoped private receipt is written under `/run`.
+
+Protocol reference: [BlueZ 5.82 MGMT API](https://github.com/bluez/bluez/blob/5.82/doc/mgmt-api.txt).
+Offline refusal and reindexing tests pass. Automatic cold-boot hardware
+acceptance is pending; earlier CI39 tests provisioned the address manually.
+Pairing and reconnection with a user-selected peripheral remain untested.

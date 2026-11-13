@@ -1,0 +1,2 @@
+# The helper also verifies the live board and WCN7861 device-tree ancestry.
+ACTION=="add", SUBSYSTEM=="bluetooth", KERNEL=="hci[0-9]*", KERNELS=="898000.serial", TAG+="systemd", ENV{SYSTEMD_WANTS}+="tb522fu-bluetooth-address@%k.service"

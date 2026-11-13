@@ -1,0 +1,165 @@
+#!/usr/bin/python3
+# SPDX-License-Identifier: GPL-2.0-only
+"""Configure the stock public address once per WCN7861 device registration.
+
+Linux MGMT protocol: bluez/bluez, tag 5.82, doc/mgmt-api.txt, commands
+0x0003/0x0004/0x0036/0x0037/0x0039. No vendor commands or power policy.
+"""
+from pathlib import Path
+import ctypes
+import hashlib
+import json
+import os
+import re
+import socket
+import stat
+import struct
+import sys
+import time
+
+
+def require(condition, message):
+    if not condition:
+        raise RuntimeError(message)
+
+
+def control_socket():
+    sock = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_RAW, socket.BTPROTO_HCI)
+    try:
+        # Python's HCI tuple parser cannot select HCI_CHANNEL_CONTROL on all
+        # supported Python versions. Use Linux's six-byte sockaddr_hci.
+        libc = ctypes.CDLL(None, use_errno=True)
+        libc.bind.argtypes = [ctypes.c_int, ctypes.c_void_p, ctypes.c_uint]
+        libc.bind.restype = ctypes.c_int
+        addr = ctypes.create_string_buffer(struct.pack('=HHH', socket.AF_BLUETOOTH, 0xffff, 3))
+        if libc.bind(sock.fileno(), addr, 6):
+            error = ctypes.get_errno()
+            raise OSError(error, os.strerror(error))
+        return sock
+    except BaseException:
+        sock.close()
+        raise
+
+
+def mgmt(opcode, index=0xffff, payload=b'', timeout=8):
+    with control_socket() as sock:
+        sock.sendall(struct.pack('<HHH', opcode, index, len(payload)) + payload)
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            sock.settimeout(deadline - time.monotonic())
+            raw = sock.recv(65541)
+            require(len(raw) >= 6, 'Short MGMT header')
+            event, controller, size = struct.unpack_from('<HHH', raw)
+            require(len(raw) == size + 6, 'Invalid MGMT packet length')
+            if event in (1, 2) and controller == index:
+                require(size >= 3, 'Short MGMT command reply')
+                command, status = struct.unpack_from('<HB', raw, 6)
+                if command == opcode:
+                    require(event == 1 and status == 0,
+                            f'MGMT command {opcode:#06x} failed: status {status}, event {event}')
+                    return raw[9:]
+        raise TimeoutError('MGMT command response deadline')
+
+
+def indexes(opcode):
+    raw = mgmt(opcode)
+    require(len(raw) >= 2, 'Short controller list')
+    count, = struct.unpack_from('<H', raw)
+    require(len(raw) == 2 + count * 2, 'Invalid controller list length')
+    return struct.unpack_from('<' + 'H' * count, raw, 2)
+
+
+def board_controller(index):
+    path = Path('/sys/class/bluetooth') / f'hci{index}'
+    if not path.exists():
+        return None
+    path = path.resolve()
+    if '898000.serial' not in path.parts:
+        return None
+    nodes = [parent / 'of_node' for parent in (path, *path.parents)
+             if (parent / 'of_node/compatible').is_file()
+             and b'qcom,wcn7861-bt' in (parent / 'of_node/compatible').read_bytes().split(b'\0')]
+    require(len(nodes) <= 1, 'Ambiguous Bluetooth device tree ancestry')
+    return nodes[0].resolve() if nodes else None
+
+
+def saved_address():
+    path = Path('/etc/tb522fu/bluetooth-address')
+    with os.fdopen(os.open(path, os.O_RDONLY | os.O_NOFOLLOW), 'rb') as stream:
+        info = os.fstat(stream.fileno())
+        require(stat.S_ISREG(info.st_mode) and info.st_uid == 0
+                and stat.S_IMODE(info.st_mode) == 0o600, 'Private root-owned address file required')
+        raw = stream.read(19)
+    require(re.fullmatch(rb'(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}\n?', raw),
+            'Malformed saved Bluetooth address')
+    address = bytes.fromhex(raw.decode().strip().replace(':', ''))[::-1]
+    require(address not in (b'\0' * 6, b'\xff' * 6), 'Invalid saved Bluetooth address')
+    return address, hashlib.sha256(raw).hexdigest()
+
+
+def configure(initial_index, expected, timeout=120):
+    identity = board_controller(initial_index)
+    require(identity is not None, 'Controller is not the board WCN7861 UART')
+    deadline = time.monotonic() + timeout
+    wrote_address = False
+    # Listen before querying lists so an IndexAdded event cannot be missed.
+    # This is a bounded wait for normal setup, never a reset/retry mechanism.
+    with control_socket() as events:
+        while time.monotonic() < deadline:
+            configured = indexes(0x0003)
+            unconfigured = indexes(0x0036)
+            matches = [i for i in set(configured) | set(unconfigured)
+                       if board_controller(i) == identity]
+            require(len(matches) <= 1, 'Multiple indexes for board controller')
+            if matches:
+                index = matches[0]
+                if index in configured:
+                    info = mgmt(0x0004, index)
+                    require(len(info) >= 17, 'Short controller information')
+                    require(info[:6] == expected,
+                            'Configured address differs from stock; refusing to overwrite')
+                    return dict(initial_index=initial_index, index=index,
+                                configured_by_helper=wrote_address, address_verified=True)
+                if not wrote_address:
+                    info = mgmt(0x0037, index)
+                    require(len(info) == 10, 'Invalid configuration information')
+                    _, supported, missing = struct.unpack('<HII', info)
+                    require(supported & 2 and missing == 2,
+                            'Controller needs configuration other than its public address')
+                    require(board_controller(index) == identity, 'Controller identity changed')
+                    reply = mgmt(0x0039, index, expected, timeout=min(90, deadline-time.monotonic()))
+                    require(len(reply) == 4 and struct.unpack('<I', reply)[0] == 0,
+                            'Public address did not complete configuration')
+                    wrote_address = True
+                    continue
+            # IndexAdded/UnconfiguredIndexAdded events wake this wait. Periodic
+            # list reconciliation also handles an unrelated event or queue loss.
+            events.settimeout(max(.001, min(2, deadline - time.monotonic())))
+            try:
+                events.recv(65541)
+            except socket.timeout:
+                pass
+    raise TimeoutError('Board Bluetooth configuration deadline')
+
+
+def main():
+    require(os.geteuid() == 0 and len(sys.argv) == 2, 'Run as root with an hci device name')
+    require(re.fullmatch(r'hci[0-9]+', sys.argv[1]), 'Invalid HCI device name')
+    require(Path('/etc/tb522fu/board').read_text().strip() == 'lenovo-tb522fu', 'Wrong board')
+    require(b'lenovo,y900' in Path('/sys/firmware/devicetree/base/compatible').read_bytes().split(b'\0'),
+            'Wrong live device tree')
+    expected, address_sha = saved_address()
+    result = configure(int(sys.argv[1][3:]), expected)
+    result.update(boot_id=Path('/proc/sys/kernel/random/boot_id').read_text().strip(),
+                  address_file_sha256=address_sha,
+                  uptime=float(Path('/proc/uptime').read_text().split()[0]))
+    receipt = Path('/run') / ('tb522fu-bluetooth-' + sys.argv[1]) / 'result.json'
+    # systemd creates the private runtime directory, never retain stale boot data.
+    with receipt.open('x') as stream:
+        json.dump(result, stream, indent=2)
+        stream.write('\n')
+    print('Stock Bluetooth address verified; BlueZ manages power and discovery.', flush=True)
+
+
+if __name__ == '__main__':
+    main()

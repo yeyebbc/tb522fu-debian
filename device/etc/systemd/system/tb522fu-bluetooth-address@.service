@@ -1,0 +1,23 @@
+[Unit]
+Description=Stock Bluetooth address for Lenovo TB522FU %I
+BindsTo=sys-subsystem-bluetooth-devices-%i.device
+After=sys-subsystem-bluetooth-devices-%i.device
+Before=bluetooth.service
+ConditionPathExists=/etc/tb522fu/bluetooth-address
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/tb522fu-bluetooth-address %I
+TimeoutStartSec=150
+RemainAfterExit=yes
+RuntimeDirectory=tb522fu-bluetooth-%i
+RuntimeDirectoryMode=0700
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_BLUETOOTH
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_RAW
