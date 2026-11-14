@@ -709,3 +709,17 @@ passed. Do not promote or rerun CI71 unchanged; compare stock retention and
 reset handling before choosing the next logging route. Recipe
 `66d94af0d4f13bc07a215fd627f94c09ec7167be`, bounded boot SHA256
 `5f7a1c9091f2465037e3a16bf77bb16deedab6392ccc9217afb22ef74ffd4892`.
+
+## Shallow-idle comparison
+
+The unchanged CI68 image returned from one actual RTC-gated s2idle request in
+the same boot with all39 supported modules and BT, while all eight non-WFI
+CPU idle states were temporarily disabled. Camera confirms dark panel,
+returned greeter and fresh updates; the flags were restored. Timekeeping
+continued, so this is isolation evidence, not power-efficient sleep or an
+installable fix. Do not promote or replay the completed scenario unchanged.
+The first recovery interface claim failed; the existing recovery branch then
+verified exact Android restoration, CI44 preservation, graphics/filesystem,
+timer and host cleanup. Preserve the raw failure. Next distinguish CPU-only
+C4 from shared cluster/system state selection, retaining CPU performance
+domains and known firmware parameters. No new source candidate is selected.

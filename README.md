@@ -6,12 +6,33 @@ Experimental native Linux port for the Lenovo Legion Y900 13 / TB522FU
 directions. This remains a development port with substantial peripheral work
 outstanding.
 
-**CI71 captured zero signatures in all six retained buffers during early
-ramoops initialization after a controlled EDL/programmer reboot. The marker
-was absent before userspace archival. Display wake and suspend remain
-unresolved; CI44 remains installed.**
+**A bounded shallow-idle comparison resumed in the same Linux boot and restored
+visible, updating GNOME output. Deeper CPU idle states were temporarily blocked;
+power-efficient suspend and reliable display wake remain unresolved. CI44
+remains installed.**
 
-The diagnostic enables existing ramoops messages at boot only in `disk-test`.
+The unchanged CI68 image, which previously reset during actual s2idle, returned
+after a 22.415-second RTC-gated request with all 39 supported modules and
+Bluetooth loaded. Camera footage shows the dark panel, returned greeter and
+fresh focus updates before user interaction. The eight temporary idle flags
+were restored; no matched display fault appeared. Timekeeping kept running, so
+this is isolation evidence, not proof of deep sleep or a production workaround.
+It narrows investigation to non-WFI CPU power management and shared idle states
+or their interactions; it does not identify the failing state.
+
+The first host restore attempt failed to claim its USB interface. The existing
+recovery path subsequently restored and verified Android, the installed image,
+graphics settings and filesystem. Temporary timers, network and workers were
+cleaned up. The raw host failure remains recorded separately from the successful
+on-device suspend diagnostic. Recipe `63d9e96a7ca697580282f8a1872a6051c1a2e5b3`,
+kernel source `7bc64379ce1ced431d52a4e700d8848030a7939f`, boot SHA256
+`1dd0a4d1e5b83c4bf1f3947466931becf73906105860c39acb58c1f82a4dcee6`.
+
+Earlier, CI71 captured zero signatures in all six retained buffers during early
+ramoops initialization after a controlled EDL/programmer reboot. The marker
+was absent before userspace archival.
+
+That diagnostic enables existing ramoops messages at boot only in `disk-test`.
 Source, device tree and power behavior match CI70. Both boots captured all six
 regions; the second reported zero signatures around 22 ms after kernel startup,
 after ECC handling and before the normal invalid-buffer reset. This locates the
