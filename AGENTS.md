@@ -219,3 +219,15 @@ matched controller fault occurs. Android, exact graphics rollback, filesystem,
 timer, host-service and worker checks pass. Keep CI44 installed; do not promote
 or repeat CI57 unchanged. Audit output restoration before selecting another
 experiment. Private recordings and identifiers remain unpublished.
+
+CI58 adds the unchanged [posted PHY mux initialization patch](https://lore.kernel.org/r/20261019130041.305805-1-xiaqinghuan@mail.ustc.edu.cn).
+The current driver pre-seeds its bias reference count, so the bias helper can
+skip restoring PLL_SYSTEM_MUXES. The patch writes its existing0xc0 value during
+PHY enable under the existing lock. It changes no rates, voltages, reference
+counting, reset sequence or delays. Source inspection supports testing it;
+CI57 did not measure that register, so this is not a confirmed root cause.
+The100-patch stack replays exactly and the affected ARM64 object compiles.
+Original author/signoff/code patch ID are preserved. The posted Fixes title
+mismatch and inherited trace-format warning are recorded separately from code
+checks. Existing diagnostics remain: this candidate requires a bounded physical
+wake test and exact rollback, then a later clean regression before promotion.

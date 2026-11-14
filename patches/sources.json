@@ -781,5 +781,20 @@
     "software_wake_passed": true,
     "display_wake_accepted": false,
     "hardware_result": "CI51: three acknowledged halts and original-value restores, no matched DPU/DSI/CTL/frame/vblank faults, fresh GNOME rendering passed. Physical panel remained grey after one wake; rejected. Android/graphics/filesystem restoration passed; CI44 retained. Logging/readback timing confounders remain."
+  },
+  "0207-dsi-phy-restore-system-muxes.patch": {
+    "local_commit": "584234395a320ef05205abda4fcfc13ace4947e5",
+    "patch_id": "6cdfbe0d132ce86de292517109e2c4a72e47f74a",
+    "sha256": "18669790f4c16ea8ec4ea4831db5d50b626a2f8ea0e9ce65f53c896999a71787",
+    "license": "GPL-2.0; original author, signoff and source-file attribution retained",
+    "source": "Unchanged code from the posted Linux patch. Restores PLL_SYSTEM_MUXES while enabling the PHY before the pre-seeded bias count can skip the helper write. Not yet established as this tablet wake failure cause.",
+    "references": [
+      "https://lore.kernel.org/r/20261019130041.305805-1-xiaqinghuan@mail.ustc.edu.cn",
+      "https://github.com/lore-kernel-org-archives/linux-arm-msm.1/blob/a8c3644339b2a94ed592076f498084c1db8b16f1/m"
+    ],
+    "upstream_review": "Nov11 reviewer requests moving the explanatory comment to commit message; no Reviewed-by or merged status claimed. Original patch retained unchanged for comparison.",
+    "hardware_tested": false,
+    "wake_accepted": false,
+    "validation_notes": "100-patch exact tree replay and affected ARM64 object pass. Existing Y900PHY7 trace format warning remains. Full checkpatch flags original Fixes title mismatch with actual revert commit; metadata retained, not silently rewritten. Code-only check is separate."
   }
 }
