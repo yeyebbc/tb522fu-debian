@@ -793,8 +793,9 @@
       "https://github.com/lore-kernel-org-archives/linux-arm-msm.1/blob/a8c3644339b2a94ed592076f498084c1db8b16f1/m"
     ],
     "upstream_review": "Nov11 reviewer requests moving the explanatory comment to commit message; no Reviewed-by or merged status claimed. Original patch retained unchanged for comparison.",
-    "hardware_tested": false,
+    "hardware_tested": true,
     "wake_accepted": false,
-    "validation_notes": "100-patch exact tree replay and affected ARM64 object pass. Existing Y900PHY7 trace format warning remains. Full checkpatch flags original Fixes title mismatch with actual revert commit; metadata retained, not silently rewritten. Code-only check is separate."
+    "validation_notes": "100-patch exact tree replay and affected ARM64 object pass. Existing Y900PHY7 trace format warning remains. Full checkpatch flags original Fixes title mismatch with actual revert commit; metadata retained, not silently rewritten. Code-only check is separate.",
+    "hardware_result": "CI58 initial greeter passes but physical wake remains blank with backlight on. No matched controller fault; guarded recovery retry and final restoration verified. CI44 retained."
   }
 }

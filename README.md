@@ -454,6 +454,18 @@ mismatch and inherited trace-format warning are recorded separately from code
 checks. Existing diagnostics remain: this candidate requires a bounded physical
 wake test and exact rollback, then a later clean regression before promotion.
 
+CI58 is tested and REJECTED for physical wake. The posted mux correction
+alone is insufficient: initial greeter pixels pass, then the panel stays blank
+with its backlight on. Both CI profiles and diagnostic capture pass. The
+first-start clock-status differences also occur during working startup, so they
+do not reliably identify the wake failure. No matched display-controller fault
+was observed. Recovery initially failed to claim the USB interface before any
+restore write; the existing guarded retry restored stock boot with full readback
+verification. Android, graphics, filesystem, timers, services and workers were
+independently verified afterward; the raw monitor error is preserved. CI44 stays
+installed. Do not repeat this candidate unchanged or promote it. The next audit
+examines panel supply/reset lifecycle; secure GPIO access remains excluded.
+
 ## Build
 
 Push a source/configuration change to `main`, or use **Actions → Build ARM64
