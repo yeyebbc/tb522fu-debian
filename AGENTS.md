@@ -35,4 +35,8 @@ stock partition images and local environment paths out of tracked files.
 - The next candidate imports upstream 32d04280ddeb unchanged as patch0196:
   secondary DPU encoder shutdown before primary, with original attribution.
   It is distinct from DSI host clock shutdown. The90-patch tree must replay
-  exactly; this tablet still needs bounded physical wake validation.
+  exactly. CI47 bounded physical wake testing now rejects this candidate too:
+  initial hardware pixels pass, but grey wake and CTL reset/frame/vblank faults
+  recur before post-wake input. Android/graphics restoration passed; keep CI44
+  installed and do not repeat CI47 unchanged. Continue targeted lifecycle
+  analysis before selecting another change.

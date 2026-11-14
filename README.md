@@ -24,7 +24,12 @@ The new source candidate additionally imports upstream
 [32d04280ddeb](https://github.com/torvalds/linux/commit/32d04280ddebb6eb964990931b0f1001f63b35e7)
 unchanged. It disables the secondary DPU encoder before the primary so the final
 shared-controller reset runs after both stop. This differs from the earlier DSI
-host power-off ordering fix. Its wake behavior on this tablet is not yet verified.
+host power-off ordering fix. Both CI47 profiles build and audit successfully,
+but a bounded test also rejects CI47: after one display power cycle the panel
+is grey and CTL reset/frame/vblank errors recur before any post-wake input.
+This upstream fix is insufficient on this tablet. Stock Android, the original
+graphics policy and filesystem checks were restored; CI44 stays installed.
+Do not install or repeat the unchanged CI47 candidate.
 
 CI45 verified the secondary rear OV02B10's full sensor ID and two8-frame RAW10
 capture cycles through SM8750 CAMSS, with clean Android restoration. Frames were
