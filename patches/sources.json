@@ -885,6 +885,7 @@
     "import_type": "Unchanged upstream mailing-list patch; context offset only",
     "hardware_tested": false,
     "source_validation": "Pinned Lenovo sun_data field order and V6 register mapping agree: ISLAND1 reserved mask0x7fffffff, bonus0. Current upstream has these fields reversed.",
-    "limitation": "Matching suspend-reset report on one SM8750 tablet was fixed, another was not. No proven causal attribution to TB522FU yet. No permanent LPASS/DDR votes added."
+    "limitation": "Matching suspend-reset report on one SM8750 tablet was fixed, another was not. No proven causal attribution to TB522FU yet. No permanent LPASS/DDR votes added.",
+    "hardware_result": "CI65 booted with llcc_qcom and all supported drivers. Freezer test passed; device PM reproduced a panel initialization timeout and blank display. Stopped before actual s2idle; effect on prior reset not evaluated. Android/graphics restoration passed; CI44 retained."
   }
 }

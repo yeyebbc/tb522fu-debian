@@ -6,9 +6,9 @@ Experimental native Linux port for the Lenovo Legion Y900 13 / TB522FU
 directions. This remains a development port with substantial peripheral work
 outstanding.
 
-**Current candidate: CI65 tests a cache reservation correction for full-system
-suspend. It restores touch and adds staged PM diagnostics. It is unverified;
-CI44 remains installed. Physical display wake is unresolved.**
+**CI65 failed display restoration in the device suspend diagnostic. It did
+not reach real sleep. Do not install it. CI44 remains the accepted installed
+kernel; suspend and physical display wake are unresolved.**
 
 Current installed kernel: `7.3.0-tb522fu-installed-ci44`, built from recipe
 `0a1847dd0b67991af502bfea9da36c5db50be3c4`. The installed image SHA256 is
@@ -751,3 +751,16 @@ and platform callback tests before real s2idle. All supported modules stay
 loaded. No permanent resource votes or unrelated USB changes are included.
 No promotion until same-boot resume, measurable sleep and physical fresh
 screen output pass, followed by exact restoration.
+
+## CI65 staged suspend result
+
+All supported drivers and Bluetooth startup completed. Freezing tasks passed.
+The device suspend/resume test returned in the same boot, but the panel's
+first initialization DCS command timed out (-110), followed by DSI lane/FIFO
+errors. Camera footage confirms a blank display. The test stopped before
+late/noirq callbacks and before actual s2idle. Thus the ISLAND1 correction's
+effect on the prior full-sleep reset remains untested. Kernel suspend success
+counters did not represent a working display. Android, graphics, filesystem,
+timer, services, network and worker restoration passed; CI44 stays installed.
+Do not install or repeat CI65 unchanged. Next inspect the first display command
+transfer and clock ownership across device PM before selecting another patch.

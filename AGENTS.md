@@ -405,3 +405,16 @@ and platform callback tests before real s2idle. All supported modules stay
 loaded. No permanent resource votes or unrelated USB changes are included.
 No promotion until same-boot resume, measurable sleep and physical fresh
 screen output pass, followed by exact restoration.
+
+## CI65 staged suspend result
+
+All supported drivers and Bluetooth startup completed. Freezing tasks passed.
+The device suspend/resume test returned in the same boot, but the panel's
+first initialization DCS command timed out (-110), followed by DSI lane/FIFO
+errors. Camera footage confirms a blank display. The test stopped before
+late/noirq callbacks and before actual s2idle. Thus the ISLAND1 correction's
+effect on the prior full-sleep reset remains untested. Kernel suspend success
+counters did not represent a working display. Android, graphics, filesystem,
+timer, services, network and worker restoration passed; CI44 stays installed.
+Do not install or repeat CI65 unchanged. Next inspect the first display command
+transfer and clock ownership across device PM before selecting another patch.
