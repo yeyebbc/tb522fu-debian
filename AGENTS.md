@@ -764,3 +764,19 @@ Next exact-image unconstrained-latency comparison admits SS3; require actual
 SS3 counter growth on return. Preserve reset evidence if it cannot return; do
 not infer state entry from admission alone. Greeter matches CI68's older reset
 context; preceding CI72 C4-only used the user desktop. No new kernel build.
+
+
+## Unconstrained CI72 reset
+
+Same image and greeter as the CL5 pass, all 39 supported modules + BT, normal
+console suspension; default 2147483647 us wakeup QoS. Awake RTC IRQ passed and
+one actual-s2idle request persisted, but the tablet restarted. A new boot ID
+and camera bootloader/kernel/greeter sequence prove reset, not resume. Missing
+post-sleep counters mean firmware SS3 entry is not proven. Pstore/archive empty;
+previous journal ends before the request. No unchanged rerun or installation.
+Prior C4/CL5 constrained diagnostic passes remain valid, not production policy.
+First recovery USB claim failed; existing guarded recovery restored exact stock
+Android. Raw monitor 1 / inspector 2 retained; all CI44/graphics/filesystem/timer/
+host/network/workers verified. Current source already has Qualcomm LLCC patch
+0219; do not reapply the earlier island-reservation patch. Next audit the deeper
+state's resource dependencies; no permanent votes or guessed PSCI parameters.

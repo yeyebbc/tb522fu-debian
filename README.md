@@ -6,10 +6,18 @@ Experimental native Linux port for the Lenovo Legion Y900 13 / TB522FU
 directions. This remains a development port with substantial peripheral work
 outstanding.
 
-**CI72 now resumes with CPU C4 and both cluster CL5 sleep states exercised,
-while system SS3 remains excluded. The recorded greeter returns and updates
-after about 20.3 seconds asleep. Unrestricted suspend and power savings remain
-unverified; CI44 remains installed.**
+**CPU and cluster sleep can resume with visible, updating GNOME output, but
+the unconstrained suspend test still restarted the tablet. Reliable unrestricted
+suspend remains unresolved; CI44 remains installed.**
+
+The same CI72 image passed the constrained cluster test, then reset during an
+unconstrained test in the same greeter context with all supported drivers and
+Bluetooth. A changed boot ID and camera footage of the bootloader and kernel
+confirm a restart. The saved suspend request survived, but post-sleep counters
+and a crash log did not; actual SS3 entry and the failing resource are unproven.
+Android, the installed kernel, graphics settings, filesystem and temporary
+services were restored. Keep this candidate experimental and do not repeat the
+unconstrained test unchanged.
 
 The same image first passed a C4-only cycle with a temporary 500 us limit,
 then a 5000 us cycle allowing CL5. The latter returned in the same boot with
@@ -49,10 +57,9 @@ SS3. Closing its descriptor removes the request. No sleep parameter or voltage
 is changed. This option was disabled in CI68, requiring the new kernel build.
 The earlier retained-buffer mapping and boot-debug experiments are excluded
 to preserve the comparison. Both builds and the bounded C4-only test passed.
-The 5000 us cluster comparison also passed. Next use the same image with the
-default unconstrained latency value to admit SS3, retaining the greeter context
-and independent recovery. Require actual SS3 s2idle counter growth if it returns.
-No production sleep-policy change is installed.
+The 5000 us cluster comparison passed, while the default unconstrained
+comparison reset. No production sleep-policy change is installed. Investigate
+the deeper state and its dependencies before selecting another diagnostic.
 
 Earlier, CI71 captured zero signatures in all six retained buffers during early
 ramoops initialization after a controlled EDL/programmer reboot. The marker
