@@ -19,6 +19,7 @@ from camera_checks import CAMERA_MODULES, check_camera_wiring
 from display_checks import DISPLAY_MODULES, check_native_display_wiring, check_panel_packets
 
 ROOT = Path(__file__).resolve().parents[1]
+PSTORE_BOOT_DEBUG = 'dyndbg="file fs/pstore/ram_core.c +p"'
 
 
 def run(args, **kwargs):
@@ -208,9 +209,12 @@ def main():
     make.append('LOCALVERSION=-' + args.profile + '-ci' + number)
     if disk:
         fragment = (ROOT / 'configs/ram-probe.fragment').read_text()
-        cmdline = re.search(r'^CONFIG_CMDLINE="(.*)"$', fragment, re.M)[1]
+        cmdline = json.loads(re.search(r'^CONFIG_CMDLINE=(.*)$', fragment, re.M)[1])
         if args.profile == 'disk-test':
             cmdline = cmdline.replace('probe_seconds=600', 'probe_seconds=900')
+            # ramoops initializes before userspace can enable its diagnostics.
+            # Limit this boot query to the bounded retention test profile.
+            cmdline += ' ' + PSTORE_BOOT_DEBUG
         else:
             cmdline = cmdline.replace(' qcom_scm.probe_edl_return=1', '')
             cmdline = cmdline.replace(' qcom_scm.probe_seconds=600', '')
@@ -286,7 +290,10 @@ def main():
     assert '# CONFIG_PM_TEST_SUSPEND is not set' in config
     assert '# CONFIG_RTC_HCTOSYS is not set' in config
     assert '# CONFIG_RTC_SYSTOHC is not set' in config
-    cmdline = next(s for s in config if s.startswith('CONFIG_CMDLINE='))
+    cmdline = json.loads(next(s.split('=', 1)[1] for s in config
+                             if s.startswith('CONFIG_CMDLINE=')))
+    assert cmdline.count('dyndbg=') == int(args.profile == 'disk-test')
+    assert (PSTORE_BOOT_DEBUG in cmdline) == (args.profile == 'disk-test')
     assert ('qcom_scm.probe_edl_return=1' in cmdline) == (args.profile != 'installed')
     blocked = {name for value in re.findall(r'modprobe.blacklist=([^ \"]+)', cmdline)
                for name in value.split(',')}

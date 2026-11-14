@@ -680,3 +680,19 @@ remain unresolved; improve early failure evidence before further sleep tests.
 Recipe `1c5c646ad44425a020eaad90acb33295ae66997a`, source
 `54fcde23311bf88f547a9c2cbfa246445476d01a`, bounded boot SHA256
 `0817afba2a815ca6b04ebcd120fb648174389d04b5bc6b26e0fd5f6d8e203ea8`.
+
+## Early retained-buffer diagnostics
+
+The next recipe keeps CI70's source and device tree unchanged. Only disk-test
+adds `dyndbg="file fs/pstore/ram_core.c +p"` to the forced command line. Dynamic
+debug parses boot queries at early_initcall, before ramoops' postcore_initcall.
+Its four existing sites report valid, empty or invalid-signature headers and
+the attached region's label/address/sizes. Preserve their ordering to associate
+each status with its subsequent attachment. ECC and invalid-size info messages
+also matter. Do not enable this query in installed or legacy RAM profiles.
+
+Decode Kconfig strings before checking or packaging command lines; embedded
+quotes are escaped in kernel.config. No new driver code, RAM address, mapping,
+idle state, power vote or restart behavior is introduced. Hardware is untested;
+first use remains a bounded two-boot marker diagnostic without a PM cycle.
+Keep CI44 installed and retain prior failures; logging is not wake acceptance.

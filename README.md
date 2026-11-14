@@ -10,6 +10,11 @@ outstanding.
 The default RAM mapping alone is insufficient. Display wake and suspend remain
 unresolved; CI44 remains installed.**
 
+The next diagnostic enables the existing ramoops header and region messages
+at boot, only in the bounded `disk-test` profile. It preserves CI70's source,
+device tree and power behavior. The purpose is to inspect retained-buffer
+state before initialization; it is not a suspend fix and has no hardware result.
+
 Current installed kernel: `7.3.0-tb522fu-installed-ci44`, built from recipe
 `0a1847dd0b67991af502bfea9da36c5db50be3c4`. The installed image SHA256 is
 `02adcbeb01e7742b3999a6ac5d2082cee3d10ad8c1a780612acd84c3f3d6468e`.
