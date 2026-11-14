@@ -75,6 +75,23 @@ Android, exact graphics rollback and filesystem checks passed; CI44 remains
 installed. Do not install or repeat CI51 unchanged. The next audit targets panel,
 dual-DSI and DSC output lifecycle; the remaining failure's cause is not established.
 
+A changed CI51 evidence probe compared private compositor screenshots with
+Pixel 6 camera footage in a signed-in session, without forcing ScreenShield
+state. GNOME screenshots show the desktop after wake, but the physical panel
+stays dark. This places the failure after compositor image production; it does
+not distinguish scanout, DSI, panel or backlight. No matched display fault
+appeared. Screenshot flash and user activity are timing/scene confounders.
+All Android, graphics, filesystem, timer and worker restoration checks passed.
+CI51 remains rejected; private recordings/screenshots are not published.
+
+CI52 adds one board-specific correction: send the BOE DVT2 panel shutdown
+commands in high-speed mode, matching its stock off-command-state. Restore the
+original transfer flags on success or error so initialization remains low-power.
+Commands, delays, supplies and other panel variants are unchanged. The 96-patch
+recipe retains the prior bus diagnostics and is experimental only. Physical
+wake/fresh frames and clean faults are required before any later clean candidate
+can be considered for installation. CI44 remains the installed baseline.
+
 CI45 verified the secondary rear OV02B10's full sensor ID and two8-frame RAW10
 capture cycles through SM8750 CAMSS, with clean Android restoration. Frames were
 nearly black. An isolated Debian libcamera 0.7.1 CPU software-ISP test subsequently

@@ -1,0 +1,53 @@
+From 992b59d2c5c2244caeb317a617c45216bac02d34 Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Sat, 14 Nov 2026 11:14:32 +0800
+Subject: [PATCH] drm/panel: novatek-nt36536: use HS for Y900 DVT2 shutdown
+
+The active BOE DVT2 stock panel describes its off command set as
+qcom,mdss-dsi-off-command-state = "dsi_hs_mode", while initialization
+uses LP mode. The current driver leaves MIPI_DSI_MODE_LPM enabled for
+both sequences, so the MIPI DSI core sets USE_LPM on the shutdown packets.
+
+Clear MODE_LPM only around this panel variant's display-off and enter-sleep
+commands, then restore the exact original flags even on a transfer error.
+The bonded MSM manager passes the same message flags to both links.
+Keep the existing commands, delays, initialization and other variants.
+
+This corrects a stock-protocol mismatch; it does not yet establish that
+physical wake is repaired. CI51 still renders desktop screenshots after
+wake while its physical panel stays dark. The display-bus diagnostics
+remain enabled for the next bounded test, not for production promotion.
+
+Protocol interpretation follows Lenovo's pinned dsi_panel_tx_cmd_set():
+https://github.com/lenovo-basements/android_kernel_lenovo_sm8750-modules/blob/e1f324632d70b2427751820cd48eefc45baab0ce/qcom/opensource/display-drivers/msm/dsi/dsi_panel.c
+Board transfer modes were verified against this tablet's runtime DT.
+
+Signed-off-by: Codex <codex@localhost>
+---
+ drivers/gpu/drm/panel/panel-novatek-nt36536.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/drivers/gpu/drm/panel/panel-novatek-nt36536.c b/drivers/gpu/drm/panel/panel-novatek-nt36536.c
+index 402e2265516b..97209e112bc2 100644
+--- a/drivers/gpu/drm/panel/panel-novatek-nt36536.c
++++ b/drivers/gpu/drm/panel/panel-novatek-nt36536.c
+@@ -392,10 +392,16 @@ static int y900_boe_nt36536e_init_seq(struct mipi_dsi_multi_context *dsi_ctx)
+ 
+ static int y900_boe_nt36536e_exit_seq(struct mipi_dsi_multi_context *dsi_ctx)
+ {
++	struct mipi_dsi_device *dsi = dsi_ctx->dsi;
++	unsigned long mode_flags = dsi->mode_flags;
++
++	/* The BOE DVT2 panel's shutdown sequence uses high-speed commands. */
++	dsi->mode_flags &= ~MIPI_DSI_MODE_LPM;
+ 	mipi_dsi_dcs_set_display_off_multi(dsi_ctx);
+ 	mipi_dsi_msleep(dsi_ctx, 20);
+ 	mipi_dsi_dcs_enter_sleep_mode_multi(dsi_ctx);
+ 	mipi_dsi_msleep(dsi_ctx, 120);
++	dsi->mode_flags = mode_flags;
+ 
+ 	return dsi_ctx->accum_err;
+ }
+-- 
+2.47.3
+
