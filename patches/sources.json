@@ -823,5 +823,18 @@
     "validation": "Four actual-C read allowlists plus12 old/new kickoff comparisons, ARM64 affected objects, strict checkpatch and mapped/subblock bounds. Sequential readbacks may serialize writes/perturb timing; shadow register values do not prove physical pixels.",
     "wake_accepted": false,
     "hardware_result": "CI60: all64 routing records captured; sampled startup/wake configuration identical, only current scan-line counters differ. Initial greeter visible, physical wake blank. No matched controller fault. Normal Android/graphics/filesystem/timer/host-service/worker restoration passed; CI44 retained."
+  },
+  "0210-tb522fu-bonded-dsi-master-pll.patch": {
+    "local_commit": "997e25079b2dc16b87eddd0d8fb08854e8693c33",
+    "sha256": "d6e1cc969f05468b1abf5256d9611bc6ee7ec63d8c426ba0bf6903c10b2c547f",
+    "source_commit": "07899dd43b1b4c8f12e11888344a31769ace4307",
+    "source_url": "https://github.com/TheMojoMan/oneplus-erhai-linux-old/commit/07899dd43b1b4c8f12e11888344a31769ace4307",
+    "source_copyright": "Copyright (c) 2026 TheMojoMan",
+    "license": "BSD-3-Clause; board adaptation retains the source origin and attribution",
+    "import_type": "Board-specific adaptation, not unchanged cherry-pick",
+    "hardware_tested": false,
+    "wake_accepted": false,
+    "source": "Align DSI1 named pixel/byte PLL input providers with the existing bonded PHY0-master/PHY1-external-source model. Stock active BOE DVT2 selects pll_byte_clk0/pll_dsi_clk0. Preserve all other clocks, physical PHY1 lane connection, rates, supplies and driver sequences.",
+    "validation": "Whole compiled DT differs only in two provider cells. Existing native wiring checks pass, old CI60 clock topology is rejected and four additional malformed clock/lane variants are rejected. Existing diagnostic patches remain; physical wake and later clean regression required."
   }
 }

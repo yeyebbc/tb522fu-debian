@@ -635,3 +635,15 @@ panel/backlight commands succeeded. Both CI profiles and normal Android,
 graphics, filesystem, timer, host-service and worker restoration pass. CI44 stays
 installed. Do not install or repeat CI60 unchanged. Continue a bounded PHY/PLL
 restart and clock-parent lifetime audit before changing hardware sequences.
+
+CI61 corrects a concrete bonded-DSI clock mismatch. The driver puts PHY1 on
+the master PLL0's external-clock path, while the inherited DSI1 host byte/pixel
+clock inputs still pointed to PLL1. The board now points those two named inputs
+to PHY0, following the [same-SoC correction](https://github.com/TheMojoMan/oneplus-erhai-linux-old/commit/07899dd43b1b4c8f12e11888344a31769ace4307)
+and the active stock panel's PLL0 selection. This is a credited board adaptation,
+not an unchanged import. The whole compiled device-tree comparison changes only
+two provider cells; the other ten clocks and physical PHY1 lane connection are
+preserved. No driver writes, reset sequence, delays, rates or voltages change.
+The new CI topology guard rejects the old mismatch and four malformed variants.
+No additional PHY diagnostic was added; existing bounded diagnostics remain.
+Keep CI44 installed until recorded wake and a later clean regression pass.

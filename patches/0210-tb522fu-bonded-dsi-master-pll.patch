@@ -1,0 +1,44 @@
+From 997e25079b2dc16b87eddd0d8fb08854e8693c33 Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Sat, 14 Nov 2026 14:07:49 +0800
+Subject: [PATCH] arm64: dts: qcom: tb522fu: share the master DSI PLL
+
+Bonded DSI selects PLL0 as master and puts PHY1 on the external PLL path. The inherited DSI1 host clocks still referenced PHY1, so its byte/pixel roots were reparented to a different provider. Point only those two named clocks at PHY0, preserving the other ten clock specifiers and the PHY1 lane connection. The active stock BOE DVT2 node selects pll_byte_clk0/pll_dsi_clk0, consistent with the vendor display shared PLL set.
+
+Adapt the shared-clock correction from TheMojoMan/oneplus-erhai-linux-old commit 07899dd43b1b4c8f12e11888344a31769ace4307 (TheMojoMan, BSD-3-Clause) to this board. This is a board adaptation, not an unchanged cherry-pick. Physical wake remains to be tested.
+
+Link: https://github.com/TheMojoMan/oneplus-erhai-linux-old/commit/07899dd43b1b4c8f12e11888344a31769ace4307
+
+Signed-off-by: Codex <codex@localhost>
+---
+ .../arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+index 3d1030a039ac..c4ac03c32119 100644
+--- a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
++++ b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+@@ -230,6 +230,20 @@ panel_in_1: endpoint {
+ };
+ 
+ &mdss_dsi1 {
++	/* Both bonded links use the master PLL; keep host and PHY aligned. */
++	clocks = <&dispcc DISP_CC_MDSS_BYTE1_CLK>,
++		 <&dispcc DISP_CC_MDSS_BYTE1_INTF_CLK>,
++		 <&dispcc DISP_CC_MDSS_PCLK1_CLK>,
++		 <&dispcc DISP_CC_MDSS_ESC1_CLK>,
++		 <&dispcc DISP_CC_MDSS_AHB_CLK>,
++		 <&gcc GCC_DISP_HF_AXI_CLK>,
++		 <&mdss_dsi0_phy DSI_PIXEL_PLL_CLK>,
++		 <&mdss_dsi0_phy DSI_BYTE_PLL_CLK>,
++		 <&dispcc DISP_CC_ESYNC1_CLK>,
++		 <&dispcc DISP_CC_OSC_CLK>,
++		 <&dispcc DISP_CC_MDSS_BYTE1_CLK_SRC>,
++		 <&dispcc DISP_CC_MDSS_PCLK1_CLK_SRC>;
++
+ 	vdda-supply = <&vreg_l3g>;
+ 	status = "okay";
+ 
+-- 
+2.47.3
+

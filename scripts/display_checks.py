@@ -127,7 +127,33 @@ def capture(args):
     return subprocess.check_output([str(x) for x in args], text=True).strip()
 
 
+def check_bonded_dsi_clocks(dtb):
+    """Keep both bonded host clocks on PLL0, matching the slave PHY source."""
+    display = '/soc@0/display-subsystem@ae00000'
+    phy0 = display + '/phy@ae95000'
+    phy1 = display + '/phy@ae97000'
+    refs = [int(capture(['fdtget', '-t', 'x', dtb, p, 'phandle']), 16)
+            for p in (phy0, phy1)]
+    assert refs[0] != refs[1]
+    for p in (phy0, phy1):
+        assert capture(['fdtget', '-t', 'i', dtb, p, '#clock-cells']) == '1'
+    names = ('byte byte_intf pixel core iface bus dsi_pll_pixel dsi_pll_byte '
+             'esync osc byte_src pixel_src').split()
+    for index, address in enumerate(('ae94000', 'ae96000')):
+        node = display + '/dsi@' + address
+        assert capture(['fdtget', '-t', 's', dtb, node, 'clock-names']).split() == names
+        cells = [int(v, 16) for v in capture(['fdtget', '-t', 'x', dtb, node, 'clocks']).split()]
+        assert len(cells) == 2 * len(names), 'Unexpected bonded clock specifiers'
+        for name, output in (('dsi_pll_pixel', 1), ('dsi_pll_byte', 0)):
+            offset = 2 * names.index(name)
+            assert cells[offset:offset + 2] == [refs[0], output], (node, name)
+        # The second controller still drives its own physical lane block.
+        assert capture(['fdtget', '-t', 'x', dtb, node, 'phys']) == format(refs[index], 'x')
+        assert 'qcom,dual-dsi-mode' in capture(['fdtget', '-p', dtb, node]).splitlines()
+
+
 def check_native_display_wiring(dtb):
+    check_bonded_dsi_clocks(dtb)
     # Native display coldplugs in disk profiles. Preserve the firmware
     # framebuffer until normal DRM dependency binding completes takeover.
     display = '/soc@0/display-subsystem@ae00000'
