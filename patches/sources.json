@@ -668,5 +668,15 @@
       "https://lore.kernel.org/all/20260721-add-support-for-camss-on-sm8750-v6-0-a5f841061d18@oss.qualcomm.com/",
       "https://github.com/lenovo-basements/android_kernel_lenovo_sm8750-modules/tree/e1f324632d70b2427751820cd48eefc45baab0ce/qcom/opensource/camera-kernel"
     ]
+  },
+  "0195-dpu-disconnect-slave-timing-mux.patch": {
+    "local_commit": "d9cff14de9fb94116d08609edda976d5dfd4c5c3",
+    "sha256": "344028efb49e2d89298f67e0d7e4eb57a1cf85bc4439e154d35c576d3eb40423",
+    "license": "GPL-2.0-only; existing source-file license retained",
+    "hardware_tested": false,
+    "source": "Mirror the existing split-slave INTF sync-mux enable on disable. Keeps the earlier slave-before-master DSI host shutdown. Wake outcome unverified.",
+    "references": [
+      "https://github.com/lenovo-basements/android_kernel_lenovo_sm8750-modules/blob/e1f324632d70b2427751820cd48eefc45baab0ce/qcom/opensource/display-drivers/msm/sde/sde_encoder_phys_vid.c"
+    ]
   }
 }

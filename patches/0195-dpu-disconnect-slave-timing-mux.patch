@@ -1,0 +1,43 @@
+From d9cff14de9fb94116d08609edda976d5dfd4c5c3 Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Sat, 14 Nov 2026 07:22:27 +0800
+Subject: [PATCH] drm/msm/dpu: Disconnect split slave timing mux during disable
+
+The local split-DSI enable path selects the master timing source for the
+slave interface through INTF_DPU_SYNC_CTRL. Disable only clears that
+interface's local timing-enable register, leaving the selected source
+connected during shared CTL cleanup.
+
+Mirror the existing enable predicate and disconnect the mux before local
+timing disable under the encoder lock. This matches the paired mux
+operations in Lenovo's GPL sde_encoder_phys_vid.c at e1f324632d70
+(qcom/opensource/display-drivers/msm/sde), while retaining this port's
+split-role model and all existing timing/CTL/clock behavior.
+
+ARM64 W=1 object compilation passes. This corrects the enable/disable
+asymmetry; the CI37 grey wake/CTL timeout has not been re-tested and this
+change alone is not claimed to resolve it.
+
+Signed-off-by: Codex <codex@localhost>
+---
+ drivers/gpu/drm/msm/disp/dpu1/dpu_encoder_phys_vid.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder_phys_vid.c b/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder_phys_vid.c
+index 2fcbefc59ffc..1242c7f810a9 100644
+--- a/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder_phys_vid.c
++++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder_phys_vid.c
+@@ -628,6 +628,10 @@ static void dpu_encoder_phys_vid_disable(struct dpu_encoder_phys *phys_enc)
+ 	}
+ 
+ 	spin_lock_irqsave(phys_enc->enc_spinlock, lock_flags);
++	/* Disconnect the slave's master-timing mux before pipeline teardown. */
++	if (phys_enc->split_role == ENC_ROLE_SLAVE &&
++	    phys_enc->hw_intf->ops.enable_dpu_sync_ctrl)
++		phys_enc->hw_intf->ops.enable_dpu_sync_ctrl(phys_enc->hw_intf, false);
+ 	phys_enc->hw_intf->ops.enable_timing(phys_enc->hw_intf, 0);
+ 	if (dpu_encoder_phys_vid_is_master(phys_enc))
+ 		dpu_encoder_phys_inc_pending(phys_enc);
+-- 
+2.47.3
+

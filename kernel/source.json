@@ -83,7 +83,16 @@
     "patches/0191-media-i2c-Add-OV02B10-24-MHz-RAW10-bring-up-driver.patch",
     "patches/0192-dt-bindings-media-Describe-SM8750-standalone-PHY-CAM.patch",
     "patches/0193-arm64-dts-qcom-sm8750-Describe-disabled-camera-resou.patch",
-    "patches/0194-arm64-dts-qcom-tb522fu-Connect-rear-OV02B10-camera.patch"
+    "patches/0194-arm64-dts-qcom-tb522fu-Connect-rear-OV02B10-camera.patch",
+    "patches/0153-ktz8869-global-enable.patch",
+    "patches/0154-tb522fu-dvt2-panel.patch",
+    "patches/0155-dpu-four-pipeline-clocks.patch",
+    "patches/0156-tb522fu-panel-supply-order.patch",
+    "patches/0157-tb522fu-staged-native-display-ssc.patch",
+    "patches/0158-tb522fu-backlight-dma-provider.patch",
+    "patches/0159-tb522fu-staged-adreno.patch",
+    "patches/0160-dsi-bonded-slave-power-off-first.patch",
+    "patches/0195-dpu-disconnect-slave-timing-mux.patch"
   ],
-  "patched_tree": "7a55b313fc66ef0dac7ad9e505bbcb068d29a315"
+  "patched_tree": "a6f8a46d10ece6456b20d25b271950b6758f4684"
 }

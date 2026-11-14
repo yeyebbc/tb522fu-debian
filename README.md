@@ -12,13 +12,20 @@ Current installed kernel: `7.3.0-tb522fu-installed-ci44`, built from recipe
 CI39 and CI32 remain available for rollback. Android return, stock boot and
 filesystem checks passed; the temporary acceptance timer has been removed.
 
-The current source candidate adds the SM8750 camera capture pipeline and a
-24 MHz OV02B10 driver for the secondary rear camera. The first camera's board
-wiring is included, but **no camera capture is hardware-verified**. All camera
-drivers remain modular and blocked from automatic startup for bounded testing.
-The other three sensors, application integration and image quality are pending.
-The complete 80-patch stack is checked against an exact patched-tree hash.
-No firmware, camera libraries, stock dumps or calibration data are distributed.
+The current source candidate restores native display/GPU support alongside the
+accepted peripheral drivers and adds the missing split-slave timing-mux disconnect
+on display disable. This is a bounded wake-test candidate, not an installed upgrade.
+The complete89-patch stack reproduces its exact patched-tree hash. The earlier
+slave-before-master DSI shutdown fix is retained; visible wake still needs testing.
+
+CI45 verified the secondary rear OV02B10's full sensor ID and two8-frame RAW10
+capture cycles through SM8750 CAMSS, with clean Android restoration. Frames were
+nearly black, so correct scene, color and image quality are not accepted. Initial
+libcamera enumeration now detects the sensor; processed capture and normal camera
+apps remain pending. The other three sensors remain disabled. All six camera
+modules stay blocked from automatic startup for further bounded testing.
+No firmware, proprietary camera libraries, stock dumps, images or calibration data
+are distributed.
 
 Automatic keyboard/trackpad startup, US Wi-Fi regulation, 5 GHz association and
 LAN transfers have passed on this unit. The six-speaker path and two WCD939x
@@ -69,7 +76,7 @@ matching Lenovo's display clock driver. This removes the first slave-clock
 shutdown warnings, but visible wake still fails with a blank grey panel.
 A follow-up test clears GNOME's screen shield and requests fresh UI activity;
 the shield is inactive but DPU CTL reset, frame and vblank timeouts appear.
-CI37 is rejected for promotion; installed CI39 retains the CI32 display baseline. The remaining display
+CI37 is rejected for promotion; installed CI44 retains the accepted framebuffer display baseline. The remaining display
 resume failure needs a separate fix.
 No RAM reservation, audio, panel timing or voltage changes are included.
 

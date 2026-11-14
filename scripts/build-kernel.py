@@ -16,6 +16,7 @@ import subprocess
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from camera_checks import CAMERA_MODULES, check_camera_wiring
+from display_checks import DISPLAY_MODULES, check_native_display_wiring
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -174,9 +175,10 @@ def main():
             cmdline = cmdline.replace(' qcom_scm.probe_seconds=600', '')
         # CI24 verified Wi-Fi initialization and real 5 GHz traffic. Both disk
         # profiles now exercise normal coldplug, retaining the accepted keyboard
-        # in peripheral tests. The legacy RAM probe remains manually staged.
+        # in peripheral tests. Native display coldplug is part of the wake candidate;
+        # camera and FastRPC activation remain explicit. Legacy RAM is manual.
         accepted = {'lenovo_yoga_keyboard', 'pwrseq_qcom_wcn',
-                    'pci_pwrctrl_pwrseq', 'ath12k', 'ath12k_wifi7'}
+                    'pci_pwrctrl_pwrseq', 'ath12k', 'ath12k_wifi7'} | DISPLAY_MODULES
 
         def retain_unverified(match):
             names = [name for name in match[1].split(',') if name not in accepted]
@@ -225,6 +227,10 @@ def main():
                     'CONFIG_PHY_QCOM_MIPI_CSI2=m', 'CONFIG_VIDEO_QCOM_CAMSS=m',
                     'CONFIG_VIDEO_OV02B10=m', 'CONFIG_VIDEO_V4L2_SUBDEV_API=y']:
         assert setting in config, setting
+    for setting in ['CONFIG_DRM_MSM=m', 'CONFIG_SM_DISPCC_8750=m',
+                    'CONFIG_BACKLIGHT_KTZ8866=m', 'CONFIG_QCOM_FASTRPC=m',
+                    'CONFIG_DRM_PANEL_NOVATEK_NT36536=m', 'CONFIG_SM_GPUCC_8750=m']:
+        assert setting in config, setting
     assert 'CONFIG_QCOM_SCM=y' in config
     for setting in ['CONFIG_BT=m', 'CONFIG_BT_BREDR=y', 'CONFIG_BT_LE=y',
                     'CONFIG_BT_HIDP=m', 'CONFIG_UHID=m', 'CONFIG_BT_QCA=m',
@@ -242,9 +248,9 @@ def main():
                for name in value.split(',')}
     assert ('lenovo_yoga_keyboard' in blocked) == (not disk)
     assert 'qcom_q6v5_pas' not in blocked
-    # Peripheral candidates use the accepted CI32 firmware framebuffer.
-    # GPU/DPMS changes remain separate until visible wake is fixed.
-    assert {'msm', 'dispcc_sm8750', 'ktz8866', 'panel_novatek_nt36536'} <= blocked
+    assert DISPLAY_MODULES.isdisjoint(blocked) if disk else DISPLAY_MODULES <= blocked
+    assert 'fastrpc' in blocked
+    assert 'module_blacklist=' not in cmdline
     assert 'hci_uart' not in blocked
     assert CAMERA_MODULES <= blocked, 'Camera activation must remain explicit'
     wifi_modules = {'pwrseq_qcom_wcn', 'pci_pwrctrl_pwrseq', 'ath12k', 'ath12k_wifi7'}
@@ -272,13 +278,14 @@ def main():
             ['fdtget', '-t', 'x', dtb, '/wcn7861-pmu/regulators/ldo' + str(ldo), 'phandle'])
     check_keyboard_wiring(dtb)
     check_camera_wiring(dtb, source)
+    check_native_display_wiring(dtb)
     for node, prop, typ, expected in [
         ('/soc@0/remoteproc@6800000', 'status', 's', 'okay'),
         ('/soc@0/remoteproc@6800000', 'firmware-name', 's',
          'qcom/sm8750/lenovo/tb522fu/adsp.mdt qcom/sm8750/lenovo/tb522fu/adsp_dtb.mdt'),
         ('/reserved-memory/adspslpi@9ee00000', 'reg', 'x', '0 9ee00000 0 5600000'),
         ('/reserved-memory/q6-adsp-dtb@9ed80000', 'reg', 'x', '0 9ed80000 0 80000'),
-        ('/soc@0/remoteproc@6800000/glink-edge/fastrpc', 'status', 's', 'disabled'),
+        ('/soc@0/remoteproc@6800000/glink-edge/fastrpc', 'status', 's', 'okay'),
         ('/soc@0/remoteproc@6800000/glink-edge/gpr', 'status', 's', 'okay'),
     ]:
         assert capture(['fdtget', '-t', typ, dtb, node, prop]) == expected, (node, prop)
@@ -364,7 +371,7 @@ def main():
                      'pwrseq_qcom_wcn', 'pci_pwrctrl_pwrseq', 'ath12k', 'ath12k_wifi7',
                      'snd_soc_aw88461', 'snd_soc_sc8280xp', 'reset_gpio',
                      'hci_uart', 'btqca', 'bluetooth', 'hidp', 'uhid', 'rfcomm', 'bnep'])
-    explicit.update(CAMERA_MODULES)
+    explicit.update(CAMERA_MODULES | DISPLAY_MODULES)
     for name in sorted(explicit):
         actual = capture(['modinfo', '-b', modules, '-k', release, '-F', 'name', name])
         assert actual.replace('-', '_') == name.replace('-', '_'), (name, actual)
@@ -395,7 +402,7 @@ def main():
     shutil.copy2(ROOT / 'kernel/source.json', target / 'source.json')
     recipe_files = ['configs/' + s for s in scripts] + [
         'configs/ram-probe.fragment', 'configs/udhcpd.conf', 'scripts/build-kernel.py',
-        'scripts/camera_checks.py']
+        'scripts/camera_checks.py', 'scripts/display_checks.py']
     seconds = 900 if args.profile == 'disk-test' else 600
     manifest = {'profile': args.profile, 'source': spec, 'compiler': capture([compiler, '--version']).splitlines()[0],
                 'recipe_commit': recipe_commit,

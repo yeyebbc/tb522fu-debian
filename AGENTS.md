@@ -16,9 +16,13 @@ stock partition images and local environment paths out of tracked files.
 
 - Resolve every explicit modprobe/blacklist name against built modules with modinfo; Kconfig and driver names do not reliably match module filenames. ci12 artifact uses ufs_qcom; its original helper typo is corrected in RAM before the first storage test.
 
-- Camera source candidate: secondary rear OV02B10 only, hardware untested.
-  Preserve the six camera module blacklist entries in all profiles until the
-  bounded tests have passed. Build guards verify slot2 wiring, exact supported
-  regulator voltages, PHY5 supplies and graph reciprocity. Camera capture is not
-  accepted by a build or device-node presence. All80 patches must reproduce
-  kernel/source.json patched_tree. The installed baseline remainsCI44.
+- Camera candidate: secondary rear OV02B10 only. CI45 full ID and two short
+  RAW10 cycles pass; scene/color quality and ordinary applications do not.
+  Preserve all six camera module blacklist entries until broader acceptance.
+  Camera presence or enumeration is insufficient. The installed baseline isCI44.
+- The new native-display wake candidate restores the prior native patches plus
+  the slave timing-mux disconnect. Keep the earlier slave-first DSI shutdown.
+  Native modules coldplug only in disk profiles; FastRPC and camera remain manual.
+  The89-patch stack must reproduce kernel/source.json patched_tree. Preserve
+  keyboard/BT/audio/camera wiring checks alongside display checks. No promotion
+  until actual fresh screen frames after wake and clean fault logs pass.
