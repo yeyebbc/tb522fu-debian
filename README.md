@@ -6,7 +6,7 @@ Experimental native Linux port for the Lenovo Legion Y900 13 / TB522FU
 directions. This remains a development port with substantial peripheral work
 outstanding.
 
-**Latest build: CI64 is diagnostic only and intentionally disables touch in
+**Latest build: CI64 failed physical wake and intentionally disables touch in
 both profiles. Do not install it. CI44 remains the accepted installed kernel;
 physical display wake is still unresolved.**
 
@@ -722,3 +722,14 @@ pixels, one recorded wake cycle and exact restoration are required. Even if
 wake succeeds, remove this diagnostic before production acceptance and resolve
 the interaction with touch enabled. If it fails, shared TDDI hardware/reset
 causes remain open. CI44 stays installed; neither CI64 profile may be promoted.
+
+CI64 completed: touch isolation was verified before and after the cycle, but
+physical display wake still failed. The initial greeter was visible; the panel
+remained blank after wake, also confirmed by the user. Both PHYs and routing
+were captured without matched display-controller faults; panel and backlight
+calls returned success. Linux touch activity is therefore not necessary for
+this failure, while shared TDDI hardware/reset remains unexcluded. Android,
+exact graphics rollback, filesystem checks, timer retirement and all worker
+cleanup passed. CI44 remains installed. Do not install or repeat CI64 unchanged.
+The next user-requested experiment reuses CI63 with touch and keyboard enabled
+to distinguish real whole-system suspend from the earlier display-only cycles.

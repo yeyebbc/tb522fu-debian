@@ -870,10 +870,11 @@
     "sha256": "31aee4e367e297737f5362d4db9aeb1d48779ef1818149c05c31a665c07e06fd",
     "license": "BSD-3-Clause; existing board attribution retained",
     "diagnostic_only": true,
-    "hardware_tested": false,
+    "hardware_tested": true,
     "promotion_allowed": false,
     "source": "Disable only the touchscreen DT node to isolate Linux touch firmware reload, suspend/resume and IRQ activity from a shared display/TDDI wake failure. Stock notifier resumes after display commit; current follower begins at panel preparation with a500ms wait. This difference is a lead, not a proven cause.",
     "validation": "Whole compiled DT differs only in touchscreen status okay->disabled; SPI controller, keyboard and all panel/PHY/clock settings preserved. Actual runtime isolation helper accepts absence and rejects six violations. Existing synthetic-focus/fault/compositor helper ASTs unchanged. Native wiring guard passes candidate and rejects prior enabled-touch DT. DTcompile, strictstyle and12 recipe tests pass.",
-    "removal": "Remove0213 and the diagnostic-only touch-status build guard before production acceptance. This intentionally disables touch in both built profiles; neither is for installation."
+    "removal": "Remove0213 and the diagnostic-only touch-status build guard before production acceptance. This intentionally disables touch in both built profiles; neither is for installation.",
+    "hardware_result": "CI64 runtime touch-isolation checks passed at coldplug and after wake; physical wake failed. Linux touch activity is not necessary for this failure. Shared TDDI hardware/reset remains open. Exact restoration passed; CI44 preserved."
   }
 }
