@@ -624,3 +624,14 @@ This remains diagnostic only; preserve CI44 and require physical camera review
 plus exact restoration. The recent upstream DSC cleanup proposal concerns
 changed resource assignments; no such transition is established by current
 captures, so it is not speculatively included.
+
+CI60 diagnostic capture passed, but physical wake is REJECTED. Initial greeter
+pixels are visible; the camera remains blank after wake and fresh focus input.
+All64 routing records were captured. Sampled DSC/CTL/INTF routing, compression,
+size and timing configuration matches working startup; only the current scan
+line counters differ. These sequential readbacks do not prove active-shadow
+latching or valid pixels on the wire. No matched controller fault appeared, and
+panel/backlight commands succeeded. Both CI profiles and normal Android,
+graphics, filesystem, timer, host-service and worker restoration pass. CI44 stays
+installed. Do not install or repeat CI60 unchanged. Continue a bounded PHY/PLL
+restart and clock-parent lifetime audit before changing hardware sequences.
