@@ -256,3 +256,14 @@ and12 recipe tests pass. This tests a power/reset lead; it does not establish
 rail voltages or successful wake. Remove0208 and its candidate-only build guard
 before any production acceptance, even if this experiment wakes visibly. CI44
 remains installed; use one recorded bounded cycle and exact Android restoration.
+
+CI59 is tested and REJECTED for physical wake. The initial greeter is visible,
+but the recorded panel stays blank after wake, matching the user's observation.
+Logs confirm initial supply acquisition, retention during screen-off and reuse
+at wake; this is not a voltage measurement. Retention is insufficient to fix
+wake, and does not exclude every panel/reset failure. Both backlight chips and
+panel commands return success, with no matched controller fault. Both CI profiles
+pass. Normal Android return, exact graphics rollback, filesystem, timers, host
+services and worker cleanup pass. CI44 stays installed. Remove the temporary
+retention patch and its candidate-only build guard before the next candidate;
+continue a bounded DPU/DSC/INTF routing audit. Do not repeat or promote CI59.

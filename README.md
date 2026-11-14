@@ -598,3 +598,14 @@ attributed upstream callback fixes plus failed-probe receive draining.
 Wi-Fi needs an explicit local country hint for its self-managed PHY; a global
 module hint alone does not configure the radio. Those early speaker blockers
 were resolved before CI28; current acceptance is described at the top of this page.
+
+CI59 is tested and REJECTED for physical wake. The initial greeter is visible,
+but the recorded panel stays blank after wake, matching the user's observation.
+Logs confirm initial supply acquisition, retention during screen-off and reuse
+at wake; this is not a voltage measurement. Retention is insufficient to fix
+wake, and does not exclude every panel/reset failure. Both backlight chips and
+panel commands return success, with no matched controller fault. Both CI profiles
+pass. Normal Android return, exact graphics rollback, filesystem, timers, host
+services and worker cleanup pass. CI44 stays installed. Remove the temporary
+retention patch and its candidate-only build guard before the next candidate;
+continue a bounded DPU/DSC/INTF routing audit. Do not repeat or promote CI59.

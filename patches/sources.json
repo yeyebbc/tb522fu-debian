@@ -803,10 +803,12 @@
     "sha256": "a63bfa24625dee44f4165bd723eb6d4c19fb71402ab7bd0149f86e3c78fa6de7",
     "license": "GPL-2.0-only; existing source-file author attribution retained",
     "diagnostic_only": true,
-    "hardware_tested": false,
+    "hardware_tested": true,
     "promotion_allowed": false,
     "source": "Local bounded discriminator: preserve BOE panel-only rail references during DPMS because secure reset is unavailable. Keep first supply ordering and errors, DCS/PPS/backlight/host/PHY/DSC unchanged. Other panels unchanged.",
     "validation": "19 actual-C lifecycle/error cases, three rejected negative controls including removed warm settling delays; unchanged 32-packet/64-failure contract, ARM64 panel object and strict checkpatch pass. No physical voltage or wake claim.",
-    "removal": "Remove retention patch and candidate-only check_panel_power build guard before any production promotion."
+    "removal": "Remove retention patch and candidate-only check_panel_power build guard before any production promotion.",
+    "wake_accepted": false,
+    "hardware_result": "CI59: acquired/hold/reuse callbacks confirmed, but physical camera and user show blank wake. No matched controller fault. Normal Android/graphics/filesystem/timer/host-service/worker restoration passed; CI44 retained. Reference counts do not measure actual rail voltage."
   }
 }
