@@ -26,3 +26,9 @@ stock partition images and local environment paths out of tracked files.
   The89-patch stack must reproduce kernel/source.json patched_tree. Preserve
   keyboard/BT/audio/camera wiring checks alongside display checks. No promotion
   until actual fresh screen frames after wake and clean fault logs pass.
+- CI46 was tested and rejected: grey physical panel after wake and CTL reset,
+  frame/vblank timeouts after a fresh GNOME update. The slave mux disconnect is
+  insufficient. Preserve this failure and CI44 production; no unchanged repeat.
+- Isolated libcamera 0.7.1 CPU processing on CI45 captured 90+8 RGB888 frames;
+  images remain dark/purple. Quality, timing and ordinary camera apps are open.
+  The private bundle preserves Debian 0.4/PipeWire/accepted audio libraries.

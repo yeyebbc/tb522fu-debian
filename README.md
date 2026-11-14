@@ -12,17 +12,20 @@ Current installed kernel: `7.3.0-tb522fu-installed-ci44`, built from recipe
 CI39 and CI32 remain available for rollback. Android return, stock boot and
 filesystem checks passed; the temporary acceptance timer has been removed.
 
-The current source candidate restores native display/GPU support alongside the
-accepted peripheral drivers and adds the missing split-slave timing-mux disconnect
-on display disable. This is a bounded wake-test candidate, not an installed upgrade.
-The complete89-patch stack reproduces its exact patched-tree hash. The earlier
-slave-before-master DSI shutdown fix is retained; visible wake still needs testing.
+CI46 restores native display/GPU support alongside the accepted peripherals and
+adds the split-slave timing-mux disconnect on display disable. Both CI profiles
+build and the complete 89-patch stack reproduces its pinned tree. Hardware testing
+rejects this candidate for installation: initial rendering works, but the panel
+stays grey after wake, and requesting a fresh GNOME update triggers CTL reset,
+frame and vblank timeouts. The mux change does not resolve the wake failure.
+The installed kernel remains CI44; do not promote CI46 or repeat it unchanged.
 
 CI45 verified the secondary rear OV02B10's full sensor ID and two8-frame RAW10
 capture cycles through SM8750 CAMSS, with clean Android restoration. Frames were
-nearly black, so correct scene, color and image quality are not accepted. Initial
-libcamera enumeration now detects the sensor; processed capture and normal camera
-apps remain pending. The other three sensors remain disabled. All six camera
+nearly black. An isolated Debian libcamera 0.7.1 CPU software-ISP test subsequently
+captured 90+8 RGB888 frames in two stream cycles. Scene detail is visible, but
+images remain dark and purple-tinted; color, exposure, timing metadata and normal
+camera applications remain unaccepted. The other three sensors remain disabled. All six camera
 modules stay blocked from automatic startup for further bounded testing.
 No firmware, proprietary camera libraries, stock dumps, images or calibration data
 are distributed.
