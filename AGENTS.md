@@ -207,3 +207,15 @@ ARM64 affected objects, strict checkpatch, packet contract and12 recipe tests
 pass; inherited DPU kernel-doc warnings remain. Logging/reads perturb timing;
 no promotion even if the image appears to wake. Keep9 scoped output sites and
 one recorded cycle with exact rollback; do not enable broad y900.trace.
+
+CI57 diagnostic capture passed, but physical wake is REJECTED. Both CI
+profiles succeeded. The camera shows the greeter before screen-off and a blank
+panel after wake. All28 link records were captured: timing, control/compression,
+PPS checksum and DSC route metadata match initial startup. A dynamic clock-status
+reading on one link and lane status on the other differ during sequential
+first-start samples. These are not steady-state measurements or proof of a
+root cause. Both backlight chips and panel commands return success, and no
+matched controller fault occurs. Android, exact graphics rollback, filesystem,
+timer, host-service and worker checks pass. Keep CI44 installed; do not promote
+or repeat CI57 unchanged. Audit output restoration before selecting another
+experiment. Private recordings and identifiers remain unpublished.
