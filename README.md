@@ -132,6 +132,17 @@ merge passes all 95 recipe setting checks. The only functional change from CI53
 is the built-in backlight class core. Source and diagnostic scope are unchanged;
 physical wake acceptance is still pending.
 
+CI55 now passes the backlight-control check but still fails physical wake.
+The compiled panel imports the real backlight helper. During one off/on cycle,
+both backlight chips receive zero brightness/disable and then the requested
+positive brightness/enable, with successful transport returns. The user sees
+the backlight on without an image; camera footage confirms a visible greeter
+before the cycle and blank output afterward, including fresh focus updates.
+No matched display-controller fault recurs. Android, exact graphics rollback,
+filesystem checks and cleanup pass. CI44 remains installed; do not install or
+repeat CI55 unchanged. The next audit targets panel/video restart, not additional
+backlight writes. Software rendering success remains separate from physical wake.
+
 CI45 verified the secondary rear OV02B10's full sensor ID and two8-frame RAW10
 capture cycles through SM8750 CAMSS, with clean Android restoration. Frames were
 nearly black. An isolated Debian libcamera 0.7.1 CPU software-ISP test subsequently

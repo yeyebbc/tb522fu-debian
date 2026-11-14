@@ -169,3 +169,12 @@ retaining the guard. A fresh defconfig/fragment merge passes all 95 recipe
 setting assertions; the only functional change from CI53 is the class core=m→y.
 Cross-toolchain labels, pahole availability and an explicitly disabled XML
 validator differ locally. The source and diagnostic scope are unchanged.
+
+CI55 hardware test: backlight association fixed, physical wake REJECTED.
+Actual module linkage and off/on writes to both chips pass; the user observes
+backlight on without an image, matching blank post-wake camera frames. Panel
+init/PPS and software render checks pass without matched controller faults.
+Android/graphics/fullfsck/timer/host-service/worker restoration passed; keepCI44.
+No unchanged repeat or installation. Investigate panel/video restart; do not
+guess reserved reset GPIOs or unsupported DCS reads. Diagnostic cleanup remains
+conditional on later physical success and fresh broader regression acceptance.
