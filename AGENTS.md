@@ -723,3 +723,16 @@ verified exact Android restoration, CI44 preservation, graphics/filesystem,
 timer and host cleanup. Preserve the raw failure. Next distinguish CPU-only
 C4 from shared cluster/system state selection, retaining CPU performance
 domains and known firmware parameters. No new source candidate is selected.
+
+## CPU wakeup QoS diagnostic
+
+Return the recipe to exact CI68 source/tree and its109 byte-identical patches.
+Only disk-test enables CONFIG_PM_QOS_CPU_SYSTEM_WAKEUP; other profiles keep it
+disabled. Command lines match CI68, without the CI71 retained-buffer query.
+Ramoops geometry/mapping and CPU/performance/shared-domain topology match CI68.
+The new image exposes a descriptor-scoped wakeup QoS request. A500us limit can
+separate C4 from CL5/SS3; verify aggregate readback, CPU and shared-domain
+s2idle counters, same boot/RTC and physical fresh frames before accepting the
+diagnostic. Do not substitute cpu_dma_latency or install constrained sleep as
+a fix. Keep complete Android/graphics/timer recovery and all39 supported modules
+plus BT. No new hardware test has occurred; installed CI44 remains unchanged.

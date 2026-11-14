@@ -19,7 +19,6 @@ from camera_checks import CAMERA_MODULES, check_camera_wiring
 from display_checks import DISPLAY_MODULES, check_native_display_wiring, check_panel_packets
 
 ROOT = Path(__file__).resolve().parents[1]
-PSTORE_BOOT_DEBUG = 'dyndbg="file fs/pstore/ram_core.c +p"'
 
 
 def run(args, **kwargs):
@@ -34,8 +33,8 @@ def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def check_retention_diagnostic(dtb):
-    """Use default ramoops mapping while preserving geometry and all idle states."""
+def check_idle_comparison(dtb):
+    """Preserve the complete CI68 idle topology and retained-buffer layout."""
     def value(node, prop):
         return capture(['fdtget', '-t', 'x', dtb, node, prop])
 
@@ -68,7 +67,7 @@ def check_retention_diagnostic(dtb):
     assert value(ramoops, 'reg') == '0 c2000000 0 c0000'
     assert 'no-map' in capture(['fdtget', '-p', dtb, ramoops]).splitlines()
     assert 'ftrace-size' not in capture(['fdtget', '-p', dtb, ramoops]).splitlines()
-    for prop, expected in (('mem-type', 0), ('record-size', 0x10000),
+    for prop, expected in (('mem-type', 2), ('record-size', 0x10000),
                            ('console-size', 0x40000), ('pmsg-size', 0x40000),
                            ('ecc-size', 16), ('max-reason', 4)):
         assert int(value(ramoops, prop), 16) == expected, prop
@@ -207,14 +206,16 @@ def main():
     run([source / 'scripts/config', '--file', out / '.config', '--set-str', 'LOCALVERSION',
          '-tb522fu'])
     make.append('LOCALVERSION=-' + args.profile + '-ci' + number)
+    # Expose a temporary userspace wakeup-latency request for the bounded
+    # CPU-versus-shared-domain comparison. Installed/RAM policy is unchanged.
+    run([source / 'scripts/config', '--file', out / '.config',
+         '--enable' if args.profile == 'disk-test' else '--disable',
+         'PM_QOS_CPU_SYSTEM_WAKEUP'])
     if disk:
         fragment = (ROOT / 'configs/ram-probe.fragment').read_text()
         cmdline = json.loads(re.search(r'^CONFIG_CMDLINE=(.*)$', fragment, re.M)[1])
         if args.profile == 'disk-test':
             cmdline = cmdline.replace('probe_seconds=600', 'probe_seconds=900')
-            # ramoops initializes before userspace can enable its diagnostics.
-            # Limit this boot query to the bounded retention test profile.
-            cmdline += ' ' + PSTORE_BOOT_DEBUG
         else:
             cmdline = cmdline.replace(' qcom_scm.probe_edl_return=1', '')
             cmdline = cmdline.replace(' qcom_scm.probe_seconds=600', '')
@@ -292,8 +293,10 @@ def main():
     assert '# CONFIG_RTC_SYSTOHC is not set' in config
     cmdline = json.loads(next(s.split('=', 1)[1] for s in config
                              if s.startswith('CONFIG_CMDLINE=')))
-    assert cmdline.count('dyndbg=') == int(args.profile == 'disk-test')
-    assert (PSTORE_BOOT_DEBUG in cmdline) == (args.profile == 'disk-test')
+    assert 'dyndbg=' not in cmdline
+    qos_setting = ('CONFIG_PM_QOS_CPU_SYSTEM_WAKEUP=y' if args.profile == 'disk-test'
+                   else '# CONFIG_PM_QOS_CPU_SYSTEM_WAKEUP is not set')
+    assert qos_setting in config, 'Wakeup QoS must be limited to the diagnostic profile'
     assert ('qcom_scm.probe_edl_return=1' in cmdline) == (args.profile != 'installed')
     blocked = {name for value in re.findall(r'modprobe.blacklist=([^ \"]+)', cmdline)
                for name in value.split(',')}
@@ -310,7 +313,7 @@ def main():
         assert 'CONFIG_EXT4_FS=y' in config
     run(make + [spec['board_dtb']])
     dtb = out / 'arch/arm64/boot/dts' / spec['board_dtb']
-    check_retention_diagnostic(dtb)
+    check_idle_comparison(dtb)
     bt_uart = '/soc@0/geniqup@8c0000/serial@898000'
     bt = bt_uart + '/bluetooth'
     assert capture(['fdtget', '-t', 's', dtb, '/aliases', 'serial1']) == bt_uart

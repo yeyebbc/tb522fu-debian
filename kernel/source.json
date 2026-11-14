@@ -112,8 +112,7 @@
     "patches/0216-dsi-park-clocks-before-pll-shutdown.patch",
     "patches/0217-sm8750-dsi-idle-crystal-inputs.patch",
     "patches/0218-dwc3-defer-glue-role-notification.patch",
-    "patches/0219-sm8750-llcc-settings.patch",
-    "patches/0221-tb522fu-ramoops-default-mapping.patch"
+    "patches/0219-sm8750-llcc-settings.patch"
   ],
-  "patched_tree": "57468fc57780b4a734cc55e0a0f9e0f8e96e3663"
+  "patched_tree": "9fa278d7be6bce6a9ec6c7f661f8924e85925301"
 }

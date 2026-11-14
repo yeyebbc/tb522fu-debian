@@ -28,6 +28,16 @@ on-device suspend diagnostic. Recipe `63d9e96a7ca697580282f8a1872a6051c1a2e5b3`,
 kernel source `7bc64379ce1ced431d52a4e700d8848030a7939f`, boot SHA256
 `1dd0a4d1e5b83c4bf1f3947466931becf73906105860c39acb58c1f82a4dcee6`.
 
+The next diagnostic returns to that exact CI68 source and device tree and enables
+`CONFIG_PM_QOS_CPU_SYSTEM_WAKEUP` only in `disk-test`. The existing
+`/dev/cpu_wakeup_latency` interface can constrain both s2idle CPU selection and
+shared CPU power domains. A temporary 500 us request admits the existing
+222/302 us CPU C4 states while excluding 4133 us cluster CL5 and 7200 us system
+SS3. Closing its descriptor removes the request. No sleep parameter or voltage
+is changed. This option was disabled in CI68, so it needs a new kernel build.
+The earlier retained-buffer mapping and boot-debug experiments are excluded
+to preserve the comparison. Hardware behavior is untested; CI44 stays installed.
+
 Earlier, CI71 captured zero signatures in all six retained buffers during early
 ramoops initialization after a controlled EDL/programmer reboot. The marker
 was absent before userspace archival.
