@@ -86,3 +86,13 @@ readback/logging timing prevents treating improved startup as a fix. Exact
 Android/graphics/fullfsck/timer/worker restoration passed. CI44 retained.
 No unchanged repeat or promotion. Audit stock QACTIVE/CESTA applicability and
 shared-bus lifecycle before selecting another correction; do not guess writes.
+
+## CI51 paired QACTIVE protocol experiment
+
+Patch0202 adds the stock QACTIVE assertion before AXI halt, with local save/restore
+after release for mainline shared-parent PM. Only SM8750 enables it; register
+0xae8000c is MDP-relative0x7f00c, NOT the stock MDSS-relative0x8000c. Resource
+bounds are checked.95 patches must replay exactly. Retain CI50 logs/readbacks;
+this is experimental, not installable. No extra clocks, rates, OPPs, voltages,
+delays or retries. Evaluate halt ACK separately from physical wake/fresh frames.
+No promotion without a later clean candidate and appropriate regression checks.

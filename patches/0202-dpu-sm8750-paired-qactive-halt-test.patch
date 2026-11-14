@@ -1,0 +1,188 @@
+From 6597c8dc7f41966760e8e32f26273fd1c72ef822 Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Sat, 14 Nov 2026 10:26:30 +0800
+Subject: [PATCH] drm/msm/dpu: test paired QACTIVE override around AXI halt
+
+CI50 observes two startup halt ACKs but an idle-only timeout at screen-off.
+Lenovo SM8750 downstream explicitly asserts UIDLE QACTIVE before VBIF halt
+for CESTA mode2 entry. Test that protocol step without importing the CESTA
+clock manager or changing rates, OPPs, voltages or polling deadlines.
+
+The stock DT maps MDSS at 0xae00000 with UIDLE at offset 0x80000. Mainline
+maps MDP at 0xae01000, so QACTIVE at UIDLE+0xc is MDP+0x7f00c. Check the
+resource bounds before enabling the SM8750-only catalog entry. Save the
+previous register and restore it after AXI release because the shared
+parent may remain powered. Teardown resumes to release a pending override.
+
+Keep CI50 logging and add the override readbacks: this is an experimental
+protocol test, not a production fix. An ACK does not establish physical
+wake, and logging/readback timing remains a confounder.
+
+Protocol source (GPL-2.0-only):
+https://github.com/lenovo-basements/android_kernel_lenovo_sm8750-modules/blob/e1f324632d70b2427751820cd48eefc45baab0ce/qcom/opensource/display-drivers/msm/sde/sde_hw_uidle.c
+The original Qualcomm source-file copyright is retained. The paired restore
+is local adaptation for mainline shared-parent runtime PM.
+
+Signed-off-by: Codex <codex@localhost>
+---
+ .../msm/disp/dpu1/catalog/dpu_12_0_sm8750.h   |  2 +
+ .../gpu/drm/msm/disp/dpu1/dpu_hw_catalog.h    |  2 +
+ drivers/gpu/drm/msm/disp/dpu1/dpu_kms.c       | 52 +++++++++++++++++++
+ drivers/gpu/drm/msm/disp/dpu1/dpu_kms.h       |  3 ++
+ 4 files changed, 59 insertions(+)
+
+diff --git a/drivers/gpu/drm/msm/disp/dpu1/catalog/dpu_12_0_sm8750.h b/drivers/gpu/drm/msm/disp/dpu1/catalog/dpu_12_0_sm8750.h
+index 2c3ac369fb66..5e56b320175b 100644
+--- a/drivers/gpu/drm/msm/disp/dpu1/catalog/dpu_12_0_sm8750.h
++++ b/drivers/gpu/drm/msm/disp/dpu1/catalog/dpu_12_0_sm8750.h
+@@ -464,6 +464,8 @@ const struct dpu_mdss_cfg dpu_sm8750_cfg = {
+ 	.mdss_ver = &sm8750_mdss_ver,
+ 	.caps = &sm8750_dpu_caps,
+ 	.mdp = &sm8750_mdp,
++	/* UIDLE is at MDSS + 0x80000; the MDP mapping starts at +0x1000. */
++	.qactive_offset = 0x7f00c,
+ 	.cdm = &dpu_cdm_5_x,
+ 	.ctl_count = ARRAY_SIZE(sm8750_ctl),
+ 	.ctl = sm8750_ctl,
+diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_catalog.h b/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_catalog.h
+index 50ae8792bca9..61a5ac5390b2 100644
+--- a/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_catalog.h
++++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_catalog.h
+@@ -713,6 +713,7 @@ struct dpu_perf_cfg {
+  * @dma_formats        Supported formats for dma pipe
+  * @cursor_formats     Supported formats for cursor pipe
+  * @vig_formats        Supported formats for vig pipe
++ * @qactive_offset     QACTIVE override register relative to MDP, or zero
+  */
+ struct dpu_mdss_cfg {
+ 	const struct dpu_mdss_version *mdss_ver;
+@@ -720,6 +721,7 @@ struct dpu_mdss_cfg {
+ 	const struct dpu_caps *caps;
+ 
+ 	const struct dpu_mdp_cfg *mdp;
++	u32 qactive_offset;
+ 
+ 	u32 ctl_count;
+ 	const struct dpu_ctl_cfg *ctl;
+diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_kms.c b/drivers/gpu/drm/msm/disp/dpu1/dpu_kms.c
+index d747aad3fbc9..596dff7e7ab8 100644
+--- a/drivers/gpu/drm/msm/disp/dpu1/dpu_kms.c
++++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_kms.c
+@@ -905,6 +905,7 @@ static void _dpu_kms_hw_destroy(struct dpu_kms *dpu_kms)
+ static void dpu_kms_destroy(struct msm_kms *kms)
+ {
+ 	struct dpu_kms *dpu_kms;
++	int ret;
+ 
+ 	if (!kms) {
+ 		DPU_ERROR("invalid kms\n");
+@@ -913,6 +914,18 @@ static void dpu_kms_destroy(struct msm_kms *kms)
+ 
+ 	dpu_kms = to_dpu_kms(kms);
+ 
++	/* Resume restores a pending override before the register map goes away. */
++	if (dpu_kms->qactive_saved) {
++		ret = pm_runtime_resume_and_get(&dpu_kms->pdev->dev);
++		if (ret < 0) {
++			DPU_ERROR("cannot restore QACTIVE at teardown: %d\n", ret);
++		} else {
++			dpu_kms->qactive_reg = NULL;
++			pm_runtime_put_sync(&dpu_kms->pdev->dev);
++		}
++	}
++	dpu_kms->qactive_reg = NULL;
++
+ 	_dpu_kms_hw_destroy(dpu_kms);
+ 
+ 	msm_kms_destroy(&dpu_kms->base);
+@@ -1154,6 +1167,7 @@ static int dpu_kms_hw_init(struct msm_kms *kms)
+ {
+ 	struct dpu_kms *dpu_kms;
+ 	struct drm_device *dev;
++	struct resource *res;
+ 	int rc = -EINVAL;
+ 	unsigned long max_core_clk_rate;
+ 	u32 core_rev;
+@@ -1294,6 +1308,16 @@ static int dpu_kms_hw_init(struct msm_kms *kms)
+ 
+ 	dpu_vbif_init_memtypes(dpu_kms);
+ 
++	if (dpu_kms->catalog->qactive_offset) {
++		res = platform_get_resource_byname(dpu_kms->pdev, IORESOURCE_MEM, "mdp");
++		if (!res || resource_size(res) <
++		    (resource_size_t)dpu_kms->catalog->qactive_offset + sizeof(u32)) {
++			rc = -EINVAL;
++			goto err_pm_put;
++		}
++		dpu_kms->qactive_reg = dpu_kms->mmio + dpu_kms->catalog->qactive_offset;
++	}
++
+ 	pm_runtime_put_sync(&dpu_kms->pdev->dev);
+ 
+ 	return 0;
+@@ -1446,6 +1470,32 @@ static void dpu_dev_remove(struct platform_device *pdev)
+ 	component_master_del(&pdev->dev, &msm_drm_ops);
+ }
+ 
++/* Experimental SM8750 protocol test; all accesses require the DPU clocks. */
++static void dpu_kms_qactive_override(struct dpu_kms *dpu_kms, bool enable)
++{
++	u32 before, after;
++
++	if (!dpu_kms->qactive_reg || enable == dpu_kms->qactive_saved)
++		return;
++
++	if (enable) {
++		before = readl(dpu_kms->qactive_reg);
++		dpu_kms->qactive_restore = before;
++		dpu_kms->qactive_saved = true;
++		/* Stock asserts QACTIVE before the VBIF halt for mode2 entry. */
++		writel(before | BIT(31) | BIT(0), dpu_kms->qactive_reg);
++	} else {
++		before = readl(dpu_kms->qactive_reg);
++		/* The shared parent need not collapse between DPU callbacks. */
++		writel(dpu_kms->qactive_restore, dpu_kms->qactive_reg);
++		dpu_kms->qactive_saved = false;
++	}
++	/* Complete this register write before returning to the caller. */
++	after = readl(dpu_kms->qactive_reg);
++	pr_info("DPU_QACTIVE_TEST enable=%u before=%#x after=%#x saved=%#x\n",
++		enable, before, after, dpu_kms->qactive_restore);
++}
++
+ static int __maybe_unused dpu_runtime_suspend(struct device *dev)
+ {
+ 	int i;
+@@ -1460,6 +1510,7 @@ static int __maybe_unused dpu_runtime_suspend(struct device *dev)
+ 	 * The MDSS power domain may collapse as soon as the clocks are gone;
+ 	 * halt the VBIF AXI ports first where the hardware asks for it.
+ 	 */
++	dpu_kms_qactive_override(dpu_kms, true);
+ 	dpu_vbif_axi_halt_request(dpu_kms);
+ 
+ 	clk_bulk_disable_unprepare(dpu_kms->num_clocks, dpu_kms->clocks);
+@@ -1493,6 +1544,7 @@ static int __maybe_unused dpu_runtime_resume(struct device *dev)
+ 	}
+ 
+ 	dpu_vbif_axi_halt_release(dpu_kms);
++	dpu_kms_qactive_override(dpu_kms, false);
+ 	dpu_vbif_init_memtypes(dpu_kms);
+ 
+ 	drm_for_each_encoder(encoder, ddev)
+diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_kms.h b/drivers/gpu/drm/msm/disp/dpu1/dpu_kms.h
+index e39831a397b1..1036e26f095a 100644
+--- a/drivers/gpu/drm/msm/disp/dpu1/dpu_kms.h
++++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_kms.h
+@@ -64,6 +64,9 @@ struct dpu_kms {
+ 
+ 	/* io/register spaces: */
+ 	void __iomem *mmio, *vbif;
++	void __iomem *qactive_reg;
++	u32 qactive_restore;
++	bool qactive_saved;
+ 
+ 	struct regulator *vdd;
+ 	struct regulator *mmagic;
+-- 
+2.47.3
+

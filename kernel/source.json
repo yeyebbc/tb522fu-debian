@@ -97,7 +97,8 @@
     "patches/0198-dpu-vbif-axi-halt-ops.patch",
     "patches/0199-dpu-vbif-runtime-halt.patch",
     "patches/0200-sm8750-vbif-axi-halt.patch",
-    "patches/0201-dpu-vbif-initial-lifecycle-diagnostics.patch"
+    "patches/0201-dpu-vbif-initial-lifecycle-diagnostics.patch",
+    "patches/0202-dpu-sm8750-paired-qactive-halt-test.patch"
   ],
-  "patched_tree": "ff0ca35f224c7ce9e000f5e32a2fe62664ecfdd0"
+  "patched_tree": "77021ca49b29dc543d86438355c8fd140c09c7be"
 }

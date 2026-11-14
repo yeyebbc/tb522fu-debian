@@ -58,6 +58,14 @@ screen-off polling timed out with idle status and the existing fallback returned
 success. That distinction is not proof of the root cause. Android, the graphics
 configuration and filesystem checks were restored; CI44 remains installed.
 
+CI51 is an experimental protocol test based on Lenovo's pinned stock driver:
+assert the display QACTIVE override before the bus halt, then restore its prior
+value after release. The SM8750 register address is checked against both device
+tree mappings, with runtime bounds checking. Existing logging remains active;
+acknowledgement and physical wake must be checked separately. No clock rates,
+voltages, OPPs or polling deadlines change. Keep CI44 installed; this is not an
+accepted production fix or a full CESTA integration.
+
 CI45 verified the secondary rear OV02B10's full sensor ID and two8-frame RAW10
 capture cycles through SM8750 CAMSS, with clean Android restoration. Frames were
 nearly black. An isolated Debian libcamera 0.7.1 CPU software-ISP test subsequently
