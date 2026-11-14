@@ -886,7 +886,8 @@
     "hardware_tested": true,
     "source_validation": "Pinned Lenovo sun_data field order and V6 register mapping agree: ISLAND1 reserved mask0x7fffffff, bonus0. Current upstream has these fields reversed.",
     "limitation": "Matching suspend-reset report on one SM8750 tablet was fixed, another was not. No proven causal attribution to TB522FU yet. No permanent LPASS/DDR votes added.",
-    "hardware_result": "CI66 with the unchanged ISLAND1 correction and all supported drivers still rebooted on real s2idle and on a separate platform-only diagnostic. It does not prevent the observed reset. Exact failed callback remains unknown; no attribution to LLCC. Exact restoration passed; CI44 retained."
+    "hardware_result": "CI66 with the unchanged ISLAND1 correction and all supported drivers still rebooted on real s2idle and on a separate platform-only diagnostic. It does not prevent the observed reset. Exact failed callback remains unknown; no attribution to LLCC. Exact restoration passed; CI44 retained.",
+    "superseded_by": "0219-sm8750-llcc-settings.patch; retain historical source/test evidence"
   },
   "0215-dsi-idle-xo-binding.patch": {
     "local_commit": "92c4cdfca3a9e7c304165791185bbde20ea16c5f",
@@ -939,10 +940,25 @@
     "imported_patch_id": "a7a1c5e8dbbbb9167f098b4723c126a1b827b2b8",
     "import_type": "Unchanged v3 mailing-list code; original author/signoff retained, maintainer acknowledgement and source link added to commit message",
     "license": "GPL-2.0; existing USB source headers retained",
-    "hardware_tested": false,
+    "hardware_tested": "CI67: one isolated platform-PM cycle restored physical display and fresh frames; a separate actual s2idle from cold boot rebooted. All39 supported drivers loaded; Android/graphics/fsck/timers/services/workers restored. No cause attribution; CI44 remains installed.",
     "promotion_allowed": false,
     "source_validation": "Existing role-switch and extcon notifier paths call the Qualcomm glue synchronously; UCSI work is non-freezable and can touch QSCRATCH with glue clocks off. Upstream SM8750 cable-change reproducer and maintainer acknowledgement exist. Patch queues role and notification under the existing lock onto freezable mode work, before same-mode early returns.",
     "limitation": "No role-change trace or cable action is proven in the TB522FU reset. This corrects a known driver defect, not a proven cause of this tablet failure. No unrelated USB GDSC, LLCC, clock-rate or permanent-vote change included.",
     "validation": "Original/imported stable patch IDs match. Actual ARM64 core.o, drd.o and dwc3-qcom.o compile with dual-role and role-switch enabled. Strict checkpatch has zero errors/warnings/checks. All109 patches replay to pinned tree974b5310fa1b5f119de2578f04c98c77055cb87e;12 recipe tests pass."
+  },
+  "0219-sm8750-llcc-settings.patch": {
+    "source": "Original upstream SM8750 cache-table correction, unchanged code patch ID",
+    "author": "Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>",
+    "source_url": "https://lore.kernel.org/r/20261113-topic-8750_llcc-v1-1-6536cb46d7fe@oss.qualcomm.com",
+    "source_archive": "https://github.com/lore-kernel-org-archives/linux-arm-msm.1/commit/573d454d54024b89eb74fcdbe9cbe5260b369d5a",
+    "local_commit": "7bc64379ce1ced431d52a4e700d8848030a7939f",
+    "sha256": "04760fc8a2066c8298768435eddb97a8f65cb3fbc9153e6adf5207d5efe5ac2e",
+    "patch_id": "d34b1977e87cac8a225f3ce29368b5555037171f",
+    "replaces": "0214-sm8750-llcc-island-reservation.patch",
+    "stock_reference": "https://github.com/lenovo-basements/android_kernel_lenovo_sm8750/blob/210981a0ad749c30080b853d31bc009d9db0592d/drivers/soc/qcom/llcc-qcom.c",
+    "stock_normalized_entries_match": 32,
+    "license": "Original GPL-2.0-only and author/signoff retained",
+    "hardware_tested": false,
+    "root_cause_proven": false
   }
 }

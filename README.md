@@ -6,9 +6,10 @@ Experimental native Linux port for the Lenovo Legion Y900 13 / TB522FU
 directions. This remains a development port with substantial peripheral work
 outstanding.
 
-**CI67 restored the display after one platform-PM diagnostic, but a fresh
-actual suspend-to-idle test rebooted. Suspend remains broken and CI67 is
-rejected for installation. CI44 remains the installed baseline.**
+**CI68 replaces the partial SM8750 cache-table correction with the maintainer's
+complete fix; hardware testing is pending. CI67 restored the display after one
+platform diagnostic but rebooted during actual s2idle. Suspend remains broken;
+CI44 remains the installed baseline.**
 
 Current installed kernel: `7.3.0-tb522fu-installed-ci44`, built from recipe
 `0a1847dd0b67991af502bfea9da36c5db50be3c4`. The installed image SHA256 is
@@ -884,3 +885,20 @@ source audit concerns CPU/cluster idle and wake-interrupt routing. This is a
 remaining difference to investigate, not an established cause: only one
 platform cycle passed, and that test used the greeter rather than the signed-in
 session. Preserve all supported drivers and avoid guessed resource votes.
+
+## CI68 complete SM8750 cache-table correction
+
+Replace the earlier island-only patch with Konrad Dybcio's original
+[upstream correction](https://lore.kernel.org/r/20261113-topic-8750_llcc-v1-1-6536cb46d7fe@oss.qualcomm.com).
+It retains the island reservation and corrects CVP grouping/allocation, six
+video/camera allocation flags and the CAMRTRF priority. All 32 entries match
+Lenovo's pinned stock table after normalizing field names/defaults and the
+explicit downstream grouping flag. Original authorship, signoff and code
+patch ID are retained. The historical island patch stays available but is no
+longer applied separately.
+
+This is the only functional change from CI67. It corrects documented table
+defects; it is not yet an established explanation or fix for our suspend
+reset. CPU idle states, wake IRQs, DT, power votes and peripheral drivers are
+unchanged. Keep CI44 installed and require all-driver physical wake and actual
+sleep acceptance with exact recovery before any later promotion.

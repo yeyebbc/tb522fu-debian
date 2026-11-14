@@ -108,11 +108,11 @@
     "patches/0210-tb522fu-bonded-dsi-master-pll.patch",
     "patches/0211-dsi-powered-phy-state-diagnostics.patch",
     "patches/0212-dsi-bonded-phy-diagnostic-ownership.patch",
-    "patches/0214-sm8750-llcc-island-reservation.patch",
     "patches/0215-dsi-idle-xo-binding.patch",
     "patches/0216-dsi-park-clocks-before-pll-shutdown.patch",
     "patches/0217-sm8750-dsi-idle-crystal-inputs.patch",
-    "patches/0218-dwc3-defer-glue-role-notification.patch"
+    "patches/0218-dwc3-defer-glue-role-notification.patch",
+    "patches/0219-sm8750-llcc-settings.patch"
   ],
-  "patched_tree": "974b5310fa1b5f119de2578f04c98c77055cb87e"
+  "patched_tree": "9fa278d7be6bce6a9ec6c7f661f8924e85925301"
 }
