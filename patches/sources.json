@@ -883,10 +883,10 @@
     "sha256": "c985e2ae69d53c3bcd754642bdcb4e44bf3f253836f6f9627f3133d9b7a48c25",
     "license": "GPL-2.0-only; original author and Signed-off-by retained",
     "import_type": "Unchanged upstream mailing-list patch; context offset only",
-    "hardware_tested": false,
+    "hardware_tested": true,
     "source_validation": "Pinned Lenovo sun_data field order and V6 register mapping agree: ISLAND1 reserved mask0x7fffffff, bonus0. Current upstream has these fields reversed.",
     "limitation": "Matching suspend-reset report on one SM8750 tablet was fixed, another was not. No proven causal attribution to TB522FU yet. No permanent LPASS/DDR votes added.",
-    "hardware_result": "CI65 booted with llcc_qcom and all supported drivers. Freezer test passed; device PM reproduced a panel initialization timeout and blank display. Stopped before actual s2idle; effect on prior reset not evaluated. Android/graphics restoration passed; CI44 retained."
+    "hardware_result": "CI66 with the unchanged ISLAND1 correction and all supported drivers still rebooted on real s2idle and on a separate platform-only diagnostic. It does not prevent the observed reset. Exact failed callback remains unknown; no attribution to LLCC. Exact restoration passed; CI44 retained."
   },
   "0215-dsi-idle-xo-binding.patch": {
     "local_commit": "92c4cdfca3a9e7c304165791185bbde20ea16c5f",
@@ -900,7 +900,7 @@
     "license": "Existing GPL-2.0-only driver, dual-licensed binding and BSD-3-Clause DT headers retained",
     "validation": "ARM64 object/DT, binding schema,32 actual power-off callback/error/optional-clock cases; compiled DT changes only both DSI clock lists/names, appending DISPCC parent-zero provider. Old/no-XO and wrong-XO trees rejected.",
     "limitation": "Observed device-PM DCS timeout is not proof of clock-parent causality. Real hardware and physical pixels required. No new rates, voltage, delay, raw register access or permanent votes.",
-    "hardware_result": "CI66 both clock-parent API results0, first device resume panel init/PPS succeed with no prior DSI command timeout. Second PM transition begins30ms later; pending-frame error, canceled touch resume and patterned physical output. Full suspend unaccepted; no real sleep. Isolated single-device-PM evidence follow-up pending. Exact recovery passed; CI44 retained."
+    "hardware_result": "CI66 isolated first devices-PM cycle restored visible desktop output. Settled staged follow-up restored devices output but left the panel blank after the later platform cycle despite fresh GPU work; real s2idle then rebooted. A separate first platform-only test also rebooted without requesting actual sleep. All supported drivers loaded; exact callback unknown and pstore empty. Android, graphics, full filesystem check, timers, host services, network and workers restored. Wake and suspend remain unaccepted; CI44 retained."
   },
   "0216-dsi-park-clocks-before-pll-shutdown.patch": {
     "local_commit": "59747edb0cc41f827ffd5e9c0947a4736a352c91",
@@ -914,7 +914,7 @@
     "license": "Existing GPL-2.0-only driver, dual-licensed binding and BSD-3-Clause DT headers retained",
     "validation": "ARM64 object/DT, binding schema,32 actual power-off callback/error/optional-clock cases; compiled DT changes only both DSI clock lists/names, appending DISPCC parent-zero provider. Old/no-XO and wrong-XO trees rejected.",
     "limitation": "Observed device-PM DCS timeout is not proof of clock-parent causality. Real hardware and physical pixels required. No new rates, voltage, delay, raw register access or permanent votes.",
-    "hardware_result": "CI66 both clock-parent API results0, first device resume panel init/PPS succeed with no prior DSI command timeout. Second PM transition begins30ms later; pending-frame error, canceled touch resume and patterned physical output. Full suspend unaccepted; no real sleep. Isolated single-device-PM evidence follow-up pending. Exact recovery passed; CI44 retained."
+    "hardware_result": "CI66 isolated first devices-PM cycle restored visible desktop output. Settled staged follow-up restored devices output but left the panel blank after the later platform cycle despite fresh GPU work; real s2idle then rebooted. A separate first platform-only test also rebooted without requesting actual sleep. All supported drivers loaded; exact callback unknown and pstore empty. Android, graphics, full filesystem check, timers, host services, network and workers restored. Wake and suspend remain unaccepted; CI44 retained."
   },
   "0217-sm8750-dsi-idle-crystal-inputs.patch": {
     "local_commit": "3479088ae89d96a18e6c78400565fbe1228754d3",
@@ -928,6 +928,21 @@
     "license": "Existing GPL-2.0-only driver, dual-licensed binding and BSD-3-Clause DT headers retained",
     "validation": "ARM64 object/DT, binding schema,32 actual power-off callback/error/optional-clock cases; compiled DT changes only both DSI clock lists/names, appending DISPCC parent-zero provider. Old/no-XO and wrong-XO trees rejected.",
     "limitation": "Observed device-PM DCS timeout is not proof of clock-parent causality. Real hardware and physical pixels required. No new rates, voltage, delay, raw register access or permanent votes.",
-    "hardware_result": "CI66 both clock-parent API results0, first device resume panel init/PPS succeed with no prior DSI command timeout. Second PM transition begins30ms later; pending-frame error, canceled touch resume and patterned physical output. Full suspend unaccepted; no real sleep. Isolated single-device-PM evidence follow-up pending. Exact recovery passed; CI44 retained."
+    "hardware_result": "CI66 isolated first devices-PM cycle restored visible desktop output. Settled staged follow-up restored devices output but left the panel blank after the later platform cycle despite fresh GPU work; real s2idle then rebooted. A separate first platform-only test also rebooted without requesting actual sleep. All supported drivers loaded; exact callback unknown and pstore empty. Android, graphics, full filesystem check, timers, host services, network and workers restored. Wake and suspend remain unaccepted; CI44 retained."
+  },
+  "0218-dwc3-defer-glue-role-notification.patch": {
+    "source": "https://lore.kernel.org/r/20261111090122.134-1-tvlad744@gmail.com",
+    "acknowledgement": "https://lore.kernel.org/r/avUdNnZ7GWREGQOp@vbox",
+    "local_commit": "3588a61ee710eaed761a2deb3bdc75a6c72c1c2a",
+    "sha256": "2c2fe3bd5eb4905f16c7fec5d1e0e37cc7da1a25c981f7af1d66a51db1f17241",
+    "original_patch_id": "a7a1c5e8dbbbb9167f098b4723c126a1b827b2b8",
+    "imported_patch_id": "a7a1c5e8dbbbb9167f098b4723c126a1b827b2b8",
+    "import_type": "Unchanged v3 mailing-list code; original author/signoff retained, maintainer acknowledgement and source link added to commit message",
+    "license": "GPL-2.0; existing USB source headers retained",
+    "hardware_tested": false,
+    "promotion_allowed": false,
+    "source_validation": "Existing role-switch and extcon notifier paths call the Qualcomm glue synchronously; UCSI work is non-freezable and can touch QSCRATCH with glue clocks off. Upstream SM8750 cable-change reproducer and maintainer acknowledgement exist. Patch queues role and notification under the existing lock onto freezable mode work, before same-mode early returns.",
+    "limitation": "No role-change trace or cable action is proven in the TB522FU reset. This corrects a known driver defect, not a proven cause of this tablet failure. No unrelated USB GDSC, LLCC, clock-rate or permanent-vote change included.",
+    "validation": "Original/imported stable patch IDs match. Actual ARM64 core.o, drd.o and dwc3-qcom.o compile with dual-role and role-switch enabled. Strict checkpatch has zero errors/warnings/checks. All109 patches replay to pinned tree974b5310fa1b5f119de2578f04c98c77055cb87e;12 recipe tests pass."
   }
 }

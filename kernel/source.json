@@ -111,7 +111,8 @@
     "patches/0214-sm8750-llcc-island-reservation.patch",
     "patches/0215-dsi-idle-xo-binding.patch",
     "patches/0216-dsi-park-clocks-before-pll-shutdown.patch",
-    "patches/0217-sm8750-dsi-idle-crystal-inputs.patch"
+    "patches/0217-sm8750-dsi-idle-crystal-inputs.patch",
+    "patches/0218-dwc3-defer-glue-role-notification.patch"
   ],
-  "patched_tree": "9d3dcbd6c3182f4b57bb84b366e44b12292af47a"
+  "patched_tree": "974b5310fa1b5f119de2578f04c98c77055cb87e"
 }

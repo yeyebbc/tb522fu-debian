@@ -6,10 +6,10 @@ Experimental native Linux port for the Lenovo Legion Y900 13 / TB522FU
 directions. This remains a development port with substantial peripheral work
 outstanding.
 
-**Current candidate: CI66 implements the stock DSI clock handoff before PLL
-shutdown. It passes the first command-transfer check, but physical wake is
-unresolved and it must not be installed. CI44 remains installed;
-suspend and physical display wake are unresolved.**
+**Current candidate: CI67 tests the upstream USB role-notification suspend fix.
+CI66 restored physical output after one device-PM cycle, but later display wake
+and system suspend still failed. CI67 is untested on this tablet and must not
+be installed. CI44 remains the installed baseline.**
 
 Current installed kernel: `7.3.0-tb522fu-installed-ci44`, built from recipe
 `0a1847dd0b67991af502bfea9da36c5db50be3c4`. The installed image SHA256 is
@@ -801,3 +801,39 @@ back-to-back sequence unchanged. A single isolated device-PM cycle followed by
 fresh compositor work and camera observation will distinguish first-resume
 corruption from interference by the second transition. That diagnostic does
 not enter real sleep or permit installation.
+
+## CI66 follow-ups and CI67 USB candidate
+
+A single device-PM diagnostic restored the visible desktop. A staged follow-up
+waited for completed touch resume and fresh compositor activity between stages;
+its first device wake restored pixels, but the later platform wake left the
+panel blank despite clean display logs and fresh GPU work. Actual s2idle then
+rebooted. A separate platform-only test from a fresh boot also rebooted, without
+requesting actual sleep. Its last persistent event is the request; the failing
+callback and suspend-versus-resume boundary remain unknown. The latter used the
+login greeter while earlier physical success used a signed-in desktop, so do
+not attribute the difference solely to PM depth or transition count. Recovery,
+exact graphics restoration, filesystem checks and worker cleanup passed.
+
+CI67 adds only the unchanged [upstream USB role-notification fix](https://lore.kernel.org/r/20261111090122.134-1-tvlad744@gmail.com),
+[acknowledged by the USB maintainer](https://lore.kernel.org/r/avUdNnZ7GWREGQOp@vbox).
+It moves glue notification into the existing freezable mode-switch work, so a
+role change cannot touch controller registers while system-suspend has disabled
+the clocks. The latest requested role is preserved, including changes that map
+to the same controller mode. The original patch ID matches the import.
+
+This fixes a known SM8750 USB defect; our reset has no captured role-change
+trace, so it is not an established root cause. First test the single platform
+PM scenario with all supported drivers, camera evidence and exact recovery.
+Keep CI44 installed. Diagnostic display logging remains in the candidate and
+must be removed and retested before any production promotion.
+
+User-supplied Xiaomi Pad6Pro v0.6.2 [display power-vote fix](https://github.com/yzddmr6/linux-sm8450-liuqin/commit/8ec7416f90f6058acf343aacef33d1761bcde913)
+was audited. Its motivating case is SM8750: a retained core-clock frequency
+with a cleared DPU power request. Our newer pinned base already skips the
+zero-rate OPP request on last-CRTC disable, and genpd restores the saved vote
+before the DPU resume callback. The exact described path is therefore already
+prevented in source; this does not exclude other power sequencing failures.
+No Xiaomi rates, voltages, permanent votes or additional kernel patch are
+imported. Tests already use s2idle. Correlate clock/power-state evidence with
+physical output in the next bounded test.
