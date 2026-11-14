@@ -6,10 +6,9 @@ Experimental native Linux port for the Lenovo Legion Y900 13 / TB522FU
 directions. This remains a development port with substantial peripheral work
 outstanding.
 
-**Current candidate: CI67 tests the upstream USB role-notification suspend fix.
-CI66 restored physical output after one device-PM cycle, but later display wake
-and system suspend still failed. CI67 is untested on this tablet and must not
-be installed. CI44 remains the installed baseline.**
+**CI67 restored the display after one platform-PM diagnostic, but a fresh
+actual suspend-to-idle test rebooted. Suspend remains broken and CI67 is
+rejected for installation. CI44 remains the installed baseline.**
 
 Current installed kernel: `7.3.0-tb522fu-installed-ci44`, built from recipe
 `0a1847dd0b67991af502bfea9da36c5db50be3c4`. The installed image SHA256 is
@@ -837,3 +836,51 @@ prevented in source; this does not exclude other power sequencing failures.
 No Xiaomi rates, voltages, permanent votes or additional kernel patch are
 imported. Tests already use s2idle. Correlate clock/power-state evidence with
 physical output in the next bounded test.
+
+## CI67 first platform-PM result
+
+With all 39 supported modules loaded and Bluetooth startup complete, one
+platform diagnostic returned in the same boot (success 1, fail 0). Camera
+review confirms the display turned off, returned to the greeter, rendered
+fresh focus changes and later showed the signed-in desktop. No actual sleep
+was requested. This supports one diagnostic cycle only, not reliable suspend
+or installation.
+
+The cached display-core source and branch rates were 417MHz, with DPU/MMCX
+performance state 192, at the sampled points before and after the transition.
+These match the existing OPP table; they are not physical voltage measurements
+and do not exclude a transient sequencing fault. The change remains the
+original upstream USB role-notification patch; a causal role-change trace is
+still missing. No extra display power vote was added.
+
+Recipe `bd8fed615c964030fe6b20aee625be6982068352`, kernel source
+`3588a61ee710eaed761a2deb3bdc75a6c72c1c2a`, boot SHA256
+`a4b59b9d5c19bc11c6d0e6835f80bd9d075281d13230bbb1f01f91c5ab39a382`.
+Android, exact graphics rollback, filesystem checks, temporary return units,
+host services and worker cleanup all passed. Keep CI44 installed. The next
+discriminator is one RTC-gated actual s2idle from cold boot, with no preceding
+PM cycle, retaining all drivers and physical fresh-frame acceptance.
+
+## CI67 actual suspend-to-idle result
+
+A separate cold boot loaded all 39 supported modules and completed Bluetooth
+startup. The user signed in before the test, and the probe selected that
+current GNOME session. The awake RTC alarm interrupt passed; one real s2idle
+request followed, with a verified 20-second alarm and no preceding PM cycle.
+It never returned. A changed boot ID and camera footage of the bootloader and
+new Linux console confirm a reboot. No saved crash dump was available.
+
+The earlier single platform-PM pass remains narrow progress. Reliable display
+wake and actual sleep are not fixed, and the USB role patch is insufficient
+to fix full suspend. Do not install or repeat this candidate unchanged. Exact
+Android and graphics restoration, filesystem checks, timer retirement, host
+services and network/worker cleanup passed; CI44 stays installed. Source,
+recipe and image hashes are unchanged from the platform result above.
+
+In this kernel, the platform diagnostic returns after late/noirq device
+callbacks, immediately before `s2idle_loop()`. Actual s2idle does not enter
+the secondary-CPU-offline and syscore branches used by deep suspend. The next
+source audit concerns CPU/cluster idle and wake-interrupt routing. This is a
+remaining difference to investigate, not an established cause: only one
+platform cycle passed, and that test used the greeter rather than the signed-in
+session. Preserve all supported drivers and avoid guessed resource votes.
