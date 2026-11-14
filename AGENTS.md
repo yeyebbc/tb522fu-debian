@@ -660,3 +660,23 @@ keyboard, camera and display wiring guards remain satisfied. The complete
 110-patch series replays to tree`57468fc57780b4a734cc55e0a0f9e0f8e96e3663`;
 12 recipe tests and the new patch's strict code-style check pass. Hardware
 retention remains untested for this candidate.
+
+
+## CI70 retained-log result
+
+Both CI builds passed. The bounded hardware comparison verified mem-type0 on
+both Linux boots, accepted the first boot's marker and completed second-boot
+readback without a PM transition. Pstore was mounted; complete live and archive
+reads found no record. A subsequent read-only journal check confirmed that
+systemd skipped archival for an empty directory and had no marker entry.
+The default mapping alone is insufficient to restore this logging path.
+
+This result does not locate the data loss or establish behavior on a hard
+reset. Do not promote or repeat the diagnostic unchanged. Exact Android
+restoration, CI44 preservation, filesystem checks, return-unit retirement and
+host service/network/worker cleanup passed. Reliable display wake and suspend
+remain unresolved; improve early failure evidence before further sleep tests.
+
+Recipe `1c5c646ad44425a020eaad90acb33295ae66997a`, source
+`54fcde23311bf88f547a9c2cbfa246445476d01a`, bounded boot SHA256
+`0817afba2a815ca6b04ebcd120fb648174389d04b5bc6b26e0fd5f6d8e203ea8`.
