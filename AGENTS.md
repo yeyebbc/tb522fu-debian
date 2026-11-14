@@ -793,3 +793,18 @@ native physical cold-boot output and one platform-PM return with fresh frames
 before considering actual sleep. Preserve independent Android recovery and
 CI44; no promotion from compilation. Three profile comparisons and six negative
 policy checks pass alongside the 12 recipe tests. See README for current status.
+
+CI73 is now rejected for native startup: unused-clock cleanup ran at0.311s,
+GPU IOMMU probe failed -110 at18.644s, RCU stall reported at45.221s, USB ready
+at60.325s and SCMI protocol ready only at127.947s. CI72's successful comparison
+had USB ready at1.666s and SCMI ready at2.911s. Camera shows grey, no GNOME.
+The original inspector timed out before launching any probe. A reviewed late
+read-only collection captured startup logs and requested the existing clean
+return; no platform-PM or real-sleep test was run. Monitor0/inspector1 retained;
+Android/CI44/graphics/filesystem/timer/host/network/worker cleanup verified.
+Recipe9c270cbba88a4c95d886cbe17b888d3ed4b5372e, boot SHA256
+a716a348d9cfe2320d87fad092bcaf39c80f0ccda9daf58acfe6551487f8b7c2.
+Do not repeat unchanged or promote. Audit required clock references and
+SCMI/GPU-IOMMU dependencies before another candidate; no arbitrary keepalive
+votes. The earlier SS3 reset remains unresolved. Retain the workaround until a
+justified replacement passes native cold boot and the normal PM gates.

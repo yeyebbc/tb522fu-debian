@@ -10,14 +10,15 @@ outstanding.
 the unconstrained suspend test still restarted the tablet. Reliable unrestricted
 suspend remains unresolved; CI44 remains installed.**
 
-The next diagnostic removes `clk_ignore_unused` only from the bounded
-`disk-test` command line. This allows the clock core's normal late-init cleanup
-of unused bootloader clocks. It retains `pd_ignore_unused`, the exact CI72
-kernel source/device tree, all idle states and the independent return timer.
-RAM and installed profiles retain their existing command lines. This is an
-unverified investigation of a bring-up workaround, not a suspend fix. First
-require native cold boot with all supported drivers and a physically verified
-platform-PM return before attempting actual sleep on the new image.
+**CI73 is rejected for a startup regression.** Removing `clk_ignore_unused`
+only from `disk-test` produced a grey panel, delayed USB startup, a GPU IOMMU
+probe timeout and failure to bind the native display. A late connection allowed
+startup logs to be collected and the prepared Android return to run. No
+platform-PM or actual-sleep test was attempted. Exact source, all 109 patches
+and the device tree match CI72; the clock-cleanup flag is the only configuration
+change. The required clock dependency is not identified, and this does not
+explain the earlier deep-sleep reset. Android, CI44, graphics, filesystem,
+timers and host cleanup are verified. Do not install or rerun CI73 unchanged.
 
 The same CI72 image passed the constrained cluster test, then reset during an
 unconstrained test in the same greeter context with all supported drivers and
