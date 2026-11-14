@@ -6,12 +6,22 @@ Experimental native Linux port for the Lenovo Legion Y900 13 / TB522FU
 directions. This remains a development port with substantial peripheral work
 outstanding.
 
-**A bounded shallow-idle comparison resumed in the same Linux boot and restored
-visible, updating GNOME output. Deeper CPU idle states were temporarily blocked;
-power-efficient suspend and reliable display wake remain unresolved. CI44
-remains installed.**
+**CI72 passed one C4-only s2idle cycle with about 20.4 seconds of measured
+suspended time and visible, updating GNOME output afterward. Shared cluster
+and system sleep states remained excluded. Unrestricted suspend reliability
+and power savings remain unverified; CI44 remains installed.**
 
-The unchanged CI68 image, which previously reset during actual s2idle, returned
+All eight CPUs entered C4; both cluster CL5 counters and system SS3 stayed
+unchanged. The RTC woke the same Linux boot, PM accounting reported success
+without a failure, and the temporary 500 us request was released. All 39
+supported modules and Bluetooth remained loaded. Camera footage confirms the
+dark panel, returned overview and fresh desktop updates. This test used a
+signed-in desktop; earlier CI68 comparisons used the greeter, so it does not
+prove which shared state caused the earlier reset. Exact Android, graphics,
+filesystem, timer and host cleanup passed. Bounded boot SHA256:
+`574e85e4dbd68a59bbf9ccec688f5a9cbcc12f495e5d9d823ee903b26c3a584b`.
+
+Previously, the unchanged CI68 image, which reset during actual s2idle, returned
 after a 22.415-second RTC-gated request with all 39 supported modules and
 Bluetooth loaded. Camera footage shows the dark panel, returned greeter and
 fresh focus updates before user interaction. The eight temporary idle flags
@@ -28,15 +38,18 @@ on-device suspend diagnostic. Recipe `63d9e96a7ca697580282f8a1872a6051c1a2e5b3`,
 kernel source `7bc64379ce1ced431d52a4e700d8848030a7939f`, boot SHA256
 `1dd0a4d1e5b83c4bf1f3947466931becf73906105860c39acb58c1f82a4dcee6`.
 
-The next diagnostic returns to that exact CI68 source and device tree and enables
+CI72 returns to that exact CI68 source and device tree and enables
 `CONFIG_PM_QOS_CPU_SYSTEM_WAKEUP` only in `disk-test`. The existing
 `/dev/cpu_wakeup_latency` interface can constrain both s2idle CPU selection and
 shared CPU power domains. A temporary 500 us request admits the existing
 222/302 us CPU C4 states while excluding 4133 us cluster CL5 and 7200 us system
 SS3. Closing its descriptor removes the request. No sleep parameter or voltage
-is changed. This option was disabled in CI68, so it needs a new kernel build.
+is changed. This option was disabled in CI68, requiring the new kernel build.
 The earlier retained-buffer mapping and boot-debug experiments are excluded
-to preserve the comparison. Hardware behavior is untested; CI44 stays installed.
+to preserve the comparison. Both builds and the bounded C4-only test passed.
+The next comparison can use the same image with a temporary 5000 us limit,
+allowing CL5 while still excluding SS3. Actual cluster entry must be verified
+from counters; no production sleep-policy change is installed.
 
 Earlier, CI71 captured zero signatures in all six retained buffers during early
 ramoops initialization after a controlled EDL/programmer reboot. The marker

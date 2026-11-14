@@ -736,3 +736,16 @@ s2idle counters, same boot/RTC and physical fresh frames before accepting the
 diagnostic. Do not substitute cpu_dma_latency or install constrained sleep as
 a fix. Keep complete Android/graphics/timer recovery and all39 supported modules
 plus BT. No new hardware test has occurred; installed CI44 remains unchanged.
+
+CI72 now passed one C4-only actual s2idle cycle with all39 supported modules
+and BT. Same boot, RTC alarm,20.372s estimated system sleep, success1/fail0;
+all8 C4 s2idle usage counters advanced while CL5/SS3 stayed unchanged. The
+500us request was released to its original unconstrained value. Camera proves
+dark panel, returned overview and fresh desktop updates. This used a signed-in
+desktop, unlike earlier greeter comparisons; do not claim a specific shared
+state caused the old reset. Exact Android/CI44/graphics/filesystem/timer/host
+cleanup passed. No production acceptance or measured power savings. Next a
+same-image5000us comparison can admit CL5 while excluding SS3, with counters
+proving selection and fresh exact recovery. Do not repeat500us unchanged.
+Recipe9b6afea4e4206473a039c63587dc1796568ff662, bounded boot SHA256
+574e85e4dbd68a59bbf9ccec688f5a9cbcc12f495e5d9d823ee903b26c3a584b.
