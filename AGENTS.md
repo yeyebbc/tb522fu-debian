@@ -78,3 +78,11 @@ clock-active VBIF operations. Readbacks/logging may affect ordering/timing.
 The94-patch source must replay exactly. Keep CI44 installed; CI50 is diagnostic
 only even if the logging changes the observed startup. Preserve the improved
 coldplug fault gate and existing-snapshot capture. No unchanged CI49 repeat.
+
+CI50 is tested and rejected for wake: visible initial greeter, grey after one
+cycle, CTL reset/frame/vblank faults. Startup ACK passes; screen-off ACK poll
+times out with idle bits and fallback success. Diagnostic capture passed;
+readback/logging timing prevents treating improved startup as a fix. Exact
+Android/graphics/fullfsck/timer/worker restoration passed. CI44 retained.
+No unchanged repeat or promotion. Audit stock QACTIVE/CESTA applicability and
+shared-bus lifecycle before selecting another correction; do not guess writes.

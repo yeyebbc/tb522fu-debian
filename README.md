@@ -51,6 +51,13 @@ registration has occurred. It is diagnostic only and is active before userspace
 can connect. No register writes, votes, retries or delays are added, but readbacks
 and logging can affect ordering/timing. Do not install or treat this as a fix.
 
+CI50 diagnostic capture succeeded, but wake is rejected. It reached a visible
+GNOME greeter, then became grey after one display power cycle and reported
+CTL reset/frame/vblank errors. Startup halt requests received acknowledgements;
+screen-off polling timed out with idle status and the existing fallback returned
+success. That distinction is not proof of the root cause. Android, the graphics
+configuration and filesystem checks were restored; CI44 remains installed.
+
 CI45 verified the secondary rear OV02B10's full sensor ID and two8-frame RAW10
 capture cycles through SM8750 CAMSS, with clean Android restoration. Frames were
 nearly black. An isolated Debian libcamera 0.7.1 CPU software-ISP test subsequently

@@ -760,8 +760,11 @@
     "local_commit": "ffd9bce8932abcb2151cc26b4af7119363784461",
     "sha256": "ef1c114665748c10fbfd6363b0e3927bf398ad4b3593abea1e0b24104d6b05fe",
     "license": "GPL-2.0-only; original source-file attribution retained",
-    "hardware_tested": false,
+    "hardware_tested": true,
     "diagnostic_only": true,
-    "source": "Eight early info-level sites record existing CLKON/halt request/status, poll versus fallback and registration/PM sequence. Readbacks are inside existing clock-active callbacks. No new writes, votes, delays or retries; logging/readback may perturb ordering and timing. Not a production fix."
+    "source": "Eight early info-level sites record existing CLKON/halt request/status, poll versus fallback and registration/PM sequence. Readbacks are inside existing clock-active callbacks. No new writes, votes, delays or retries; logging/readback may perturb ordering and timing. Not a production fix.",
+    "diagnostic_capture_passed": true,
+    "display_wake_accepted": false,
+    "hardware_result": "CI50 reached a visible greeter but failed one wake with grey output and CTL reset/frame/vblank errors. Startup halt ACKs succeeded; screen-off polling timed out with idle status and returned success via the existing fallback. Diagnostic only; Android/graphics/filesystem restoration passed and CI44 remains installed."
   }
 }
