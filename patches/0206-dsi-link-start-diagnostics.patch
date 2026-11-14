@@ -1,0 +1,152 @@
+From c6aa605bd44087bcdde1873edb4fb8edacb752f3 Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Sat, 14 Nov 2026 12:43:39 +0800
+Subject: [PATCH] drm/msm: compare display link startup and wake state
+
+CI56 preserves stock setup packet encoding and backlight ownership, but
+physical wake remains blank despite successful panel/PPS transfers and
+clean controller fault checks. Compare the first working start with wake
+before changing another hardware sequence.
+
+Add seven diagnostic info sites: DSI timing values, first video-start
+control/power state, clock/lane/status and video/compression readbacks,
+panel PPS CRC/geometry, and enabling DPU DSC resources. Limit readbacks
+to first start with the host powered and enabled; limit DPU logs to the
+enabling state. The ten read registers are existing control/status or
+programmed timing registers, within both DSI resources. No IRQ/FIFO flags,
+new writes, DCS reads, retries, delays, GPIOs, rates or regulator changes.
+
+Select CRC32 for the temporary PPS fingerprint; it is already built-in
+in the tested configuration. Logging and reads may serialize writes or
+perturb timing, so this is diagnostic only and must not be promoted.
+A host comparison of the actual old/new video-start functions checks all
+16 mode/start/power/enable combinations and preserves writes/state.
+
+Signed-off-by: Codex <codex@localhost>
+---
+ drivers/gpu/drm/msm/disp/dpu1/dpu_encoder.c   |  9 ++++++
+ drivers/gpu/drm/msm/dsi/dsi_host.c            | 31 ++++++++++++++++++-
+ drivers/gpu/drm/panel/Kconfig                 |  1 +
+ drivers/gpu/drm/panel/panel-novatek-nt36536.c |  7 +++++
+ 4 files changed, 47 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder.c b/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder.c
+index 063dce09ade2..0434ff1ade00 100644
+--- a/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder.c
++++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder.c
+@@ -2147,8 +2147,17 @@ static void dpu_encoder_prep_dsc(struct dpu_encoder_virt *dpu_enc,
+ 
+ 	initial_lines = dpu_encoder_dsc_initial_line_calc(dsc, dsc_common_mode,
+ 							 num_active_ss_per_enc);
++	if (enc_master->enable_state == DPU_ENC_ENABLING)
++		pr_info("DISPLAY_LINK dsc enc=%u count=%d common=%#x active_ss=%u initial_lines=%u pic=%ux%u\n",
++			DRMID(enc_master->parent), num_dsc, dsc_common_mode,
++			num_active_ss_per_enc, initial_lines,
++			dsc->pic_width, dsc->pic_height);
+ 
+ 	for (i = 0; i < num_dsc; i++) {
++		if (enc_master->enable_state == DPU_ENC_ENABLING)
++			pr_info("DISPLAY_LINK route enc=%u index=%d dsc=%d pp=%d\n",
++				DRMID(enc_master->parent), i,
++				hw_dsc[i]->idx - DSC_0, hw_pp[i]->idx - PINGPONG_0);
+ 		y900_pr("Y900DSC i=%d dsc=%d pp=%d\n", i,
+ 		       hw_dsc[i]->idx - DSC_0, hw_pp[i]->idx - PINGPONG_0);
+ 		dpu_encoder_dsc_pipe_cfg(ctl, hw_dsc[i], hw_pp[i],
+diff --git a/drivers/gpu/drm/msm/dsi/dsi_host.c b/drivers/gpu/drm/msm/dsi/dsi_host.c
+index d4ee85d52319..922602def110 100644
+--- a/drivers/gpu/drm/msm/dsi/dsi_host.c
++++ b/drivers/gpu/drm/msm/dsi/dsi_host.c
+@@ -1180,6 +1180,10 @@ static void dsi_timing_setup(struct msm_dsi_host *msm_host, bool is_bonded_dsi)
+ 		dsi_write(msm_host, REG_DSI_HS_TIMER_CTRL, 0x3fd08);
+ 		dsi_write(msm_host, REG_DSI_MISR_VIDEO_CTRL, 0x10100);
+ 		dsi_write(msm_host, REG_DSI_TIMING_FLUSH, 0x1);
++		dev_info(&msm_host->pdev->dev,
++			 "DISPLAY_LINK timing id=%d bonded=%u wide=%u active=%ux%u total=%ux%u\n",
++			 msm_host->id, is_bonded_dsi, wide_bus_enabled,
++			 hdisplay, mode->vdisplay, h_total, v_total);
+ 	} else {		/* command mode */
+ 		if (msm_host->dsc)
+ 			dsi_update_dsc_timing(msm_host, true);
+@@ -2610,16 +2614,41 @@ int msm_dsi_host_enable(struct mipi_dsi_host *host)
+ void msm_dsi_host_video_engine_enable(struct mipi_dsi_host *host)
+ {
+ 	struct msm_dsi_host *msm_host = to_msm_dsi_host(host);
+-	u32 ctrl;
++	bool first_start = !msm_host->video_engine_started;
++	u32 ctrl, before;
+ 
+ 	if (!(msm_host->mode_flags & MIPI_DSI_MODE_VIDEO))
+ 		return;
+ 
+ 	ctrl = dsi_read(msm_host, REG_DSI_CTRL);
++	before = ctrl;
+ 	ctrl &= ~DSI_CTRL_CMD_MODE_EN;
+ 	ctrl |= DSI_CTRL_VID_MODE_EN | DSI_CTRL_ENABLE;
+ 	msm_host->video_engine_started = true;
+ 	dsi_write(msm_host, REG_DSI_CTRL, ctrl);
++	if (first_start) {
++		dev_info(&msm_host->pdev->dev,
++			 "DISPLAY_LINK start id=%d before=%#x written=%#x power=%u enabled=%u cphy=%u\n",
++			 msm_host->id, before, ctrl, msm_host->power_on,
++			 msm_host->enabled, msm_host->cphy_mode);
++		/* Diagnostic readbacks only while the existing link clocks are on. */
++		if (msm_host->power_on && msm_host->enabled) {
++			dev_info(&msm_host->pdev->dev,
++				 "DISPLAY_LINK status id=%d ctrl=%#x clk_ctrl=%#x clk_status=%#x status=%#x lane=%#x\n",
++				 msm_host->id, dsi_read(msm_host, REG_DSI_CTRL),
++				 dsi_read(msm_host, REG_DSI_CLK_CTRL),
++				 dsi_read(msm_host, REG_DSI_CLK_STATUS),
++				 dsi_read(msm_host, REG_DSI_STATUS0),
++				 dsi_read(msm_host, REG_DSI_LANE_STATUS));
++			dev_info(&msm_host->pdev->dev,
++				 "DISPLAY_LINK video id=%d mode=%#x comp=%#x active_h=%#x active_v=%#x total=%#x\n",
++				 msm_host->id, dsi_read(msm_host, REG_DSI_VID_CFG0),
++				 dsi_read(msm_host, REG_DSI_VIDEO_COMPRESSION_MODE_CTRL),
++				 dsi_read(msm_host, REG_DSI_ACTIVE_H),
++				 dsi_read(msm_host, REG_DSI_ACTIVE_V),
++				 dsi_read(msm_host, REG_DSI_TOTAL));
++		}
++	}
+ 	y900_pr("Y900VIDEN id=%d ctrl=%#x clk=%#x ctl=%#x stat=%#x lane=%#x\n",
+ 		msm_host->id, ctrl, dsi_read(msm_host, REG_DSI_CLK_STATUS),
+ 		dsi_read(msm_host, REG_DSI_CLK_CTRL),
+diff --git a/drivers/gpu/drm/panel/Kconfig b/drivers/gpu/drm/panel/Kconfig
+index cbdf7b8f7f7a..dc13b8735c39 100644
+--- a/drivers/gpu/drm/panel/Kconfig
++++ b/drivers/gpu/drm/panel/Kconfig
+@@ -669,6 +669,7 @@ config DRM_PANEL_NOVATEK_NT36536
+ 	depends on OF
+ 	depends on DRM_MIPI_DSI
+ 	depends on BACKLIGHT_CLASS_DEVICE
++	select CRC32
+ 	select DRM_KMS_HELPER
+ 	help
+ 	  Say Y here if you want to enable support for Novatek NT36536-based
+diff --git a/drivers/gpu/drm/panel/panel-novatek-nt36536.c b/drivers/gpu/drm/panel/panel-novatek-nt36536.c
+index 6758c83185ff..3192e44ad8ee 100644
+--- a/drivers/gpu/drm/panel/panel-novatek-nt36536.c
++++ b/drivers/gpu/drm/panel/panel-novatek-nt36536.c
+@@ -8,6 +8,7 @@
+  */
+ 
+ #include <linux/backlight.h>
++#include <linux/crc32.h>
+ #include <linux/y900_dsi.h>
+ #include <linux/y900_trace.h>
+ #include <linux/delay.h>
+@@ -162,6 +163,12 @@ static int novatek_enable(struct drm_panel *panel)
+ 	}
+ 
+ 	drm_dsc_pps_payload_pack(&pps, &ctx->dsc);
++	dev_info(panel->dev,
++		 "DISPLAY_LINK pps crc=%#x pic=%ux%u slice=%ux%u count=%u bpp=%u bpc=%u\n",
++		 crc32_le(0, (const u8 *)&pps, sizeof(pps)),
++		 ctx->dsc.pic_width, ctx->dsc.pic_height,
++		 ctx->dsc.slice_width, ctx->dsc.slice_height, ctx->dsc.slice_count,
++		 ctx->dsc.bits_per_pixel, ctx->dsc.bits_per_component);
+ 	mipi_dsi_picture_parameter_set_multi(&dsi_ctx, &pps);
+ 	mipi_dsi_compression_mode_multi(&dsi_ctx, true);
+ 	mipi_dsi_msleep(&dsi_ctx, 28);
+-- 
+2.47.3
+

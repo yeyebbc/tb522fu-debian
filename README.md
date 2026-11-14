@@ -163,6 +163,17 @@ is insufficient. Android, exact graphics rollback, filesystem and cleanup
 checks passed; CI44 remains installed. Do not repeat or install CI56 unchanged.
 Next work compares display-link and compression state at startup versus wake.
 
+The next image is diagnostic only. Seven new log sites compare DSI timing,
+each link's first video start, clock/lane/control readbacks, the panel PPS
+fingerprint and DPU compression resources. Ten existing control/status/timing
+registers are read only at a first video start with the host powered and enabled;
+no IRQ/FIFO flags or arbitrary addresses are read. An execution test of the actual
+old/new start functions checks all 16 state combinations and confirms identical
+writes and runtime state. The added reads/logging can affect timing, so a changed
+screen result would require further verification. No hardware sequence changes
+are included, and CI44 remains installed. The 99-patch source reproduces its
+pinned tree; affected ARM64 objects, packet contracts and 12 recipe tests pass.
+
 CI45 verified the secondary rear OV02B10's full sensor ID and two8-frame RAW10
 capture cycles through SM8750 CAMSS, with clean Android restoration. Frames were
 nearly black. An isolated Debian libcamera 0.7.1 CPU software-ISP test subsequently

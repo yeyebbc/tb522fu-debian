@@ -101,7 +101,8 @@
     "patches/0202-dpu-sm8750-paired-qactive-halt-test.patch",
     "patches/0203-tb522fu-panel-shutdown-hs.patch",
     "patches/0204-panel-backlight-output-diagnostics.patch",
-    "patches/0205-panel-boe-dvt2-long-packets.patch"
+    "patches/0205-panel-boe-dvt2-long-packets.patch",
+    "patches/0206-dsi-link-start-diagnostics.patch"
   ],
-  "patched_tree": "d9017ef5e7f9bf1d5c2b12187fec35ae9339b611"
+  "patched_tree": "d198665a5af51511bcc6944976f033e60425ef88"
 }

@@ -195,3 +195,15 @@ backlit blank image after wake. No matched controller fault. Both CI profiles,
 Android/graphics/fullfsck/timer/host-service/worker restoration pass. KeepCI44;
 no unchanged repeat. Next compare startup/wake DSI/DSC/PPS state with targeted
 diagnostics; do not guess resets or enable the broad inherited trace switch.
+
+Next0206 is diagnostic only, with7 info-level DISPLAY_LINK sites active from
+boot. DSI first-start readbacks are guarded by first_start/power_on/enabled;
+10 audited control/status/timing registers are within both host resources.
+No IRQ/FIFO flag reads, new writes, DCS reads, resets, rates, retries or delays.
+DSC resource logs run only in ENABLING; PPS CRC reads memory. CRC32 is selected
+but was already built-in, so effective config is unchanged. A16-case actual-C
+comparison preserves old writes/state and tests read gating.99-patch replay,
+ARM64 affected objects, strict checkpatch, packet contract and12 recipe tests
+pass; inherited DPU kernel-doc warnings remain. Logging/reads perturb timing;
+no promotion even if the image appears to wake. Keep9 scoped output sites and
+one recorded cycle with exact rollback; do not enable broad y900.trace.

@@ -191,7 +191,7 @@ def main():
     config = (out / '.config').read_text().splitlines()
     for setting in ['CONFIG_Y900_ACM_DIAG_DTB=y', 'CONFIG_INITRAMFS_FORCE=y',
                     'CONFIG_CMDLINE_FORCE=y', 'CONFIG_PANIC_TIMEOUT=5',
-                    'CONFIG_DEBUG_INFO_NONE=y', 'CONFIG_USB_CONFIGFS=y',
+                    'CONFIG_DEBUG_INFO_NONE=y', 'CONFIG_CRC32=y', 'CONFIG_USB_CONFIGFS=y',
                     'CONFIG_DRM_SIMPLEDRM=y', 'CONFIG_DRM=y', 'CONFIG_BACKLIGHT_CLASS_DEVICE=y',
                     'CONFIG_FONT_TER16x32=y', 'CONFIG_DEBUG_FS=y',
                     'CONFIG_OVERLAY_FS=y', 'CONFIG_SQUASHFS=y', 'CONFIG_SQUASHFS_ZLIB=y',
