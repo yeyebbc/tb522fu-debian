@@ -191,7 +191,8 @@ def main():
     for setting in ['CONFIG_Y900_ACM_DIAG_DTB=y', 'CONFIG_INITRAMFS_FORCE=y',
                     'CONFIG_CMDLINE_FORCE=y', 'CONFIG_PANIC_TIMEOUT=5',
                     'CONFIG_DEBUG_INFO_NONE=y', 'CONFIG_USB_CONFIGFS=y',
-                    'CONFIG_DRM_SIMPLEDRM=y', 'CONFIG_DRM=y', 'CONFIG_FONT_TER16x32=y', 'CONFIG_DEBUG_FS=y',
+                    'CONFIG_DRM_SIMPLEDRM=y', 'CONFIG_DRM=y', 'CONFIG_BACKLIGHT_CLASS_DEVICE=y',
+                    'CONFIG_FONT_TER16x32=y', 'CONFIG_DEBUG_FS=y',
                     'CONFIG_OVERLAY_FS=y', 'CONFIG_SQUASHFS=y', 'CONFIG_SQUASHFS_ZLIB=y',
                     'CONFIG_SCSI_UFS_QCOM=m', 'CONFIG_PHY_QCOM_QMP_UFS=m',
                     'CONFIG_SPI_QCOM_GENI=m', 'CONFIG_QCOM_GPI_DMA=m', 'CONFIG_TOUCHSCREEN_NT36536_SPI=m',
@@ -356,6 +357,12 @@ def main():
     iommu = capture(['fdtget', '-t', 'x', dtb, '/soc@0/pcie@1c00000', 'iommu-map']).split()
     assert len(iommu) == 10 and iommu[2:5] == ['1400', '0', '1'] and iommu[7:] == ['1401', '0', '1']
     run(make + ['Image', 'modules'])
+    # DRM=y with a modular backlight core silently compiles the panel helper
+    # to a stub. Verify the real call survives in the built consumer too.
+    panel_symbols = capture([cross + 'nm', '--undefined-only',
+                             out / 'drivers/gpu/drm/panel/panel-novatek-nt36536.ko'])
+    assert re.search(r'^\s+U drm_panel_of_backlight$', panel_symbols, re.M), \
+        'Panel/backlight association was compiled out'
     modules = work / 'modules'
     run(make + ['modules_install', f'INSTALL_MOD_PATH={modules}', 'INSTALL_MOD_STRIP=1'])
     release = (out / 'include/config/kernel.release').read_text().strip()

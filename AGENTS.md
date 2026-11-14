@@ -143,3 +143,21 @@ no new register reads, writes, retries, delays or power policy are introduced.
 Successful transport is not proof of LED light or panel output. The 97-patch
 recipe remains diagnostic only. A bounded test must enable only these formats,
 restore their flags, review Pixel 6 footage and preserve CI44/Android/graphics.
+
+## CI54 panel/backlight reachability
+
+CI53 captured all nine enabled diagnostic sites, then restored their print
+flags. The panel disable/unprepare and enable/init/PPS callbacks completed, but
+neither backlight chip received an update during the cycle. Physical wake still
+failed; Android, graphics, filesystem and all cleanup checks passed.
+
+The build configuration explains the missing backlight association: DRM is
+built-in while BACKLIGHT_CLASS_DEVICE is modular. For that combination the
+kernel header replaces drm_panel_of_backlight() with a successful no-op. The
+actual CI53 panel module has no import of the real helper. CI54 changes only the
+backlight class core to built-in; the chip and panel drivers remain modules.
+Local compiled objects now import/export the real helper. CI checks both the
+final configuration and the consumer's actual symbol reference. The 97-patch
+source tree is unchanged and retains diagnostics for the bounded comparison.
+This correction is not physical wake acceptance; keep CI44 installed until the
+camera and callback results pass, followed by a clean candidate and regression.

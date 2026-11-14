@@ -109,6 +109,22 @@ Successful transport is not proof of LED light or panel output. The 97-patch
 recipe remains diagnostic only. A bounded test must enable only these formats,
 restore their flags, review Pixel 6 footage and preserve CI44/Android/graphics.
 
+CI53 captured all nine enabled diagnostic sites, then restored their print
+flags. The panel disable/unprepare and enable/init/PPS callbacks completed, but
+neither backlight chip received an update during the cycle. Physical wake still
+failed; Android, graphics, filesystem and all cleanup checks passed.
+
+The build configuration explains the missing backlight association: DRM is
+built-in while BACKLIGHT_CLASS_DEVICE is modular. For that combination the
+kernel header replaces drm_panel_of_backlight() with a successful no-op. The
+actual CI53 panel module has no import of the real helper. CI54 changes only the
+backlight class core to built-in; the chip and panel drivers remain modules.
+Local compiled objects now import/export the real helper. CI checks both the
+final configuration and the consumer's actual symbol reference. The 97-patch
+source tree is unchanged and retains diagnostics for the bounded comparison.
+This correction is not physical wake acceptance; keep CI44 installed until the
+camera and callback results pass, followed by a clean candidate and regression.
+
 CI45 verified the secondary rear OV02B10's full sensor ID and two8-frame RAW10
 capture cycles through SM8750 CAMSS, with clean Android restoration. Frames were
 nearly black. An isolated Debian libcamera 0.7.1 CPU software-ISP test subsequently

@@ -112,6 +112,8 @@ CONFIG_DEBUG_INFO_NONE=y
 
 # Native display/GPU remain modular; disk profiles exercise native coldplug.
 CONFIG_DRM=y
+# DRM's panel/backlight helper is a no-op if this core is modular with DRM=y.
+CONFIG_BACKLIGHT_CLASS_DEVICE=y
 CONFIG_DRM_SIMPLEDRM=y
 CONFIG_DRM_FBDEV_EMULATION=y
 CONFIG_DRM_MSM=m
