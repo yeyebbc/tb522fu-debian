@@ -93,7 +93,8 @@
     "patches/0159-tb522fu-staged-adreno.patch",
     "patches/0160-dsi-bonded-slave-power-off-first.patch",
     "patches/0195-dpu-disconnect-slave-timing-mux.patch",
-    "patches/0196-dpu-disable-slave-encoder-first.patch"
+    "patches/0196-dpu-disable-slave-encoder-first.patch",
+    "patches/0197-dpu-scoped-wake-lifecycle-diagnostics.patch"
   ],
-  "patched_tree": "b9ec9c1dc9d2525d6698cf163a9565601bd40f17"
+  "patched_tree": "5b73b3b9d74a8841d8c8db052d11ec05ee9e5d44"
 }

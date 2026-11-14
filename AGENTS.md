@@ -40,3 +40,8 @@ stock partition images and local environment paths out of tracked files.
   recur before post-wake input. Android/graphics restoration passed; keep CI44
   installed and do not repeat CI47 unchanged. Continue targeted lifecycle
   analysis before selecting another change.
+
+- Patch0197 is diagnostic only, disabled by default. The91-patch stack must
+  replay exactly. Enable only DPU_LIFECYCLE formats for a bounded test; collect
+  the display driver's stored devcoredump without triggering a fresh snapshot.
+  This does not make CI47 wake accepted and must not be promoted to production.

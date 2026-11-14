@@ -1,0 +1,164 @@
+From 52bc18f1268aab67ff2f03f889203f93198da4bb Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Sat, 14 Nov 2026 09:14:00 +0800
+Subject: [PATCH] drm/msm/dpu: add scoped lifecycle diagnostics for wake
+ failure
+
+Expose the result of the existing cleanup CTL reset and the ordering of
+interface and runtime-PM callbacks using dynamic-debug callsites. The
+reset result was previously discarded before later kickoff failure.
+
+The diagnostics add no register writes, delays, retries or power votes.
+The existing sequence and error handling remain unchanged. Enable only
+formats containing DPU_LIFECYCLE during a bounded diagnostic session;
+all sites are disabled by default. This is not a claimed wake fix.
+
+Signed-off-by: Codex <codex@localhost>
+---
+ drivers/gpu/drm/msm/disp/dpu1/dpu_encoder.c          | 11 +++++++++--
+ drivers/gpu/drm/msm/disp/dpu1/dpu_encoder_phys_vid.c |  4 ++++
+ drivers/gpu/drm/msm/disp/dpu1/dpu_hw_ctl.c           |  9 ++++++++-
+ drivers/gpu/drm/msm/disp/dpu1/dpu_hw_intf.c          |  3 +++
+ drivers/gpu/drm/msm/disp/dpu1/dpu_kms.c              |  7 +++++++
+ 5 files changed, 31 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder.c b/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder.c
+index 063dce09ade2..e96519f87f7f 100644
+--- a/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder.c
++++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder.c
+@@ -2358,12 +2358,17 @@ void dpu_encoder_helper_phys_cleanup(struct dpu_encoder_phys *phys_enc)
+ {
+ 	struct dpu_hw_ctl *ctl = phys_enc->hw_ctl;
+ 	struct dpu_hw_intf_cfg intf_cfg = { 0 };
+-	int i;
++	int i, ret;
+ 	struct dpu_encoder_virt *dpu_enc;
+ 
+ 	dpu_enc = to_dpu_encoder_virt(phys_enc->parent);
+ 
+-	ctl->ops.reset(ctl);
++	pr_debug("DPU_LIFECYCLE cleanup_begin enc=%u intf=%d ctl=%d role=%d\n",
++		 DRMID(phys_enc->parent), phys_enc->hw_intf ? phys_enc->hw_intf->idx : -1,
++		 ctl->idx, phys_enc->split_role);
++	ret = ctl->ops.reset(ctl);
++	pr_debug("DPU_LIFECYCLE cleanup_reset enc=%u ctl=%d ret=%d\n",
++		 DRMID(phys_enc->parent), ctl->idx, ret);
+ 
+ 	dpu_encoder_helper_reset_mixers(phys_enc);
+ 
+@@ -2442,6 +2447,8 @@ void dpu_encoder_helper_phys_cleanup(struct dpu_encoder_phys *phys_enc)
+ 	ctl->ops.trigger_flush(ctl);
+ 	ctl->ops.trigger_start(ctl);
+ 	ctl->ops.clear_pending_flush(ctl);
++	pr_debug("DPU_LIFECYCLE cleanup_end enc=%u ctl=%d\n",
++		 DRMID(phys_enc->parent), ctl->idx);
+ }
+ 
+ void dpu_encoder_helper_phys_setup_cwb(struct dpu_encoder_phys *phys_enc,
+diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder_phys_vid.c b/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder_phys_vid.c
+index 1242c7f810a9..7f2f596aedac 100644
+--- a/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder_phys_vid.c
++++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder_phys_vid.c
+@@ -658,6 +658,10 @@ static void dpu_encoder_phys_vid_disable(struct dpu_encoder_phys *phys_enc)
+ 	if (phys_enc->hw_intf && phys_enc->hw_intf->ops.get_status)
+ 		phys_enc->hw_intf->ops.get_status(phys_enc->hw_intf, &intf_status);
+ 
++	pr_debug("DPU_LIFECYCLE disable_status intf=%d role=%d enabled=%u frame=%u line=%u\n",
++		 phys_enc->hw_intf->idx, phys_enc->split_role, intf_status.is_en,
++		 intf_status.frame_count, intf_status.line_count);
++
+ 	/*
+ 	 * Wait for a vsync if timing en status is on after timing engine
+ 	 * is disabled.
+diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_ctl.c b/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_ctl.c
+index 0b1ebf1f187a..de588a9b70ec 100644
+--- a/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_ctl.c
++++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_ctl.c
+@@ -444,10 +444,15 @@ static u32 dpu_hw_ctl_poll_reset_status(struct dpu_hw_ctl *ctx, u32 timeout_us)
+ static int dpu_hw_ctl_reset_control(struct dpu_hw_ctl *ctx)
+ {
+ 	struct dpu_hw_blk_reg_map *c = &ctx->hw;
++	u32 status;
+ 
+ 	pr_debug("issuing hw ctl reset for ctl:%d\n", ctx->idx);
++	pr_debug("DPU_LIFECYCLE reset_begin ctl=%d sw=%#x flush=%#x\n",
++		 ctx->idx, DPU_REG_READ(c, CTL_SW_RESET), DPU_REG_READ(c, CTL_FLUSH));
+ 	DPU_REG_WRITE(c, CTL_SW_RESET, 0x1);
+-	if (dpu_hw_ctl_poll_reset_status(ctx, DPU_REG_RESET_TIMEOUT_US))
++	status = dpu_hw_ctl_poll_reset_status(ctx, DPU_REG_RESET_TIMEOUT_US);
++	pr_debug("DPU_LIFECYCLE reset_end ctl=%d pending=%u\n", ctx->idx, status);
++	if (status)
+ 		return -EINVAL;
+ 
+ 	return 0;
+@@ -464,6 +469,8 @@ static int dpu_hw_ctl_wait_reset_status(struct dpu_hw_ctl *ctx)
+ 	if (!status)
+ 		return 0;
+ 
++	pr_debug("DPU_LIFECYCLE wait_pending ctl=%d sw=%#x\n", ctx->idx,
++		 DPU_REG_READ(c, CTL_SW_RESET));
+ 	pr_debug("hw ctl reset is set for ctl:%d\n", ctx->idx);
+ 	if (dpu_hw_ctl_poll_reset_status(ctx, DPU_REG_RESET_TIMEOUT_US)) {
+ 		y900_pr("Y900CTLREG ctl=%d top=%#x start=%#x sw=%#x intf=%#x layer=%#x\n",
+diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_intf.c b/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_intf.c
+index 041274355f2b..f241114ff964 100644
+--- a/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_intf.c
++++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_intf.c
+@@ -285,6 +285,8 @@ static void dpu_hw_intf_enable_dpu_sync_ctrl(struct dpu_hw_intf *intf,
+ 		ctrl &= ~BIT(0);
+ 
+ 	DPU_REG_WRITE(c, INTF_DPU_SYNC_CTRL, ctrl);
++	pr_debug("DPU_LIFECYCLE sync_mux intf=%d enable=%u value=%#x\n",
++		 intf->idx, enable, ctrl);
+ }
+ 
+ static void dpu_hw_intf_enable_timing_engine(
+@@ -294,6 +296,7 @@ static void dpu_hw_intf_enable_timing_engine(
+ 	struct dpu_hw_blk_reg_map *c = &intf->hw;
+ 	/* Note: Display interface select is handled in top block hw layer */
+ 	DPU_REG_WRITE(c, INTF_TIMING_ENGINE_EN, enable != 0);
++	pr_debug("DPU_LIFECYCLE timing intf=%d enable=%u\n", intf->idx, enable != 0);
+ }
+ 
+ static void dpu_hw_intf_setup_prg_fetch(
+diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_kms.c b/drivers/gpu/drm/msm/disp/dpu1/dpu_kms.c
+index 771f61cc98fe..b9db053f5983 100644
+--- a/drivers/gpu/drm/msm/disp/dpu1/dpu_kms.c
++++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_kms.c
+@@ -1453,11 +1453,14 @@ static int __maybe_unused dpu_runtime_suspend(struct device *dev)
+ 	struct msm_drm_private *priv = platform_get_drvdata(pdev);
+ 	struct dpu_kms *dpu_kms = to_dpu_kms(priv->kms);
+ 
++	pr_debug("DPU_LIFECYCLE runtime_suspend_begin core_request=%llu\n",
++		 dpu_kms->perf.core_clk_rate);
+ 	clk_bulk_disable_unprepare(dpu_kms->num_clocks, dpu_kms->clocks);
+ 
+ 	for (i = 0; i < dpu_kms->num_paths; i++)
+ 		icc_set_bw(dpu_kms->path[i], 0, 0);
+ 
++	pr_debug("DPU_LIFECYCLE runtime_suspend_end\n");
+ 	return 0;
+ }
+ 
+@@ -1472,7 +1475,10 @@ static int __maybe_unused dpu_runtime_resume(struct device *dev)
+ 
+ 	ddev = dpu_kms->dev;
+ 
++	pr_debug("DPU_LIFECYCLE runtime_resume_begin core_request=%llu\n",
++		 dpu_kms->perf.core_clk_rate);
+ 	rc = clk_bulk_prepare_enable(dpu_kms->num_clocks, dpu_kms->clocks);
++	pr_debug("DPU_LIFECYCLE runtime_clocks_enabled ret=%d\n", rc);
+ 	if (rc) {
+ 		DPU_ERROR("clock enable failed rc:%d\n", rc);
+ 		return rc;
+@@ -1483,6 +1489,7 @@ static int __maybe_unused dpu_runtime_resume(struct device *dev)
+ 	drm_for_each_encoder(encoder, ddev)
+ 		dpu_encoder_virt_runtime_resume(encoder);
+ 
++	pr_debug("DPU_LIFECYCLE runtime_resume_end\n");
+ 	return rc;
+ }
+ 
+-- 
+2.47.3
+

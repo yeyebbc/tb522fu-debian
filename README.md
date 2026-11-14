@@ -31,6 +31,11 @@ This upstream fix is insufficient on this tablet. Stock Android, the original
 graphics policy and filesystem checks were restored; CI44 stays installed.
 Do not install or repeat the unchanged CI47 candidate.
 
+The next candidate adds 14 narrowly scoped dynamic-debug callsites for the
+existing controller reset, interface timing and display runtime-PM sequence.
+It is diagnostic only: no new register writes, delays, retries or power votes.
+Its purpose is to locate the first lifecycle failure before selecting a fix.
+
 CI45 verified the secondary rear OV02B10's full sensor ID and two8-frame RAW10
 capture cycles through SM8750 CAMSS, with clean Android restoration. Frames were
 nearly black. An isolated Debian libcamera 0.7.1 CPU software-ISP test subsequently

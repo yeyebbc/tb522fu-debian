@@ -686,11 +686,20 @@
     "patch_id": "b44acc8f61d6a8e19d27894cd7f79688a3b2a172",
     "sha256": "a115f1c6b797ec0020debce7584754b31aa84ad5054d8458be87d6a5284ec857",
     "license": "GPL-2.0-only; original author, review and signoffs retained",
-    "hardware_tested": false,
+    "hardware_tested": true,
     "source": "Unchanged upstream fix: disable slave DPU encoder before master so the final shared CTL reset occurs after both timing engines stop.",
     "references": [
       "https://github.com/torvalds/linux/commit/32d04280ddebb6eb964990931b0f1001f63b35e7",
       "https://lore.kernel.org/r/20261002130712.50612-1-26rote@gmail.com"
-    ]
+    ],
+    "wake_accepted": false
+  },
+  "0197-dpu-scoped-wake-lifecycle-diagnostics.patch": {
+    "local_commit": "52bc18f1268aab67ff2f03f889203f93198da4bb",
+    "sha256": "92e8b947085c57e9c594b58789253ec57e58d6c0b3816ec8b23193473c320a56",
+    "license": "GPL-2.0-only; existing source-file attribution retained",
+    "hardware_tested": false,
+    "diagnostic_only": true,
+    "source": "Scoped dynamic-debug callsites expose existing CTL reset return and INTF/runtime-PM ordering. No new register writes, delays, retries or power votes. Disabled by default; not a wake fix."
   }
 }
