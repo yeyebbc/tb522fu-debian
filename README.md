@@ -6,9 +6,9 @@ Experimental native Linux port for the Lenovo Legion Y900 13 / TB522FU
 directions. This remains a development port with substantial peripheral work
 outstanding.
 
-**CI65 failed display restoration in the device suspend diagnostic. It did
-not reach real sleep. Do not install it. CI44 remains the accepted installed
-kernel; suspend and physical display wake are unresolved.**
+**Current candidate: CI66 implements the stock DSI clock handoff before PLL
+shutdown. It is unverified and must not be installed. CI44 remains installed;
+suspend and physical display wake are unresolved.**
 
 Current installed kernel: `7.3.0-tb522fu-installed-ci44`, built from recipe
 `0a1847dd0b67991af502bfea9da36c5db50be3c4`. The installed image SHA256 is
@@ -764,3 +764,20 @@ counters did not represent a working display. Android, graphics, filesystem,
 timer, services, network and worker restoration passed; CI44 stays installed.
 Do not install or repeat CI65 unchanged. Next inspect the first display command
 transfer and clock ownership across device PM before selecting another patch.
+
+## CI66 explicit idle DSI clock source
+
+The next candidate implements the stock clock handoff before PLL shutdown.
+Both DSI controllers receive the same crystal input used by DISPCC parent
+zero. Their byte/pixel source clocks switch to it while the PLL is still
+available, then existing slave-first link shutdown continues. Normal startup
+still selects PLL0 for both hosts. Controllers without the optional input
+retain their behavior; clock API errors are reported.
+
+This adapts [tiopex's ROCKNIX patch](https://github.com/ROCKNIX/distribution/blob/bcf3b5bc574990b96543484575b06f912153a715/projects/ROCKNIX/devices/SM8750/patches/linux/0048-drm-msm-dsi-reparent-byte-pixel-src-to-xo-on-disable.patch), using a declared XO clock rather than assuming the initial parent is XO.
+Lenovo's captured tree and pinned stock manager confirm the explicit input
+and switch-before-PLL-off ordering. No rates, voltages, raw registers, delays
+or permanent votes are added. Two per-shutdown API-result messages are
+diagnostic only. Source and offline checks pass; hardware is untested. Keep
+CI44 installed and require full-driver staged PM/real-sleep/physical-display
+acceptance with exact Android restoration.

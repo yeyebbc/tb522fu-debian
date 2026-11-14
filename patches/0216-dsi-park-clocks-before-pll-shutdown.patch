@@ -1,0 +1,109 @@
+From 59747edb0cc41f827ffd5e9c0947a4736a352c91 Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Sat, 14 Nov 2026 17:13:05 +0800
+Subject: [PATCH] drm/msm/dsi: park link clock sources on explicit XO before
+ power-off
+
+The SM8750 device-PM test returns with panel command DMA timeouts and lane
+FIFO errors. Lenovo downstream dsi_display_mgr_phy_pll_toggle() switches
+the RCG parents to XO before disabling the PLL, including split links.
+Its comment explains that another consumer can keep an RCG running after
+its branch clock is disabled; switching requires both parents to be live.
+
+Acquire an optional explicit XO input and switch byte/pixel source clocks
+before disabling the link clocks. Leave controllers without that input
+unchanged. Attempt both switches, report errors to the existing caller and
+complete the normal power-off cleanup. Existing slave-first host shutdown
+and normal PLL parenting on enable are preserved.
+
+The direction is based on tiopex's ROCKNIX DSI reparenting patch. This is
+a local adaptation: use the declared hardware clock instead of assuming
+the initial parent is XO, retain acquisition/error handling, and log the
+two existing clock API results for this diagnostic candidate. No raw
+register accesses, forced power votes, new rates or delays are added.
+Hardware validation is pending; the observed timeout does not establish
+this omission as its cause.
+
+Link: https://github.com/ROCKNIX/distribution/blob/bcf3b5bc574990b96543484575b06f912153a715/projects/ROCKNIX/devices/SM8750/patches/linux/0048-drm-msm-dsi-reparent-byte-pixel-src-to-xo-on-disable.patch
+Link: https://github.com/lenovo-basements/android_kernel_lenovo_sm8750-modules/blob/e1f324632d70b2427751820cd48eefc45baab0ce/qcom/opensource/display-drivers/msm/dsi/dsi_display_manager.c
+Signed-off-by: Codex <codex@localhost>
+---
+ drivers/gpu/drm/msm/dsi/dsi_host.c | 30 +++++++++++++++++++++++++++++-
+ 1 file changed, 29 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/gpu/drm/msm/dsi/dsi_host.c b/drivers/gpu/drm/msm/dsi/dsi_host.c
+index e387036b5595..e1671b8e2c2e 100644
+--- a/drivers/gpu/drm/msm/dsi/dsi_host.c
++++ b/drivers/gpu/drm/msm/dsi/dsi_host.c
+@@ -137,6 +137,7 @@ struct msm_dsi_host {
+ 	struct clk *pixel_src_clk;
+ 	struct clk *dsi_pll_byte_clk;
+ 	struct clk *dsi_pll_pixel_clk;
++	struct clk *xo_clk;
+ 
+ 	unsigned long byte_clk_rate;
+ 	bool byte_intf_clk_div_2;
+@@ -319,6 +320,11 @@ int dsi_clk_init_6g_v2_9(struct msm_dsi_host *msm_host)
+ 		return dev_err_probe(dev, PTR_ERR(msm_host->dsi_pll_pixel_clk),
+ 				     "can't get dsi_pll_pixel clock\n");
+ 
++	msm_host->xo_clk = devm_clk_get_optional(dev, "xo");
++	if (IS_ERR(msm_host->xo_clk))
++		return dev_err_probe(dev, PTR_ERR(msm_host->xo_clk),
++				     "can't get idle XO clock\n");
++
+ 	return 0;
+ }
+ 
+@@ -2751,10 +2757,31 @@ int msm_dsi_host_power_on(struct mipi_dsi_host *host,
+ 	return ret;
+ }
+ 
++static int dsi_link_clk_park(struct msm_dsi_host *msm_host)
++{
++	struct device *dev = &msm_host->pdev->dev;
++	int byte_ret, pixel_ret;
++
++	if (!msm_host->xo_clk)
++		return 0;
++
++	/* Both parents must be live while the RCG switches away from the PLL. */
++	byte_ret = clk_set_parent(msm_host->byte_src_clk, msm_host->xo_clk);
++	pixel_ret = clk_set_parent(msm_host->pixel_src_clk, msm_host->xo_clk);
++	dev_info(dev, "DISPLAY_CLOCK_PARK id=%d target=%s byte_ret=%d pixel_ret=%d\n",
++		 msm_host->id, __clk_get_name(msm_host->xo_clk), byte_ret, pixel_ret);
++	if (byte_ret || pixel_ret)
++		dev_err(dev, "DSI clock park failed: byte=%d pixel=%d\n",
++			byte_ret, pixel_ret);
++
++	return byte_ret ? byte_ret : pixel_ret;
++}
++
+ int msm_dsi_host_power_off(struct mipi_dsi_host *host)
+ {
+ 	struct msm_dsi_host *msm_host = to_msm_dsi_host(host);
+ 	const struct msm_dsi_cfg_handler *cfg_hnd = msm_host->cfg_hnd;
++	int ret = 0;
+ 
+ 	mutex_lock(&msm_host->dev_mutex);
+ 	if (!msm_host->power_on) {
+@@ -2766,6 +2793,7 @@ int msm_dsi_host_power_off(struct mipi_dsi_host *host)
+ 
+ 	pinctrl_pm_select_sleep_state(&msm_host->pdev->dev);
+ 
++	ret = dsi_link_clk_park(msm_host);
+ 	cfg_hnd->ops->link_clk_disable(msm_host);
+ 	pm_runtime_put(&msm_host->pdev->dev);
+ 
+@@ -2780,7 +2808,7 @@ int msm_dsi_host_power_off(struct mipi_dsi_host *host)
+ 
+ unlock_ret:
+ 	mutex_unlock(&msm_host->dev_mutex);
+-	return 0;
++	return ret;
+ }
+ 
+ int msm_dsi_host_set_display_mode(struct mipi_dsi_host *host,
+-- 
+2.47.3
+

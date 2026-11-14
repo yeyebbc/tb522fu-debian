@@ -138,12 +138,15 @@ def check_bonded_dsi_clocks(dtb):
     for p in (phy0, phy1):
         assert capture(['fdtget', '-t', 'i', dtb, p, '#clock-cells']) == '1'
     names = ('byte byte_intf pixel core iface bus dsi_pll_pixel dsi_pll_byte '
-             'esync osc byte_src pixel_src').split()
+             'esync osc byte_src pixel_src xo').split()
     for index, address in enumerate(('ae94000', 'ae96000')):
         node = display + '/dsi@' + address
         assert capture(['fdtget', '-t', 's', dtb, node, 'clock-names']).split() == names
         cells = [int(v, 16) for v in capture(['fdtget', '-t', 'x', dtb, node, 'clocks']).split()]
-        assert len(cells) == 2 * len(names), 'Unexpected bonded clock specifiers'
+        # The appended fixed-factor XO provider has zero argument cells.
+        assert len(cells) == 2 * (len(names) - 1) + 1, 'Unexpected bonded clock specifiers'
+        dispcc_inputs = capture(['fdtget', '-t', 'x', dtb, '/soc@0/clock-controller@af00000', 'clocks']).split()
+        assert cells[-1] == int(dispcc_inputs[0], 16), 'DSI XO must match DISPCC parent zero'
         for name, output in (('dsi_pll_pixel', 1), ('dsi_pll_byte', 0)):
             offset = 2 * names.index(name)
             assert cells[offset:offset + 2] == [refs[0], output], (node, name)

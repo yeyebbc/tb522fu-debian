@@ -1,0 +1,57 @@
+From 92c4cdfca3a9e7c304165791185bbde20ea16c5f Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Sat, 14 Nov 2026 17:13:04 +0800
+Subject: [PATCH] dt-bindings: display: msm: allow an idle XO input for DSI 2.9
+
+Describe an optional crystal clock used to park the byte and pixel RCGs
+before shutting down their PHY PLL. Keep the existing twelve-clock layouts
+valid for other users of the controller binding.
+
+Signed-off-by: Codex <codex@localhost>
+---
+ .../bindings/display/msm/dsi-controller-main.yaml      | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
+
+diff --git a/Documentation/devicetree/bindings/display/msm/dsi-controller-main.yaml b/Documentation/devicetree/bindings/display/msm/dsi-controller-main.yaml
+index e4fd1cbbd4e0..8611e1c62a65 100644
+--- a/Documentation/devicetree/bindings/display/msm/dsi-controller-main.yaml
++++ b/Documentation/devicetree/bindings/display/msm/dsi-controller-main.yaml
+@@ -87,12 +87,13 @@ properties:
+        - mdp_core: MDP Core clock.
+        - mnoc: MNOC clock
+        - pixel: Display pixel clock.
++       - xo: Live crystal source for parking link RCGs before PLL shutdown.
+     minItems: 3
+-    maxItems: 12
++    maxItems: 13
+ 
+   clock-names:
+     minItems: 3
+-    maxItems: 12
++    maxItems: 13
+ 
+   phys:
+     maxItems: 1
+@@ -392,8 +393,9 @@ allOf:
+       properties:
+         clocks:
+           minItems: 12
+-          maxItems: 12
++          maxItems: 13
+         clock-names:
++          minItems: 12
+           items:
+             - const: byte
+             - const: byte_intf
+@@ -407,6 +409,8 @@ allOf:
+             - const: osc
+             - const: byte_src
+             - const: pixel_src
++            - const: xo
++              description: Live crystal source for parking RCGs before PLL shutdown.
+ 
+   - if:
+       properties:
+-- 
+2.47.3
+

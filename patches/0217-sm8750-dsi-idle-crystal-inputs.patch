@@ -1,0 +1,78 @@
+From 3479088ae89d96a18e6c78400565fbe1228754d3 Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Sat, 14 Nov 2026 17:13:05 +0800
+Subject: [PATCH] arm64: dts: qcom: sm8750: provide DSI idle crystal parents
+
+Connect the new DSI XO inputs to the same bi_tcxo_div2 provider used by
+DISPCC parent zero. Both byte and pixel RCG parent maps support that input.
+The captured Lenovo stock tree provides XO to both DSI controllers and
+the stock manager selects it before PLL shutdown. Preserve the TB522FU
+DSI1 PLL0 override while appending the shared idle input.
+
+Signed-off-by: Codex <codex@localhost>
+---
+ arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts |  3 ++-
+ arch/arm64/boot/dts/qcom/sm8750.dtsi                | 12 ++++++++----
+ 2 files changed, 10 insertions(+), 5 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+index c4ac03c32119..fe702d35dcc2 100644
+--- a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
++++ b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+@@ -242,7 +242,8 @@ &mdss_dsi1 {
+ 		 <&dispcc DISP_CC_ESYNC1_CLK>,
+ 		 <&dispcc DISP_CC_OSC_CLK>,
+ 		 <&dispcc DISP_CC_MDSS_BYTE1_CLK_SRC>,
+-		 <&dispcc DISP_CC_MDSS_PCLK1_CLK_SRC>;
++		 <&dispcc DISP_CC_MDSS_PCLK1_CLK_SRC>,
++		 <&bi_tcxo_div2>;
+ 
+ 	vdda-supply = <&vreg_l3g>;
+ 	status = "okay";
+diff --git a/arch/arm64/boot/dts/qcom/sm8750.dtsi b/arch/arm64/boot/dts/qcom/sm8750.dtsi
+index 2e29ce5ab93c..5a0e86c5b3c3 100644
+--- a/arch/arm64/boot/dts/qcom/sm8750.dtsi
++++ b/arch/arm64/boot/dts/qcom/sm8750.dtsi
+@@ -3511,7 +3511,8 @@ mdss_dsi0: dsi@ae94000 {
+ 					 <&dispcc DISP_CC_ESYNC0_CLK>,
+ 					 <&dispcc DISP_CC_OSC_CLK>,
+ 					 <&dispcc DISP_CC_MDSS_BYTE0_CLK_SRC>,
+-					 <&dispcc DISP_CC_MDSS_PCLK0_CLK_SRC>;
++					 <&dispcc DISP_CC_MDSS_PCLK0_CLK_SRC>,
++					 <&bi_tcxo_div2>;
+ 				clock-names = "byte",
+ 					      "byte_intf",
+ 					      "pixel",
+@@ -3523,7 +3524,8 @@ mdss_dsi0: dsi@ae94000 {
+ 					      "esync",
+ 					      "osc",
+ 					      "byte_src",
+-					      "pixel_src";
++					      "pixel_src",
++					      "xo";
+ 
+ 				operating-points-v2 = <&mdss_dsi_opp_table>;
+ 
+@@ -3620,7 +3622,8 @@ mdss_dsi1: dsi@ae96000 {
+ 					 <&dispcc DISP_CC_ESYNC1_CLK>,
+ 					 <&dispcc DISP_CC_OSC_CLK>,
+ 					 <&dispcc DISP_CC_MDSS_BYTE1_CLK_SRC>,
+-					 <&dispcc DISP_CC_MDSS_PCLK1_CLK_SRC>;
++					 <&dispcc DISP_CC_MDSS_PCLK1_CLK_SRC>,
++					 <&bi_tcxo_div2>;
+ 				clock-names = "byte",
+ 					      "byte_intf",
+ 					      "pixel",
+@@ -3632,7 +3635,8 @@ mdss_dsi1: dsi@ae96000 {
+ 					      "esync",
+ 					      "osc",
+ 					      "byte_src",
+-					      "pixel_src";
++					      "pixel_src",
++					      "xo";
+ 
+ 				operating-points-v2 = <&mdss_dsi_opp_table>;
+ 
+-- 
+2.47.3
+
