@@ -101,6 +101,14 @@ cleanup all passed. Keep CI44 installed; do not repeat CI52 unchanged.
 The next audit separates backlight recovery from the panel/video path. The
 current driver's `actual_brightness` is cached software state, not LED readback.
 
+CI53 adds nine scoped dynamic-debug callsites for panel wake and backlight
+output. They record existing callback results, effective brightness/blanking
+state, and existing writes to both backlight chips. They are disabled by default;
+no new register reads, writes, retries, delays or power policy are introduced.
+Successful transport is not proof of LED light or panel output. The 97-patch
+recipe remains diagnostic only. A bounded test must enable only these formats,
+restore their flags, review Pixel 6 footage and preserve CI44/Android/graphics.
+
 CI45 verified the secondary rear OV02B10's full sensor ID and two8-frame RAW10
 capture cycles through SM8750 CAMSS, with clean Android restoration. Frames were
 nearly black. An isolated Debian libcamera 0.7.1 CPU software-ISP test subsequently

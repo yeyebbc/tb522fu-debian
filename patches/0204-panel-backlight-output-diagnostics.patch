@@ -1,0 +1,110 @@
+From a1e0125cd3721a909618246d3a07b6bf7b05306f Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Sat, 14 Nov 2026 11:30:25 +0800
+Subject: [PATCH] drm: add scoped panel and backlight wake diagnostics
+
+CI52 returns clean software state and renders after wake, but its physical
+panel stays dark. actual_brightness cannot distinguish an enabled LED from
+a saved request because this backlight driver has no get_brightness hook.
+
+Add nine dynamic-debug callsites, disabled by default, for the panel
+callbacks/init/PPS results and the backlight effective state, existing
+register-write returns and primary/secondary outcomes. No new hardware
+reads, writes, retries, delays or power decisions are added. Logging can
+still change timing and successful writes are not physical readback.
+
+The bounded test enables only these formats after initial coldplug and
+restores their previous disabled state. This is diagnostic only; CI44
+remains installed and real camera output is required for wake acceptance.
+
+Signed-off-by: Codex <codex@localhost>
+---
+ drivers/gpu/drm/panel/panel-novatek-nt36536.c |  7 +++++++
+ drivers/video/backlight/ktz8866.c             | 18 ++++++++++++++++--
+ 2 files changed, 23 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/gpu/drm/panel/panel-novatek-nt36536.c b/drivers/gpu/drm/panel/panel-novatek-nt36536.c
+index 97209e112bc2..baa6f9377774 100644
+--- a/drivers/gpu/drm/panel/panel-novatek-nt36536.c
++++ b/drivers/gpu/drm/panel/panel-novatek-nt36536.c
+@@ -149,9 +149,13 @@ static int novatek_enable(struct drm_panel *panel)
+ 	struct drm_dsc_picture_parameter_set pps;
+ 	int ret;
+ 
++	dev_dbg(panel->dev,
++		"DISPLAY_OUTPUT enable prepared=%d enabled=%d flags=%#lx\n",
++		panel->prepared, panel->enabled, dsi->mode_flags);
+ 	y900_dsi_panel_init_begin();
+ 
+ 	ret = ctx->desc->init_sequence(&dsi_ctx);
++	dev_dbg(panel->dev, "DISPLAY_OUTPUT init ret=%d\n", ret);
+ 	if (ret < 0) {
+ 		dev_err(panel->dev, "Failed to initialize panel: %d\n", ret);
+ 		goto out_panel_init;
+@@ -162,6 +166,7 @@ static int novatek_enable(struct drm_panel *panel)
+ 	mipi_dsi_compression_mode_multi(&dsi_ctx, true);
+ 	mipi_dsi_msleep(&dsi_ctx, 28);
+ 	ret = dsi_ctx.accum_err;
++	dev_dbg(panel->dev, "DISPLAY_OUTPUT pps ret=%d\n", ret);
+ 	if (ret < 0)
+ 		dev_err(panel->dev, "Failed to configure panel PPS: %d\n", ret);
+ 
+@@ -189,6 +194,7 @@ static int novatek_disable(struct drm_panel *panel)
+ 	struct device *dev = &dsi->dev;
+ 	int ret;
+ 
++	dev_dbg(panel->dev, "DISPLAY_OUTPUT disable enabled=%d\n", panel->enabled);
+ 	backlight_disable(ctx->backlight);
+ 
+ 	if (ctx->desc->exit_sequence)
+@@ -205,6 +211,7 @@ static int novatek_unprepare(struct drm_panel *panel)
+ {
+ 	struct novatek *ctx = to_novatek(panel);
+ 
++	dev_dbg(panel->dev, "DISPLAY_OUTPUT unprepare prepared=%d\n", panel->prepared);
+ 	if (ctx->reset_gpio)
+ 		gpiod_set_value_cansleep(ctx->reset_gpio, 1);
+ 	regulator_bulk_disable(ctx->num_supplies, ctx->supplies);
+diff --git a/drivers/video/backlight/ktz8866.c b/drivers/video/backlight/ktz8866.c
+index d8b1e735d155..9cecd3e44ab2 100644
+--- a/drivers/video/backlight/ktz8866.c
++++ b/drivers/video/backlight/ktz8866.c
+@@ -93,7 +93,11 @@ static const struct regmap_config ktz8866_regmap_config = {
+ static int ktz8866_write(struct ktz8866 *ktz, unsigned int reg,
+ 			 unsigned int val)
+ {
+-	return regmap_write(ktz->regmap, reg, val);
++	int ret = regmap_write(ktz->regmap, reg, val);
++
++	dev_dbg(&ktz->client->dev,
++		"DISPLAY_OUTPUT write reg=%#x value=%#x ret=%d\n", reg, val, ret);
++	return ret;
+ }
+ 
+ static int ktz8866_update_bits(struct ktz8866 *ktz, unsigned int reg,
+@@ -175,11 +179,21 @@ static int ktz8866_backlight_update_status(struct backlight_device *backlight_de
+ 	unsigned int brightness = backlight_get_brightness(backlight_dev);
+ 	int ret;
+ 
++	dev_dbg(&ktz->client->dev,
++		"DISPLAY_OUTPUT update requested=%d effective=%u power=%d state=%#x\n",
++		backlight_dev->props.brightness, brightness,
++		backlight_dev->props.power, backlight_dev->props.state);
+ 	ret = ktz8866_set_brightness(ktz, brightness);
++	dev_dbg(&ktz->client->dev,
++		"DISPLAY_OUTPUT primary ret=%d led_on=%d\n", ret, ktz->led_on);
+ 	if (ret || !ktz->secondary)
+ 		return ret;
+ 
+-	return ktz8866_set_brightness(ktz->secondary, brightness);
++	ret = ktz8866_set_brightness(ktz->secondary, brightness);
++	dev_dbg(&ktz->secondary->client->dev,
++		"DISPLAY_OUTPUT secondary ret=%d led_on=%d\n",
++		ret, ktz->secondary->led_on);
++	return ret;
+ }
+ 
+ static const struct backlight_ops ktz8866_backlight_ops = {
+-- 
+2.47.3
+

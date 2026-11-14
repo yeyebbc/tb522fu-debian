@@ -99,7 +99,8 @@
     "patches/0200-sm8750-vbif-axi-halt.patch",
     "patches/0201-dpu-vbif-initial-lifecycle-diagnostics.patch",
     "patches/0202-dpu-sm8750-paired-qactive-halt-test.patch",
-    "patches/0203-tb522fu-panel-shutdown-hs.patch"
+    "patches/0203-tb522fu-panel-shutdown-hs.patch",
+    "patches/0204-panel-backlight-output-diagnostics.patch"
   ],
-  "patched_tree": "2bfdc8ba086c25d6bce81a1e6ff779cc015af77f"
+  "patched_tree": "ecd7b627216a06a866387e3a409e5a90ff87c462"
 }
