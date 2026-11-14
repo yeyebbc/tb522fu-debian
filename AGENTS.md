@@ -578,3 +578,27 @@ Both CI profiles built successfully. Exact Android and graphics restoration,
 full filesystem checks, temporary return-unit retirement, host services and
 network/worker cleanup passed after both tests. CI44 remains installed.
 Reliable display wake and actual suspend are still unresolved.
+
+## CI69 system-idle isolation diagnostic
+
+CI69 removes only the system power domain's SS3 idle-state reference from the
+board device tree. CPU C4 and cluster CL5 states, their stock parameters and
+timings, the domain hierarchy, RPMh notification path and all supported device
+drivers remain intact. The generic PM-domain code supplies a zero-initialized
+default state; the PSCI callback leaves the previously selected CPU/cluster
+request unchanged when that state's data is absent. The change also restricts
+runtime idle. It adds no resource vote or guessed firmware parameter.
+
+This is a diagnostic configuration, not a suspend fix. It tests whether the
+reset depends on enabling the deepest system request; success would not
+identify the faulty consumer or demonstrate deep power collapse. Compare
+same-boot RTC wake, measured sleep duration, fresh physical display output and
+exact restoration. Keep CI44 installed, and remove this restriction and its
+candidate-only build guard before any production acceptance.
+
+All 1,201 compiled DT nodes were compared. The sole functional change is the
+removed system idle-state reference; the now-unreferenced SS3 node loses its
+generated phandle, and other phandles are consistently renumbered. No other
+property value changes. The guard accepts this candidate and rejects the old
+unrestricted tree plus seven malformed CPU/cluster/RPMh variants. DT compilation,
+code style and the complete 110-patch tree replay pass. Hardware is untested.

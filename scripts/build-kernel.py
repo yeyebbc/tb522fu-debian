@@ -33,6 +33,38 @@ def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def check_ss3_diagnostic(dtb):
+    """Candidate-only guard: omit SS3 without removing CPU/cluster idle."""
+    def value(node, prop):
+        return capture(['fdtget', '-t', 'x', dtb, node, prop])
+
+    def ref(node):
+        return value(node, 'phandle')
+
+    system = '/psci/power-domain-system'
+    assert 'domain-idle-states' not in capture(['fdtget', '-p', dtb, system]).splitlines()
+    assert value(system, '#power-domain-cells') == '0'
+    for i in range(2):
+        cluster = '/psci/power-domain-cluster' + str(i)
+        assert value(cluster, 'power-domains') == ref(system)
+        assert value(cluster, 'domain-idle-states') == ref('/cpus/domain-idle-states/cluster-sleep-0')
+    for i in range(8):
+        cluster = 0 if i < 6 else 1
+        cpu = '/psci/power-domain-cpu' + str(i)
+        assert value(cpu, 'power-domains') == ref('/psci/power-domain-cluster' + str(cluster))
+        assert value(cpu, 'domain-idle-states') == ref('/cpus/idle-states/cpu-sleep-' + str(cluster))
+    assert value('/soc@0/rsc@16500000', 'power-domains') == ref(system)
+    for node, param, timing in (
+        ('/cpus/idle-states/cpu-sleep-0', 4, (93, 129, 560)),
+        ('/cpus/idle-states/cpu-sleep-1', 4, (172, 130, 686)),
+        ('/cpus/domain-idle-states/cluster-sleep-0', 0x01000054, (2150, 1983, 9144)),
+        ('/cpus/domain-idle-states/domain-sleep-0', 0x0200c354, (2800, 4400, 10150)),
+    ):
+        assert int(value(node, 'arm,psci-suspend-param'), 16) == param
+        for prop, expected in zip(('entry-latency-us', 'exit-latency-us', 'min-residency-us'), timing):
+            assert int(value(node, prop), 16) == expected
+
+
 def check_keyboard_wiring(dtb):
     uart = '/soc@0/geniqup@8c0000/serial@89c000'
     assert capture(['fdtget', '-t', 's', dtb, '/aliases', 'serial0']) == uart
@@ -263,6 +295,7 @@ def main():
         assert 'CONFIG_EXT4_FS=y' in config
     run(make + [spec['board_dtb']])
     dtb = out / 'arch/arm64/boot/dts' / spec['board_dtb']
+    check_ss3_diagnostic(dtb)
     bt_uart = '/soc@0/geniqup@8c0000/serial@898000'
     bt = bt_uart + '/bluetooth'
     assert capture(['fdtget', '-t', 's', dtb, '/aliases', 'serial1']) == bt_uart

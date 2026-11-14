@@ -1,0 +1,30 @@
+From 8b3c012c84b4f1755d316da5817f414f46c4a89f Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Sat, 14 Nov 2026 19:50:48 +0800
+Subject: [PATCH] arm64: dts: qcom: tb522fu: isolate system SS3 idle request
+
+Diagnostic only. A single platform PM cycle returns with fresh display output, but actual s2idle reboots with all supported drivers. Remove only the system domain idle-state reference to distinguish dependence on the SS3 PSCI request from CPU C4, cluster CL5 and device callbacks.
+
+The generic domain receives a zero-initialized default state; the PSCI domain callback leaves the previously selected CPU or cluster parameter unchanged when state data is absent. Domain topology and RPMh notifications remain intact. No firmware parameter, rate, voltage or resource vote is invented.
+
+This applies during runtime idle as well as s2idle. A successful cycle would establish only the diagnostic configuration, not low-power or production suspend acceptance. Remove this restriction and validate full sleep before promotion.
+---
+ arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+index fe702d35dcc2..6f87a5328ad2 100644
+--- a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
++++ b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+@@ -1086,3 +1086,8 @@ bluetooth {
+ };
+ 
+ #include "sm8750-lenovo-y900-camera.dtsi"
++
++/* Diagnostic only: retain CPU/cluster idle, omit the system SS3 request. */
++&system_pd {
++	/delete-property/ domain-idle-states;
++};
+-- 
+2.47.3
+
