@@ -159,6 +159,8 @@ def check_native_display_wiring(dtb):
     display = '/soc@0/display-subsystem@ae00000'
     panel = display + '/dsi@ae94000/panel@0'
     touch = '/soc@0/geniqup@ac0000/spi@a90000/touchscreen@0'
+    # Diagnostic only: remove this isolation together with patch0213.
+    assert capture(['fdtget', '-t', 's', dtb, touch, 'status']) == 'disabled'
     for node in [display, '/soc@0/clock-controller@af00000',
                  '/soc@0/geniqup@8c0000', '/soc@0/geniqup@8c0000/i2c@888000',
                  '/soc@0/geniqup@8c0000/i2c@88c000', '/framebuffer@fc800000']:

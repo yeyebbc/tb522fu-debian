@@ -864,5 +864,16 @@
     "wake_accepted": false,
     "diagnostic_capture_passed": true,
     "hardware_result": "CI63 complete20 records from both PHYs at initial/wake. Common gates/RBUF/mux/control/outdiv and cached state match; master fractional lowbyte differs by one. Camera still blank after wake, routing configuration matches except transient line counters. No matched controller fault. Normal restoration verified, CI44 retained. Capture guard fixed, physical wake unresolved; no wire/frequency or full PHY exclusion claim."
+  },
+  "0213-tb522fu-touch-isolation-diagnostic.patch": {
+    "local_commit": "1c455d475ca3217e002a74eb08c34d6aad59fcfa",
+    "sha256": "31aee4e367e297737f5362d4db9aeb1d48779ef1818149c05c31a665c07e06fd",
+    "license": "BSD-3-Clause; existing board attribution retained",
+    "diagnostic_only": true,
+    "hardware_tested": false,
+    "promotion_allowed": false,
+    "source": "Disable only the touchscreen DT node to isolate Linux touch firmware reload, suspend/resume and IRQ activity from a shared display/TDDI wake failure. Stock notifier resumes after display commit; current follower begins at panel preparation with a500ms wait. This difference is a lead, not a proven cause.",
+    "validation": "Whole compiled DT differs only in touchscreen status okay->disabled; SPI controller, keyboard and all panel/PHY/clock settings preserved. Actual runtime isolation helper accepts absence and rejects six violations. Existing synthetic-focus/fault/compositor helper ASTs unchanged. Native wiring guard passes candidate and rejects prior enabled-touch DT. DTcompile, strictstyle and12 recipe tests pass.",
+    "removal": "Remove0213 and the diagnostic-only touch-status build guard before production acceptance. This intentionally disables touch in both built profiles; neither is for installation."
   }
 }

@@ -363,3 +363,16 @@ controller fault appeared. Normal Android, exact graphics, filesystem, timers,
 services and worker restoration passed. CI44 remains installed. The capture
 guard is corrected; no wake fix or promotion is claimed. Audit stock panel/TDDI
 wake ordering before selecting another changed test.
+
+CI64 is a bounded touch-isolation diagnostic. It disables only the touchscreen
+DT node; the complete compiled-tree comparison leaves SPI, keyboard, panel,
+clock and PHY settings unchanged. This tests whether Linux touch firmware
+reload, suspend/resume or IRQ activity is necessary for the blank wake. It is
+not a touch removal from the product or a wake fix. Runtime checks must confirm
+no touch module, SPI device or input nodes before and after the cycle; keyboard
+focus injection and display fault checks are unchanged. Six negative guard
+cases reject unexpected touch activity or configuration. Initial physical
+pixels, one recorded wake cycle and exact restoration are required. Even if
+wake succeeds, remove this diagnostic before production acceptance and resolve
+the interaction with touch enabled. If it fails, shared TDDI hardware/reset
+causes remain open. CI44 stays installed; neither CI64 profile may be promoted.

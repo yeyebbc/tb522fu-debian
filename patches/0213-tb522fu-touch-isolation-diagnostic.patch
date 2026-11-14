@@ -1,0 +1,40 @@
+From 1c455d475ca3217e002a74eb08c34d6aad59fcfa Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Sat, 14 Nov 2026 15:24:44 +0800
+Subject: [PATCH] arm64: dts: qcom: tb522fu: isolate touch for bounded wake
+ diagnosis
+
+Disable only the touchscreen node for one recorded display wake test.
+This isolates Linux touch suspend, firmware reload and IRQ activity from
+the shared display/TDDI path. Keep the SPI controller, physical keyboard,
+panel supplies, commands, PHYs and clock mapping unchanged.
+
+This is a diagnostic discriminator, not a touch or display fix. Require
+initial physical pixels, absence of the touch driver/device/input nodes,
+one recorded DPMS cycle and exact restoration. Keep the accepted installed
+image. Remove this patch before any production acceptance.
+
+Validation: complete sorted DT comparison changes only touchscreen status;
+DT compilation and strict checkpatch pass. Runtime guards reject unexpected
+module, device, input, enabled-node and missing-node states.
+---
+ arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+index c4ac03c32119..522abd9ed6d7 100644
+--- a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
++++ b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+@@ -465,7 +465,8 @@ touchscreen@0 {
+ 		novatek,pen-support;
+ 		novatek,spi-rd-fast-addr = <0>;
+ 
+-		status = "okay";
++		/* Diagnostic only: isolate Linux touch activity from display wake. */
++		status = "disabled";
+ 	};
+ };
+ 
+-- 
+2.47.3
+

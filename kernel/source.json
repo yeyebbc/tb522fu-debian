@@ -107,7 +107,8 @@
     "patches/0209-dpu-routing-readback-diagnostics.patch",
     "patches/0210-tb522fu-bonded-dsi-master-pll.patch",
     "patches/0211-dsi-powered-phy-state-diagnostics.patch",
-    "patches/0212-dsi-bonded-phy-diagnostic-ownership.patch"
+    "patches/0212-dsi-bonded-phy-diagnostic-ownership.patch",
+    "patches/0213-tb522fu-touch-isolation-diagnostic.patch"
   ],
-  "patched_tree": "b11af5ba9c738f047f1d38eb2163381c6ac300e2"
+  "patched_tree": "8d8998b66dab329ba2c0c673cf7736967a8967b5"
 }
