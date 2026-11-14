@@ -305,3 +305,15 @@ preserved. No driver writes, reset sequence, delays, rates or voltages change.
 The new CI topology guard rejects the old mismatch and four malformed variants.
 No additional PHY diagnostic was added; existing bounded diagnostics remain.
 Keep CI44 installed until recorded wake and a later clean regression pass.
+
+CI61 is tested and REJECTED for physical wake. The built device tree contains
+the verified two-provider correction, and the number of PLL prepare records
+changes, but the panel still stays blank after wake. Initial greeter pixels
+pass. All64 routing records were captured, with matching sampled configuration
+and only transient scan-line differences. No matched controller fault occurs;
+panel/backlight commands succeed. Both CI profiles and normal Android,
+graphics, filesystem, timer, host-service and worker restoration pass. CI44
+remains installed. The source clock mismatch is corrected but insufficient;
+keep it as the next candidate baseline, without claiming physical wake support.
+Do not install or repeat CI61 unchanged. Next compare actual powered PHY gate,
+mux and divider state within existing ownership and register bounds.

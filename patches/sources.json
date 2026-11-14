@@ -832,9 +832,10 @@
     "source_copyright": "Copyright (c) 2026 TheMojoMan",
     "license": "BSD-3-Clause; board adaptation retains the source origin and attribution",
     "import_type": "Board-specific adaptation, not unchanged cherry-pick",
-    "hardware_tested": false,
+    "hardware_tested": true,
     "wake_accepted": false,
     "source": "Align DSI1 named pixel/byte PLL input providers with the existing bonded PHY0-master/PHY1-external-source model. Stock active BOE DVT2 selects pll_byte_clk0/pll_dsi_clk0. Preserve all other clocks, physical PHY1 lane connection, rates, supplies and driver sequences.",
-    "validation": "Whole compiled DT differs only in two provider cells. Existing native wiring checks pass, old CI60 clock topology is rejected and four additional malformed clock/lane variants are rejected. Existing diagnostic patches remain; physical wake and later clean regression required."
+    "validation": "Whole compiled DT differs only in two provider cells. Existing native wiring checks pass, old CI60 clock topology is rejected and four additional malformed clock/lane variants are rejected. Existing diagnostic patches remain; physical wake and later clean regression required.",
+    "hardware_result": "CI61 compiled DT correction verified and PLL prepare activity changes, but initial greeter is followed by blank physical wake. Sampled DPU routing still matches initial; no matched controller fault. Normal Android/graphics/filesystem/timer/services/workers restored. Source mismatch corrected but wake fix insufficient; CI44 retained."
   }
 }
