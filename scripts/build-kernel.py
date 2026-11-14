@@ -216,6 +216,10 @@ def main():
         cmdline = json.loads(re.search(r'^CONFIG_CMDLINE=(.*)$', fragment, re.M)[1])
         if args.profile == 'disk-test':
             cmdline = cmdline.replace('probe_seconds=600', 'probe_seconds=900')
+            # Diagnostic cold boot: let the clock core clean up unused firmware
+            # clocks. Keep the separate power-domain workaround for attribution.
+            assert cmdline.split().count('clk_ignore_unused') == 1
+            cmdline = cmdline.replace(' clk_ignore_unused', '', 1)
         else:
             cmdline = cmdline.replace(' qcom_scm.probe_edl_return=1', '')
             cmdline = cmdline.replace(' qcom_scm.probe_seconds=600', '')
@@ -294,6 +298,8 @@ def main():
     cmdline = json.loads(next(s.split('=', 1)[1] for s in config
                              if s.startswith('CONFIG_CMDLINE=')))
     assert 'dyndbg=' not in cmdline
+    assert ('clk_ignore_unused' in cmdline.split()) == (args.profile != 'disk-test')
+    assert 'pd_ignore_unused' in cmdline.split(), 'Keep the power-domain policy unchanged'
     qos_setting = ('CONFIG_PM_QOS_CPU_SYSTEM_WAKEUP=y' if args.profile == 'disk-test'
                    else '# CONFIG_PM_QOS_CPU_SYSTEM_WAKEUP is not set')
     assert qos_setting in config, 'Wakeup QoS must be limited to the diagnostic profile'

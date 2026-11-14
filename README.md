@@ -10,6 +10,15 @@ outstanding.
 the unconstrained suspend test still restarted the tablet. Reliable unrestricted
 suspend remains unresolved; CI44 remains installed.**
 
+The next diagnostic removes `clk_ignore_unused` only from the bounded
+`disk-test` command line. This allows the clock core's normal late-init cleanup
+of unused bootloader clocks. It retains `pd_ignore_unused`, the exact CI72
+kernel source/device tree, all idle states and the independent return timer.
+RAM and installed profiles retain their existing command lines. This is an
+unverified investigation of a bring-up workaround, not a suspend fix. First
+require native cold boot with all supported drivers and a physically verified
+platform-PM return before attempting actual sleep on the new image.
+
 The same CI72 image passed the constrained cluster test, then reset during an
 unconstrained test in the same greeter context with all supported drivers and
 Bluetooth. A changed boot ID and camera footage of the bootloader and kernel

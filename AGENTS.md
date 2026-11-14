@@ -780,3 +780,16 @@ Android. Raw monitor 1 / inspector 2 retained; all CI44/graphics/filesystem/time
 host/network/workers verified. Current source already has Qualcomm LLCC patch
 0219; do not reapply the earlier island-reservation patch. Next audit the deeper
 state's resource dependencies; no permanent votes or guessed PSCI parameters.
+
+## Unused boot clock cleanup diagnostic
+
+Only disk-test removes clk_ignore_unused. Keep pd_ignore_unused, all 109 patches,
+the CI72 source/tree/device tree, wakeup QoS configuration and 900-second return.
+RAM/installed command lines are unchanged. This only affects clocks registered
+at the clock core's late-init cleanup; display/GPU clock providers loaded later
+are outside that pass. No confirmed missing resource or root cause is claimed.
+Require actual artifact/config/DT checks, all 39 supported modules plus BT,
+native physical cold-boot output and one platform-PM return with fresh frames
+before considering actual sleep. Preserve independent Android recovery and
+CI44; no promotion from compilation. Three profile comparisons and six negative
+policy checks pass alongside the 12 recipe tests. See README for current status.
