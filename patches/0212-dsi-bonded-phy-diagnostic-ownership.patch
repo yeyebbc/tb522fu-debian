@@ -1,0 +1,57 @@
+From b1bff51271e31a1a6b33e2b7fc2d908116d224c3 Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Sat, 14 Nov 2026 14:52:17 +0800
+Subject: [PATCH] drm/msm/dsi: honor bonded ownership in PHY diagnostic guard
+
+CI62 only logged PHY0. The manager enables both physical PHYs before
+marking the requesting controller phy_enabled. In bonded mode either
+controller reference therefore keeps both PHYs enabled; phy_enabled is
+not a physical per-PHY power flag.
+
+Mirror that existing ownership rule in the diagnostic dispatch. Keep
+standalone and incomplete-pair fallback consistent with enable/disable.
+The first powered host-start, runtime-PM, mapped-size and PLL-on guards
+remain unchanged. No hardware operations, timing waits, rates or PM votes
+are added. This remains diagnostic only and cannot be promoted.
+
+Validation: actual enable/disable and diagnostic callbacks pass24 lifecycle
+and failure cases with264 per-link/invalid-ID observations. The old guard
+fails the same physical-ownership oracle. ARM64 manager object and strict
+checkpatch pass.
+---
+ drivers/gpu/drm/msm/dsi/dsi_manager.c | 15 +++++++++++++--
+ 1 file changed, 13 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/gpu/drm/msm/dsi/dsi_manager.c b/drivers/gpu/drm/msm/dsi/dsi_manager.c
+index cadb102cdb3b..c1c0f2587b9c 100644
+--- a/drivers/gpu/drm/msm/dsi/dsi_manager.c
++++ b/drivers/gpu/drm/msm/dsi/dsi_manager.c
+@@ -363,12 +363,23 @@ MODULE_PARM_DESC(y900_tpg, "Enable the DSI test pattern generator (diagnostic)")
+ 
+ void msm_dsi_manager_log_phy_state(int id)
+ {
+-	struct msm_dsi *dsi;
++	struct msm_dsi *dsi, *mdsi, *sdsi;
++	bool enabled;
+ 
+ 	if (id < 0 || id >= DSI_MAX)
+ 		return;
+ 	dsi = dsi_mgr_get_dsi(id);
+-	if (dsi && dsi->phy_enabled)
++	if (!dsi)
++		return;
++
++	/* Bonded PHYs stay enabled while either controller owns a reference. */
++	mdsi = dsi_mgr_get_dsi(DSI_CLOCK_MASTER);
++	sdsi = dsi_mgr_get_dsi(DSI_CLOCK_SLAVE);
++	if (IS_BONDED_DSI() && mdsi && sdsi)
++		enabled = mdsi->phy_enabled || sdsi->phy_enabled;
++	else
++		enabled = dsi->phy_enabled;
++	if (enabled)
+ 		msm_dsi_phy_log_state(dsi->phy);
+ }
+ 
+-- 
+2.47.3
+

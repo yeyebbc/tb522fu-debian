@@ -851,5 +851,15 @@
     "wake_accepted": false,
     "diagnostic_capture_passed": false,
     "hardware_result": "CI62: initial greeter visible, physical wake blank. PHY0 captured at initial/wake; common gates/mux/outdiv match, fractional low divider changes one bit. PHY1 omitted by diagnostic guard treating logical per-controller phy_enabled as physical power. Bonded manager enables both PHYs and retains them while either reference is set. No full PHY exclusion. Normal restoration verified; CI44 retained."
+  },
+  "0212-dsi-bonded-phy-diagnostic-ownership.patch": {
+    "local_commit": "b1bff51271e31a1a6b33e2b7fc2d908116d224c3",
+    "sha256": "2731580a4739d00d4b5b9495cf37c63d79325dd9ce2d9dcc3e7cdc5c91bcd3ca",
+    "license": "GPL-2.0-only; existing source-file attribution retained",
+    "diagnostic_only": true,
+    "hardware_tested": false,
+    "promotion_allowed": false,
+    "source": "Correct only the diagnostic manager guard after CI62 missed PHY1. Existing bonded enable/disable retains both physical PHYs while either logical controller holds phy_enabled. Mirror the OR rule when both peers are present; retain standalone/fallback own-controller behavior.",
+    "validation": "Actual manager enable/disable/log callbacks pass24 lifecycle/error cases and264 per-link/invalid-ID observations. Old guard fails same oracle. Only manager diagnostic helper changes; ARM64 object and strictcheckpatch pass. First-host-start, runtime PM, mapped bounds and PLL-on read guards unchanged. No hardware writes, waits, rates, resets or PM votes added."
   }
 }

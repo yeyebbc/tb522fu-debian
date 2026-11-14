@@ -340,3 +340,14 @@ are excluded. Correct the diagnostic guard against the actual enable/disable
 lifecycle before another test. Routing capture and normal Android, graphics,
 filesystem, timer, service and worker restoration passed. CI44 remains installed;
 do not repeat CI62 unchanged or promote diagnostic code.
+
+CI63 corrects only the PHY diagnostic ownership guard. When both bonded peers
+exist, either controller reference proves both PHYs are enabled; standalone
+and incomplete-pair behavior still follows the manager's existing lifecycle.
+Actual enable/disable/diagnostic callbacks pass24 lifecycle/error cases and264
+per-link or invalid-ID observations; the old guard fails that same oracle.
+Only the manager diagnostic helper changes. ARM64 compilation and strict style
+checks pass. First-host-start, runtime power, mapped bounds and PLL-on guards
+remain unchanged, with no added hardware writes, waits, rates, resets or PM votes.
+This fixes capture coverage, not physical wake. A bounded two-link capture and
+exact restoration are still required; keep CI44 installed.
