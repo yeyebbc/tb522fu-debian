@@ -659,3 +659,15 @@ remains installed. The source clock mismatch is corrected but insufficient;
 keep it as the next candidate baseline, without claiming physical wake support.
 Do not install or repeat CI61 unchanged. Next compare actual powered PHY gate,
 mux and divider state within existing ownership and register bounds.
+
+CI62 adds read-only PHY state diagnostics at the first powered video start of
+each enable, only for SM8750. An enabled PHY and active runtime power are
+required. Mapped bounds guard eight common-register reads; seven PLL reads are
+skipped when that PLL is off. The diagnostic uses cached rate state without
+clock-framework callbacks and adds no writes, PM votes, rates, resets or delays.
+The CI61 shared PLL0 topology correction remains. Four ARM64 objects, strict
+style checks, unchanged DT/resource bounds and42 actual-C guard/equivalence
+cases pass; the inherited trace-format warning remains. Sequential logging
+between link starts can perturb timing, and values do not prove wire output.
+This is diagnostic only and awaits one recorded bounded wake test with exact
+restoration. Keep CI44 installed; remove diagnostics before promotion.

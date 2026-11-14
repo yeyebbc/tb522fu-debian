@@ -1,0 +1,189 @@
+From fb3ccfce469d7bf767fe269370e3015da7a9828d Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Sat, 14 Nov 2026 14:29:54 +0800
+Subject: [PATCH] drm/msm/dsi: log powered SM8750 PHY state at first video
+ start
+
+Compare bounded common clock/gate and active PLL state at initial startup
+and wake. Dispatch only from the existing first powered video-start path
+through an enabled manager PHY and runtime-active SM8750 configuration.
+Check mapped resource sizes and skip PLL registers when pll_on is false,
+matching the existing snapshot rule. Read cached rate state without CCF
+callbacks. No new register writes, PM votes, rates, resets or delays.
+
+This is diagnostic only. Sequential reads/logging can alter timing between
+link starts and do not measure clock frequency or physical DSI output.
+Do not promote with these diagnostics installed.
+
+Validation: four ARM64 objects, strict checkpatch, mapped DT bounds,
+26 actual-C access/error cases and 16 old/new host callback comparisons.
+The inherited Y900PHY7 trace format warning remains unchanged.
+---
+ drivers/gpu/drm/msm/dsi/dsi.h             |  2 +
+ drivers/gpu/drm/msm/dsi/dsi_host.c        |  1 +
+ drivers/gpu/drm/msm/dsi/dsi_manager.c     | 11 +++++
+ drivers/gpu/drm/msm/dsi/phy/dsi_phy.c     | 13 ++++++
+ drivers/gpu/drm/msm/dsi/phy/dsi_phy.h     |  1 +
+ drivers/gpu/drm/msm/dsi/phy/dsi_phy_7nm.c | 49 +++++++++++++++++++++++
+ 6 files changed, 77 insertions(+)
+
+diff --git a/drivers/gpu/drm/msm/dsi/dsi.h b/drivers/gpu/drm/msm/dsi/dsi.h
+index 91d55e13a364..777c7e111a3a 100644
+--- a/drivers/gpu/drm/msm/dsi/dsi.h
++++ b/drivers/gpu/drm/msm/dsi/dsi.h
+@@ -57,6 +57,7 @@ void msm_dsi_manager_unregister(struct msm_dsi *msm_dsi);
+ void msm_dsi_manager_tpg_enable(void);
+ void msm_dsi_manager_video_engine_enable(void);
+ void msm_dsi_manager_video_engine_enable_link(int id);
++void msm_dsi_manager_log_phy_state(int id);
+ 
+ /* dsi host */
+ struct msm_dsi_host;
+@@ -154,6 +155,7 @@ void msm_dsi_phy_set_usecase(struct msm_dsi_phy *phy,
+ void msm_dsi_phy_pll_save_state(struct msm_dsi_phy *phy);
+ int msm_dsi_phy_pll_restore_state(struct msm_dsi_phy *phy);
+ void msm_dsi_phy_snapshot(struct msm_disp_state *disp_state, struct msm_dsi_phy *phy);
++void msm_dsi_phy_log_state(struct msm_dsi_phy *phy);
+ bool msm_dsi_phy_set_continuous_clock(struct msm_dsi_phy *phy, bool enable);
+ 
+ #endif /* __DSI_CONNECTOR_H__ */
+diff --git a/drivers/gpu/drm/msm/dsi/dsi_host.c b/drivers/gpu/drm/msm/dsi/dsi_host.c
+index 922602def110..e387036b5595 100644
+--- a/drivers/gpu/drm/msm/dsi/dsi_host.c
++++ b/drivers/gpu/drm/msm/dsi/dsi_host.c
+@@ -2647,6 +2647,7 @@ void msm_dsi_host_video_engine_enable(struct mipi_dsi_host *host)
+ 				 dsi_read(msm_host, REG_DSI_ACTIVE_H),
+ 				 dsi_read(msm_host, REG_DSI_ACTIVE_V),
+ 				 dsi_read(msm_host, REG_DSI_TOTAL));
++			msm_dsi_manager_log_phy_state(msm_host->id);
+ 		}
+ 	}
+ 	y900_pr("Y900VIDEN id=%d ctrl=%#x clk=%#x ctl=%#x stat=%#x lane=%#x\n",
+diff --git a/drivers/gpu/drm/msm/dsi/dsi_manager.c b/drivers/gpu/drm/msm/dsi/dsi_manager.c
+index ced6ab37cbdb..cadb102cdb3b 100644
+--- a/drivers/gpu/drm/msm/dsi/dsi_manager.c
++++ b/drivers/gpu/drm/msm/dsi/dsi_manager.c
+@@ -361,6 +361,17 @@ static const struct kernel_param_ops y900_tpg_ops = {
+ module_param_cb(y900_tpg, &y900_tpg_ops, &y900_tpg_val, 0644);
+ MODULE_PARM_DESC(y900_tpg, "Enable the DSI test pattern generator (diagnostic)");
+ 
++void msm_dsi_manager_log_phy_state(int id)
++{
++	struct msm_dsi *dsi;
++
++	if (id < 0 || id >= DSI_MAX)
++		return;
++	dsi = dsi_mgr_get_dsi(id);
++	if (dsi && dsi->phy_enabled)
++		msm_dsi_phy_log_state(dsi->phy);
++}
++
+ void msm_dsi_manager_video_engine_enable_link(int id)
+ {
+ 	struct msm_dsi *dsi = dsi_mgr_get_dsi(id);
+diff --git a/drivers/gpu/drm/msm/dsi/phy/dsi_phy.c b/drivers/gpu/drm/msm/dsi/phy/dsi_phy.c
+index 7f8a933a6d17..17a6e78859cb 100644
+--- a/drivers/gpu/drm/msm/dsi/phy/dsi_phy.c
++++ b/drivers/gpu/drm/msm/dsi/phy/dsi_phy.c
+@@ -850,6 +850,19 @@ int msm_dsi_phy_pll_restore_state(struct msm_dsi_phy *phy)
+ 	return 0;
+ }
+ 
++/* Caller retains the enabled PHY and host clocks; do not change PM votes. */
++void msm_dsi_phy_log_state(struct msm_dsi_phy *phy)
++{
++	if (!phy || !phy->cfg->ops.log_state)
++		return;
++	if (!pm_runtime_active(&phy->pdev->dev)) {
++		dev_info(&phy->pdev->dev, "DISPLAY_PHY inactive id=%d\n", phy->id);
++		return;
++	}
++
++	phy->cfg->ops.log_state(phy);
++}
++
+ void msm_dsi_phy_snapshot(struct msm_disp_state *disp_state, struct msm_dsi_phy *phy)
+ {
+ 	msm_disp_snapshot_add_block(disp_state,
+diff --git a/drivers/gpu/drm/msm/dsi/phy/dsi_phy.h b/drivers/gpu/drm/msm/dsi/phy/dsi_phy.h
+index f5d3e806f8fd..248bdff416c1 100644
+--- a/drivers/gpu/drm/msm/dsi/phy/dsi_phy.h
++++ b/drivers/gpu/drm/msm/dsi/phy/dsi_phy.h
+@@ -22,6 +22,7 @@ struct msm_dsi_phy_ops {
+ 	int (*restore_pll_state)(struct msm_dsi_phy *phy);
+ 	bool (*set_continuous_clock)(struct msm_dsi_phy *phy, bool enable);
+ 	int (*parse_dt_properties)(struct msm_dsi_phy *phy);
++	void (*log_state)(struct msm_dsi_phy *phy);
+ };
+ 
+ struct msm_dsi_phy_cfg {
+diff --git a/drivers/gpu/drm/msm/dsi/phy/dsi_phy_7nm.c b/drivers/gpu/drm/msm/dsi/phy/dsi_phy_7nm.c
+index aad54f3e2abd..c64559eabe8b 100644
+--- a/drivers/gpu/drm/msm/dsi/phy/dsi_phy_7nm.c
++++ b/drivers/gpu/drm/msm/dsi/phy/dsi_phy_7nm.c
+@@ -696,6 +696,54 @@ static int dsi_7nm_pll_restore_state(struct msm_dsi_phy *phy)
+ 	return 0;
+ }
+ 
++/* Read-only first-start diagnostic for the SM8750 configuration. */
++static void dsi_7nm_log_state(struct msm_dsi_phy *phy)
++{
++	struct dsi_pll_7nm *pll = phy->pll_data;
++	void __iomem *base = phy->base;
++	void __iomem *pll_base = phy->pll_base;
++	struct device *dev = &phy->pdev->dev;
++	bool pll_on = READ_ONCE(phy->pll_on);
++
++	if (!pll || !base || phy->base_size < REG_DSI_7nm_PHY_CMN_CTRL_5 + 4 ||
++	    (pll_on && (!pll_base ||
++			phy->pll_size < REG_DSI_7nm_PHY_PLL_COMMON_STATUS_ONE + 4))) {
++		dev_info(dev, "DISPLAY_PHY unavailable id=%d\n", phy->id);
++		return;
++	}
++
++	dev_info(dev, "DISPLAY_PHY state id=%d usecase=%d cphy=%u on=%u bias=%d saved=%u rate=%llu\n",
++		 phy->id, phy->usecase, phy->cphy_mode, pll_on,
++		 READ_ONCE(pll->pll_enable_cnt), phy->state_saved,
++		 (unsigned long long)READ_ONCE(pll->vco_current_rate));
++	dev_info(dev, "DISPLAY_PHY clock id=%d cfg0=%#x cfg1=%#x rbuf=%#x pll_ctrl=%#x\n",
++		 phy->id, readl(base + REG_DSI_7nm_PHY_CMN_CLK_CFG0),
++		 readl(base + REG_DSI_7nm_PHY_CMN_CLK_CFG1),
++		 readl(base + REG_DSI_7nm_PHY_CMN_RBUF_CTRL),
++		 readl(base + REG_DSI_7nm_PHY_CMN_PLL_CNTRL));
++	dev_info(dev, "DISPLAY_PHY control id=%d ctrl0=%#x ctrl2=%#x ctrl3=%#x ctrl5=%#x\n",
++		 phy->id, readl(base + REG_DSI_7nm_PHY_CMN_CTRL_0),
++		 readl(base + REG_DSI_7nm_PHY_CMN_CTRL_2),
++		 readl(base + REG_DSI_7nm_PHY_CMN_CTRL_3),
++		 readl(base + REG_DSI_7nm_PHY_CMN_CTRL_5));
++
++	/* Match the existing snapshot rule: never read a switched-off PLL. */
++	if (!pll_on) {
++		dev_info(dev, "DISPLAY_PHY pll_off id=%d\n", phy->id);
++		return;
++	}
++
++	dev_info(dev, "DISPLAY_PHY pll id=%d mux=%#x outdiv=%#x status=%#x\n",
++		 phy->id, readl(pll_base + REG_DSI_7nm_PHY_PLL_SYSTEM_MUXES),
++		 readl(pll_base + REG_DSI_7nm_PHY_PLL_PLL_OUTDIV_RATE),
++		 readl(pll_base + REG_DSI_7nm_PHY_PLL_COMMON_STATUS_ONE));
++	dev_info(dev, "DISPLAY_PHY divider id=%d dec=%#x frac_lo=%#x frac_mid=%#x frac_hi=%#x\n",
++		 phy->id, readl(pll_base + REG_DSI_7nm_PHY_PLL_DECIMAL_DIV_START_1),
++		 readl(pll_base + REG_DSI_7nm_PHY_PLL_FRAC_DIV_START_LOW_1),
++		 readl(pll_base + REG_DSI_7nm_PHY_PLL_FRAC_DIV_START_MID_1),
++		 readl(pll_base + REG_DSI_7nm_PHY_PLL_FRAC_DIV_START_HIGH_1));
++}
++
+ static int dsi_7nm_set_usecase(struct msm_dsi_phy *phy)
+ {
+ 	struct dsi_pll_7nm *pll_7nm = to_pll_7nm(phy->vco_hw);
+@@ -1685,6 +1733,7 @@ const struct msm_dsi_phy_cfg dsi_phy_3nm_8750_cfgs = {
+ 		.save_pll_state = dsi_7nm_pll_save_state,
+ 		.restore_pll_state = dsi_7nm_pll_restore_state,
+ 		.set_continuous_clock = dsi_7nm_set_continuous_clock,
++		.log_state = dsi_7nm_log_state,
+ 	},
+ 	.min_pll_rate = 600000000UL,
+ #ifdef CONFIG_64BIT
+-- 
+2.47.3
+

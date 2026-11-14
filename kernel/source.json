@@ -105,7 +105,8 @@
     "patches/0206-dsi-link-start-diagnostics.patch",
     "patches/0207-dsi-phy-restore-system-muxes.patch",
     "patches/0209-dpu-routing-readback-diagnostics.patch",
-    "patches/0210-tb522fu-bonded-dsi-master-pll.patch"
+    "patches/0210-tb522fu-bonded-dsi-master-pll.patch",
+    "patches/0211-dsi-powered-phy-state-diagnostics.patch"
   ],
-  "patched_tree": "3ae0b0e15be0e65b5c92c7e30158cc9621597f7c"
+  "patched_tree": "4ce0f3574fa4ee0faff1cf455e319de7c12886da"
 }
