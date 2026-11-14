@@ -6,9 +6,9 @@ Experimental native Linux port for the Lenovo Legion Y900 13 / TB522FU
 directions. This remains a development port with substantial peripheral work
 outstanding.
 
-**CI69 prepares a diagnostic without the deepest system-idle request after
-CI68 passed one platform-PM cycle but rebooted during actual s2idle.
-Suspend remains broken; CI44 remains the installed baseline.**
+**CI69 returned from a platform-PM diagnostic, but the display stayed black.
+Actual sleep was skipped. Display wake and suspend remain unresolved;
+CI44 remains the installed baseline.**
 
 Current installed kernel: `7.3.0-tb522fu-installed-ci44`, built from recipe
 `0a1847dd0b67991af502bfea9da36c5db50be3c4`. The installed image SHA256 is
@@ -948,3 +948,28 @@ generated phandle, and other phandles are consistently renumbered. No other
 property value changes. The guard accepts this candidate and rejects the old
 unrestricted tree plus seven malformed CPU/cluster/RPMh variants. DT compilation,
 code style and the complete 110-patch tree replay pass. Hardware is untested.
+
+## CI69 platform diagnostic result
+
+The running device tree correctly omitted SS3 while preserving CPU C4, cluster
+CL5 and the RPMh domain link. All 39 supported modules and Bluetooth startup
+were ready. One platform-PM diagnostic returned in the same boot, with one
+success and no failed callback count; asynchronous touch resume completed and
+fresh GPU/compositor checks passed without matched display-controller errors.
+
+Physical wake nevertheless failed. The recording shows a visible greeter and
+signed-in desktop before the cycle, then a black panel throughout the resumed
+fresh-frame checks. Actual s2idle was not attempted. This candidate is rejected
+for installation and unchanged retesting. The earlier CI68 platform pass used
+the greeter; this run used a signed-in session with Settings open, so the result
+does not establish that omitting SS3 caused the blank output. Dependence of the
+actual-sleep reset on SS3 remains untested.
+
+Recipe `2d0391c793a623783803df1245a2cab1923b46de`, kernel source
+`8b3c012c84b4f1755d316da5817f414f46c4a89f`, boot SHA256
+`a2dbded7976335ae439e3f2d3f4989cd37cdfbb2ee125275d9304c27473fbbcb`.
+Both CI builds, exact Android and graphics restoration, full filesystem checks,
+return-unit retirement and host service/network/worker cleanup passed. CI44
+remains installed. Remove the SS3 diagnostic restriction before selecting the
+next functional candidate; improve retained failure evidence before more sleep
+tests.

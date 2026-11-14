@@ -970,12 +970,15 @@
     "sha256": "4d75068012bb914e9cda506943ef15e97c621439d3a4f16ecc6ba76611e1951a",
     "license": "BSD-3-Clause; existing board attribution retained",
     "diagnostic_only": true,
-    "hardware_tested": false,
+    "hardware_tested": true,
     "promotion_allowed": false,
     "source": "Local single-variable diagnostic after CI68 platform-PM success and actual-s2idle reset. Generic PM-domain binding permits absent domain-idle-states; genpd allocates a zero-initialized default state, and psci_pd_power_off leaves the prior CPU/cluster request unchanged when state data is NULL. The system domain and RPMh notifier topology remain intact.",
     "scope": "Remove only the system_pd domain-idle-states reference. Stock CPU C4 and cluster CL5 parameters/timings and all supported drivers remain unchanged. Applies to runtime idle as well as s2idle.",
     "limitation": "No new resource vote or guessed firmware state. If successful, this establishes dependence on the diagnostic configuration, not the failing hardware component, full collapse or production suspend.",
     "removal": "Remove 0220 and the candidate-only build guard; validate full sleep before promotion.",
-    "validation": "All 1,201 compiled DT nodes compared; only system domain idle-state reference removed plus generated phandle disappearance/consistent renumbering. Candidate guard passes, eight negative cases rejected. Native display guard, DT compilation, code style and 110-patch exact tree replay pass."
+    "validation": "All 1,201 compiled DT nodes compared; only system domain idle-state reference removed plus generated phandle disappearance/consistent renumbering. Candidate guard passes, eight negative cases rejected. Native display guard, DT compilation, code style and 110-patch exact tree replay pass.",
+    "hardware_result": "CI69 runtime idle-tree check passed. One all-driver platform PM returned in the same boot (success 1/fail 0), but physical display stayed black after fresh compositor work. No actual sleep attempted; SS3 dependence of the reset remains untested. Session context differed from the preceding greeter platform pass, so no causal attribution. Exact restoration passed and CI44 remains installed.",
+    "platform_hardware_passed": false,
+    "system_suspend_tested": false
   }
 }
