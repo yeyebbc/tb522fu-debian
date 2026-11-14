@@ -713,7 +713,7 @@ reset handling before choosing the next logging route. Recipe
 ## Shallow-idle comparison
 
 The unchanged CI68 image returned from one actual RTC-gated s2idle request in
-the same boot with all39 supported modules and BT, while all eight non-WFI
+the same boot with all 39 supported modules and BT, while all eight non-WFI
 CPU idle states were temporarily disabled. Camera confirms dark panel,
 returned greeter and fresh updates; the flags were restored. Timekeeping
 continued, so this is isolation evidence, not power-efficient sleep or an
@@ -734,10 +734,10 @@ The new image exposes a descriptor-scoped wakeup QoS request. A500us limit can
 separate C4 from CL5/SS3; verify aggregate readback, CPU and shared-domain
 s2idle counters, same boot/RTC and physical fresh frames before accepting the
 diagnostic. Do not substitute cpu_dma_latency or install constrained sleep as
-a fix. Keep complete Android/graphics/timer recovery and all39 supported modules
+a fix. Keep complete Android/graphics/timer recovery and all 39 supported modules
 plus BT. No new hardware test has occurred; installed CI44 remains unchanged.
 
-CI72 now passed one C4-only actual s2idle cycle with all39 supported modules
+CI72 now passed one C4-only actual s2idle cycle with all 39 supported modules
 and BT. Same boot, RTC alarm,20.372s estimated system sleep, success1/fail0;
 all8 C4 s2idle usage counters advanced while CL5/SS3 stayed unchanged. The
 500us request was released to its original unconstrained value. Camera proves
@@ -749,3 +749,18 @@ same-image5000us comparison can admit CL5 while excluding SS3, with counters
 proving selection and fresh exact recovery. Do not repeat500us unchanged.
 Recipe9b6afea4e4206473a039c63587dc1796568ff662, bounded boot SHA256
 574e85e4dbd68a59bbf9ccec688f5a9cbcc12f495e5d9d823ee903b26c3a584b.
+
+
+## Cluster sleep result
+
+Same CI72 image passed the 5000 us comparison with all 39 supported drivers + BT.
+Greeter before/after, same boot, RTC wake, 20.346 s estimated sleep, PM success 1 /
+fail 0; all CPU C4 and both CL5 s2idle counters increased, SS3 stayed unchanged.
+One rejected idle attempt per cluster is distinct from the successful PM cycle.
+Camera verifies dark panel, returned greeter and fresh focus changes. QoS,
+Android/CI44/graphics/filesystem/timer/host/network/workers restored. No power
+savings measurement or production acceptance. Do not replay 500 / 5000 us unchanged.
+Next exact-image unconstrained-latency comparison admits SS3; require actual
+SS3 counter growth on return. Preserve reset evidence if it cannot return; do
+not infer state entry from admission alone. Greeter matches CI68's older reset
+context; preceding CI72 C4-only used the user desktop. No new kernel build.

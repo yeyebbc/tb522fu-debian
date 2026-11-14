@@ -6,19 +6,21 @@ Experimental native Linux port for the Lenovo Legion Y900 13 / TB522FU
 directions. This remains a development port with substantial peripheral work
 outstanding.
 
-**CI72 passed one C4-only s2idle cycle with about 20.4 seconds of measured
-suspended time and visible, updating GNOME output afterward. Shared cluster
-and system sleep states remained excluded. Unrestricted suspend reliability
-and power savings remain unverified; CI44 remains installed.**
+**CI72 now resumes with CPU C4 and both cluster CL5 sleep states exercised,
+while system SS3 remains excluded. The recorded greeter returns and updates
+after about 20.3 seconds asleep. Unrestricted suspend and power savings remain
+unverified; CI44 remains installed.**
 
-All eight CPUs entered C4; both cluster CL5 counters and system SS3 stayed
-unchanged. The RTC woke the same Linux boot, PM accounting reported success
-without a failure, and the temporary 500 us request was released. All 39
-supported modules and Bluetooth remained loaded. Camera footage confirms the
-dark panel, returned overview and fresh desktop updates. This test used a
-signed-in desktop; earlier CI68 comparisons used the greeter, so it does not
-prove which shared state caused the earlier reset. Exact Android, graphics,
-filesystem, timer and host cleanup passed. Bounded boot SHA256:
+The same image first passed a C4-only cycle with a temporary 500 us limit,
+then a 5000 us cycle allowing CL5. The latter returned in the same boot with
+all 39 supported modules and Bluetooth, both cluster s2idle counters increased,
+and system SS3 counters stayed unchanged. PM reported success without a failed
+suspend; each cluster separately recorded one rejected idle attempt. The QoS
+request was released, and camera footage confirms dark panel, returned greeter
+and fresh focus changes. Exact Android, graphics, filesystem, timer and host
+cleanup passed. The cluster test used the greeter, while the C4-only test used
+a signed-in desktop. Neither establishes reliability or identifies a root cause.
+Bounded boot SHA256:
 `574e85e4dbd68a59bbf9ccec688f5a9cbcc12f495e5d9d823ee903b26c3a584b`.
 
 Previously, the unchanged CI68 image, which reset during actual s2idle, returned
@@ -47,9 +49,10 @@ SS3. Closing its descriptor removes the request. No sleep parameter or voltage
 is changed. This option was disabled in CI68, requiring the new kernel build.
 The earlier retained-buffer mapping and boot-debug experiments are excluded
 to preserve the comparison. Both builds and the bounded C4-only test passed.
-The next comparison can use the same image with a temporary 5000 us limit,
-allowing CL5 while still excluding SS3. Actual cluster entry must be verified
-from counters; no production sleep-policy change is installed.
+The 5000 us cluster comparison also passed. Next use the same image with the
+default unconstrained latency value to admit SS3, retaining the greeter context
+and independent recovery. Require actual SS3 s2idle counter growth if it returns.
+No production sleep-policy change is installed.
 
 Earlier, CI71 captured zero signatures in all six retained buffers during early
 ramoops initialization after a controlled EDL/programmer reboot. The marker
