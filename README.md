@@ -44,6 +44,13 @@ cause is yet established. The code-only style check passes; original commit
 messages retain their missing author signoffs and nonstandard co-author tags,
 rather than inventing certifications for their authors.
 
+The current CI50 source adds eight early logging sites around the existing
+VBIF halt/release and DPU runtime callbacks. It records clock-control state,
+halt request/status, acknowledgement versus idle fallback, and whether DRM
+registration has occurred. It is diagnostic only and is active before userspace
+can connect. No register writes, votes, retries or delays are added, but readbacks
+and logging can affect ordering/timing. Do not install or treat this as a fix.
+
 CI45 verified the secondary rear OV02B10's full sensor ID and two8-frame RAW10
 capture cycles through SM8750 CAMSS, with clean Android restoration. Frames were
 nearly black. An isolated Debian libcamera 0.7.1 CPU software-ISP test subsequently

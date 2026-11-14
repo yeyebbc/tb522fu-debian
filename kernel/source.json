@@ -96,7 +96,8 @@
     "patches/0196-dpu-disable-slave-encoder-first.patch",
     "patches/0198-dpu-vbif-axi-halt-ops.patch",
     "patches/0199-dpu-vbif-runtime-halt.patch",
-    "patches/0200-sm8750-vbif-axi-halt.patch"
+    "patches/0200-sm8750-vbif-axi-halt.patch",
+    "patches/0201-dpu-vbif-initial-lifecycle-diagnostics.patch"
   ],
-  "patched_tree": "991d81ee8596f763c1816099977369fdab58c772"
+  "patched_tree": "ff0ca35f224c7ce9e000f5e32a2fe62664ecfdd0"
 }

@@ -1,0 +1,109 @@
+From ffd9bce8932abcb2151cc26b4af7119363784461 Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Sat, 14 Nov 2026 09:56:53 +0800
+Subject: [PATCH] drm/msm/dpu: trace the initial VBIF halt lifecycle
+
+Diagnostic-only logging for the startup regression seen with the isolated
+SM8750 AXI halt series. Record the existing CLKON/request/status values,
+poll result versus idle fallback, and pre/post DRM-registration PM calls.
+
+The register reads run inside the existing clock-active halt/release
+callbacks. No writes, delays, retries or votes are added. Readbacks and
+logging can affect ordering/timing, so this is not a production fix.
+
+The eight info-level sites are deliberately active before userspace can
+attach. Keep this diagnostic patch out of accepted installed images.
+
+Signed-off-by: Codex <codex@localhost>
+---
+ drivers/gpu/drm/msm/disp/dpu1/dpu_hw_vbif.c | 11 ++++++++++-
+ drivers/gpu/drm/msm/disp/dpu1/dpu_kms.c     |  9 +++++++++
+ 2 files changed, 19 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_vbif.c b/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_vbif.c
+index 31b287aa041e..f21d6adcc8ed 100644
+--- a/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_vbif.c
++++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_vbif.c
+@@ -174,6 +174,9 @@ static void dpu_hw_set_axi_halt(struct dpu_hw_vbif *vbif, bool enable)
+ 	u32 clkon;
+ 
+ 	clkon = DPU_REG_READ(c, VBIF_CLKON);
++	pr_info("DPU_VBIF_BOOT halt_before enable=%u clkon=%#x req=%#x status=%#x\n",
++		enable, clkon, DPU_REG_READ(c, VBIF_AXI_HALT_CTRL0),
++		DPU_REG_READ(c, VBIF_AXI_HALT_CTRL1));
+ 
+ 	if (enable) {
+ 		DPU_REG_WRITE(c, VBIF_CLKON, clkon | VBIF_CLKON_FORCE_ON);
+@@ -184,20 +187,26 @@ static void dpu_hw_set_axi_halt(struct dpu_hw_vbif *vbif, bool enable)
+ 		DPU_REG_WRITE(c, VBIF_AXI_HALT_CTRL0, 0);
+ 		DPU_REG_WRITE(c, VBIF_CLKON, clkon & ~VBIF_CLKON_FORCE_ON);
+ 	}
++	pr_info("DPU_VBIF_BOOT halt_after enable=%u clkon=%#x req=%#x status=%#x\n",
++		enable, DPU_REG_READ(c, VBIF_CLKON),
++		DPU_REG_READ(c, VBIF_AXI_HALT_CTRL0), DPU_REG_READ(c, VBIF_AXI_HALT_CTRL1));
+ }
+ 
+ static int dpu_hw_get_axi_halt_status(struct dpu_hw_vbif *vbif)
+ {
+ 	struct dpu_hw_blk_reg_map *c = &vbif->hw;
+ 	u32 status;
+-	int ret;
++	int ret, poll_ret;
+ 
+ 	ret = readl_poll_timeout(c->blk_addr + VBIF_AXI_HALT_CTRL1, status,
+ 				 status & VBIF_AXI_HALT_ACK,
+ 				 VBIF_AXI_HALT_POLL_US,
+ 				 VBIF_AXI_HALT_TIMEOUT_US);
++	poll_ret = ret;
+ 	if (ret && (status & (VBIF_AXI_PORT0_IDLE | VBIF_AXI_PORT1_IDLE)))
+ 		ret = 0;
++	pr_info("DPU_VBIF_BOOT halt_poll poll=%d ret=%d status=%#x\n",
++		poll_ret, ret, status);
+ 
+ 	return ret;
+ }
+diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_kms.c b/drivers/gpu/drm/msm/disp/dpu1/dpu_kms.c
+index d558e8d560cb..d747aad3fbc9 100644
+--- a/drivers/gpu/drm/msm/disp/dpu1/dpu_kms.c
++++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_kms.c
+@@ -1453,6 +1453,9 @@ static int __maybe_unused dpu_runtime_suspend(struct device *dev)
+ 	struct msm_drm_private *priv = platform_get_drvdata(pdev);
+ 	struct dpu_kms *dpu_kms = to_dpu_kms(priv->kms);
+ 
++	pr_info("DPU_VBIF_BOOT suspend_begin registered=%u hw=%u parent_active=%u\n",
++		READ_ONCE(dpu_kms->dev->registered), !!dpu_kms->hw_vbif,
++		pm_runtime_active(dev->parent));
+ 	/*
+ 	 * The MDSS power domain may collapse as soon as the clocks are gone;
+ 	 * halt the VBIF AXI ports first where the hardware asks for it.
+@@ -1464,6 +1467,7 @@ static int __maybe_unused dpu_runtime_suspend(struct device *dev)
+ 	for (i = 0; i < dpu_kms->num_paths; i++)
+ 		icc_set_bw(dpu_kms->path[i], 0, 0);
+ 
++	pr_info("DPU_VBIF_BOOT suspend_end\n");
+ 	return 0;
+ }
+ 
+@@ -1478,7 +1482,11 @@ static int __maybe_unused dpu_runtime_resume(struct device *dev)
+ 
+ 	ddev = dpu_kms->dev;
+ 
++	pr_info("DPU_VBIF_BOOT resume_begin registered=%u hw=%u parent_active=%u\n",
++		READ_ONCE(ddev->registered), !!dpu_kms->hw_vbif,
++		pm_runtime_active(dev->parent));
+ 	rc = clk_bulk_prepare_enable(dpu_kms->num_clocks, dpu_kms->clocks);
++	pr_info("DPU_VBIF_BOOT resume_clocks ret=%d\n", rc);
+ 	if (rc) {
+ 		DPU_ERROR("clock enable failed rc:%d\n", rc);
+ 		return rc;
+@@ -1490,6 +1498,7 @@ static int __maybe_unused dpu_runtime_resume(struct device *dev)
+ 	drm_for_each_encoder(encoder, ddev)
+ 		dpu_encoder_virt_runtime_resume(encoder);
+ 
++	pr_info("DPU_VBIF_BOOT resume_end\n");
+ 	return rc;
+ }
+ 
+-- 
+2.47.3
+

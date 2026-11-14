@@ -755,5 +755,13 @@
     "initial_display_accepted": false,
     "wake_test_executed": false,
     "hardware_result": "CI49 initial display regresses before DPMS: patterned output, DSI FIFO/panel-init DMA failures and CTL reset errors. Not accepted; CI44 remains installed."
+  },
+  "0201-dpu-vbif-initial-lifecycle-diagnostics.patch": {
+    "local_commit": "ffd9bce8932abcb2151cc26b4af7119363784461",
+    "sha256": "ef1c114665748c10fbfd6363b0e3927bf398ad4b3593abea1e0b24104d6b05fe",
+    "license": "GPL-2.0-only; original source-file attribution retained",
+    "hardware_tested": false,
+    "diagnostic_only": true,
+    "source": "Eight early info-level sites record existing CLKON/halt request/status, poll versus fallback and registration/PM sequence. Readbacks are inside existing clock-active callbacks. No new writes, votes, delays or retries; logging/readback may perturb ordering and timing. Not a production fix."
   }
 }

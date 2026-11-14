@@ -69,3 +69,12 @@ stock partition images and local environment paths out of tracked files.
   filesystem/timer/worker restoration passed; keep CI44. No unchanged repeat.
   Audit initialization and shared MDSS/DSI bus ownership before another patch;
   the newly added handshake also runs during pre-registration runtime PM.
+
+## CI50 initialization diagnostic
+
+Patch0201 adds8 info-level logging sites active from boot. It changes no hardware
+writes, retries, delays or votes; all new register reads stay within existing
+clock-active VBIF operations. Readbacks/logging may affect ordering/timing.
+The94-patch source must replay exactly. Keep CI44 installed; CI50 is diagnostic
+only even if the logging changes the observed startup. Preserve the improved
+coldplug fault gate and existing-snapshot capture. No unchanged CI49 repeat.
