@@ -264,7 +264,7 @@
     "local_commit": "6a06f2e614b201e20969d5e505c841dd7d951269",
     "adaptation": "Original patch and attribution retained; context refreshed for pinned base.",
     "source": "https://lore.kernel.org/all/20261011074433.9187-1-franzelfranzel@gmail.com/",
-    "status": "Pending upstream patch by François Roux; not claimed merged"
+    "status": "Pending upstream patch by Fran\u00e7ois Roux; not claimed merged"
   },
   "0150-q6apm-capture-trigger-lifecycle.patch": {
     "sha256": "94b4ca28bfe229b56f821c0c632bd1cd06d4063a95c42accd8e95ea120705bf1",
@@ -980,5 +980,46 @@
     "hardware_result": "CI69 runtime idle-tree check passed. One all-driver platform PM returned in the same boot (success 1/fail 0), but physical display stayed black after fresh compositor work. No actual sleep attempted; SS3 dependence of the reset remains untested. Session context differed from the preceding greeter platform pass, so no causal attribution. Exact restoration passed and CI44 remains installed.",
     "platform_hardware_passed": false,
     "system_suspend_tested": false
+  },
+  "0222-sm8750-gcc-cx-binding.patch": {
+    "source": "Unchanged SM8750 subset of upstream v5 GCC/CX series",
+    "author": "Abel Vesa <abel.vesa@oss.qualcomm.com>",
+    "source_url": "https://lore.kernel.org/r/20260924-qcom-tie-cx-to-gcc-v5-9-38732033e5b5@oss.qualcomm.com",
+    "source_archive": "https://patchew.org/linux/20260924-qcom-tie-cx-to-gcc-v5-9-38732033e5b5@oss.qualcomm.com/mbox",
+    "local_commit": "4f21e01d1f12666144c294c6434045e52c64b3b0",
+    "sha256": "33517b331d5ffae726af211757d78f7908919d110d5702d6f140fbf704767c17",
+    "original_patch_id": "85a2e90c07a03f6bfcd5c50d00ca16e894888f54",
+    "imported_patch_id": "85a2e90c07a03f6bfcd5c50d00ca16e894888f54",
+    "license": "Original source licenses, author, review and signoff retained",
+    "hardware_tested": false,
+    "promotion_allowed": false,
+    "maintainer_applied_commit": "f9c74b6ed57922b1fdb1ed6835665e06b5ba01a5"
+  },
+  "0223-sm8750-gcc-cx-runtime-pm.patch": {
+    "source": "Unchanged SM8750 subset of upstream v5 GCC/CX series",
+    "author": "Abel Vesa <abel.vesa@oss.qualcomm.com>",
+    "source_url": "https://lore.kernel.org/r/20260924-qcom-tie-cx-to-gcc-v5-26-38732033e5b5@oss.qualcomm.com",
+    "source_archive": "https://patchew.org/linux/20260924-qcom-tie-cx-to-gcc-v5-26-38732033e5b5@oss.qualcomm.com/mbox",
+    "local_commit": "0931f2c0952b84ef2bb44a75bd9196fa7d120e1a",
+    "sha256": "814e8fe0e682cbe2150e87d0d249fe43a9e4741f63642bb242d046afc0d31e9e",
+    "original_patch_id": "012247d64123eb4e776c3a62eab7d2e4b2764937",
+    "imported_patch_id": "012247d64123eb4e776c3a62eab7d2e4b2764937",
+    "license": "Original source licenses, author, review and signoff retained",
+    "hardware_tested": false,
+    "promotion_allowed": false,
+    "maintainer_applied_commit": "f593d28a9193f1b5a96eb69bc5eb4dda2eaebebf"
+  },
+  "0224-sm8750-gcc-cx-domain.patch": {
+    "source": "Unchanged SM8750 subset of upstream v5 GCC/CX series",
+    "author": "Abel Vesa <abel.vesa@oss.qualcomm.com>",
+    "source_url": "https://lore.kernel.org/r/20260924-qcom-tie-cx-to-gcc-v5-41-38732033e5b5@oss.qualcomm.com",
+    "source_archive": "https://patchew.org/linux/20260924-qcom-tie-cx-to-gcc-v5-41-38732033e5b5@oss.qualcomm.com/mbox",
+    "local_commit": "9ab31e142a38232f86e4587fc61fba41ea6cbbd9",
+    "sha256": "28a64d5d26ed16e462b0786cd1060d9f049331b5e351b2c1da3b7d30cd468723",
+    "original_patch_id": "b52cc627fe0f43f94bab969f70baea290c55f36d",
+    "imported_patch_id": "b52cc627fe0f43f94bab969f70baea290c55f36d",
+    "license": "Original source licenses, author, review and signoff retained",
+    "hardware_tested": false,
+    "promotion_allowed": false
   }
 }

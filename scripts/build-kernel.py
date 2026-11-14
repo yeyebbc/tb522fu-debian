@@ -33,6 +33,14 @@ def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def check_gcc_cx_dependency(dtb):
+    """GCC clocks and GDSCs must retain their standard RPMh CX parent."""
+    parent = capture(['fdtget', '-t', 'x', dtb,
+                      '/soc@0/rsc@16500000/power-controller', 'phandle'])
+    assert capture(['fdtget', '-t', 'x', dtb,
+                    '/soc@0/clock-controller@100000', 'power-domains']) == parent + ' 0'
+
+
 def check_idle_comparison(dtb):
     """Preserve the complete CI68 idle topology and retained-buffer layout."""
     def value(node, prop):
@@ -216,10 +224,6 @@ def main():
         cmdline = json.loads(re.search(r'^CONFIG_CMDLINE=(.*)$', fragment, re.M)[1])
         if args.profile == 'disk-test':
             cmdline = cmdline.replace('probe_seconds=600', 'probe_seconds=900')
-            # Diagnostic cold boot: let the clock core clean up unused firmware
-            # clocks. Keep the separate power-domain workaround for attribution.
-            assert cmdline.split().count('clk_ignore_unused') == 1
-            cmdline = cmdline.replace(' clk_ignore_unused', '', 1)
         else:
             cmdline = cmdline.replace(' qcom_scm.probe_edl_return=1', '')
             cmdline = cmdline.replace(' qcom_scm.probe_seconds=600', '')
@@ -298,7 +302,7 @@ def main():
     cmdline = json.loads(next(s.split('=', 1)[1] for s in config
                              if s.startswith('CONFIG_CMDLINE=')))
     assert 'dyndbg=' not in cmdline
-    assert ('clk_ignore_unused' in cmdline.split()) == (args.profile != 'disk-test')
+    assert 'clk_ignore_unused' in cmdline.split(), 'Retain the verified boot clock policy'
     assert 'pd_ignore_unused' in cmdline.split(), 'Keep the power-domain policy unchanged'
     qos_setting = ('CONFIG_PM_QOS_CPU_SYSTEM_WAKEUP=y' if args.profile == 'disk-test'
                    else '# CONFIG_PM_QOS_CPU_SYSTEM_WAKEUP is not set')
@@ -320,6 +324,7 @@ def main():
     run(make + [spec['board_dtb']])
     dtb = out / 'arch/arm64/boot/dts' / spec['board_dtb']
     check_idle_comparison(dtb)
+    check_gcc_cx_dependency(dtb)
     bt_uart = '/soc@0/geniqup@8c0000/serial@898000'
     bt = bt_uart + '/bluetooth'
     assert capture(['fdtget', '-t', 's', dtb, '/aliases', 'serial1']) == bt_uart

@@ -112,7 +112,10 @@
     "patches/0216-dsi-park-clocks-before-pll-shutdown.patch",
     "patches/0217-sm8750-dsi-idle-crystal-inputs.patch",
     "patches/0218-dwc3-defer-glue-role-notification.patch",
-    "patches/0219-sm8750-llcc-settings.patch"
+    "patches/0219-sm8750-llcc-settings.patch",
+    "patches/0222-sm8750-gcc-cx-binding.patch",
+    "patches/0223-sm8750-gcc-cx-runtime-pm.patch",
+    "patches/0224-sm8750-gcc-cx-domain.patch"
   ],
-  "patched_tree": "9fa278d7be6bce6a9ec6c7f661f8924e85925301"
+  "patched_tree": "c668507c730ae424ec30ab164f7cc27b24d8913b"
 }

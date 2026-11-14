@@ -10,6 +10,15 @@ outstanding.
 the unconstrained suspend test still restarted the tablet. Reliable unrestricted
 suspend remains unresolved; CI44 remains installed.**
 
+**The next candidate restores CI72's boot policy and adds the upstream GCC/CX
+power-domain dependency.** The three SM8750 changes model the clock controller's
+CX supply and enable its existing runtime-PM integration. Local compilation,
+full patch replay and device-tree/schema checks pass; hardware is untested.
+This is a resource-dependency correction to evaluate, not a proven explanation
+of either prior failure. Both `clk_ignore_unused` and `pd_ignore_unused` remain.
+CI44 stays installed; native startup and full-driver platform-PM acceptance
+must pass before any actual-sleep test.
+
 **CI73 is rejected for a startup regression.** Removing `clk_ignore_unused`
 only from `disk-test` produced a grey panel, delayed USB startup, a GPU IOMMU
 probe timeout and failure to bind the native display. A late connection allowed

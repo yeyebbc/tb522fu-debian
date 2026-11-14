@@ -808,3 +808,32 @@ Do not repeat unchanged or promote. Audit required clock references and
 SCMI/GPU-IOMMU dependencies before another candidate; no arbitrary keepalive
 votes. The earlier SS3 reset remains unresolved. Retain the workaround until a
 justified replacement passes native cold boot and the normal PM gates.
+
+## GCC/CX dependency candidate
+
+The next recipe is CI72 plus three unchanged SM8750 patches from Abel Vesa's
+[v5 GCC/CX series](https://patchew.org/linux/20260924-qcom-tie-cx-to-gcc-v5-0-38732033e5b5@oss.qualcomm.com/).
+The binding requires CX, the GCC driver enables existing runtime PM, and the
+SoC device tree connects GCC to RPMh CX. This lets consumers retain the parent
+power domain through the framework. Existing common-clock and GDSC code already
+supports the dependency; no framework or voltage-table transplant is needed.
+The specific CI73 clock-cleanup failure and earlier unrestricted-sleep reset
+remain unexplained. Do not describe this candidate as a tested suspend fix.
+
+All three command lines match CI72: retain clk_ignore_unused and pd_ignore_unused,
+with the disk-only wakeup QoS option and 900-second independent return. All
+109 original patches remain byte-identical; three imports make 112 and replay
+to tree c668507c730ae424ec30ab164f7cc27b24d8913b. ARM64 GCC object and target DT
+compile; comparison of all 1,201 DT nodes finds only the new GCC parent plus
+consistent phandle renumbering. Four malformed-parent guards, six boot-policy
+negative controls, scoped binding/node schema validation and 12 recipe tests
+pass. Strict checkpatch reports no errors, with one retained upstream Fixes
+reference unavailable in the local integration repository; the other two
+patches are warning-free. The scoped schema check includes a missing-parent
+negative control; an earlier incomplete-schema invocation is not a pass.
+
+No image is installed or hardware-tested. Require actual artifact/config/module
+checks, physical native startup, all 39 supported modules plus BT, and a fresh
+platform-PM return before considering real sleep. Preserve independent recovery,
+exact graphics rollback and installed CI44. No permanent keepalive votes, new
+rates, guessed PSCI values, idle restrictions or hibernation configuration.
