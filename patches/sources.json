@@ -771,10 +771,15 @@
     "local_commit": "6597c8dc7f41966760e8e32f26273fd1c72ef822",
     "sha256": "20dba52da4c729a469d1aa07bbb83475f96e1ab3019ab5a6b634ac2424d87c66",
     "license": "GPL-2.0-only; Qualcomm source-file copyright retained",
-    "hardware_tested": false,
+    "hardware_tested": true,
     "experimental_only": true,
     "source_commit": "e1f324632d70b2427751820cd48eefc45baab0ce",
     "source_url": "https://github.com/lenovo-basements/android_kernel_lenovo_sm8750-modules/blob/e1f324632d70b2427751820cd48eefc45baab0ce/qcom/opensource/display-drivers/msm/sde/sde_hw_uidle.c",
-    "source": "Tests stock QACTIVE assertion before VBIF halt. Local mainline adaptation bounds the mapped register, preserves prior value and restores it after AXI release. Only SM8750 catalog enables it. CI50 logging/readbacks remain; ACK and physical wake are separate gates. No clock-rate/OPP/voltage or timeout changes; not for installation."
+    "source": "Tests stock QACTIVE assertion before VBIF halt. Local mainline adaptation bounds the mapped register, preserves prior value and restores it after AXI release. Only SM8750 catalog enables it. CI50 logging/readbacks remain; ACK and physical wake are separate gates. No clock-rate/OPP/voltage or timeout changes; not for installation.",
+    "halt_ack_passed": true,
+    "original_value_restore_passed": true,
+    "software_wake_passed": true,
+    "display_wake_accepted": false,
+    "hardware_result": "CI51: three acknowledged halts and original-value restores, no matched DPU/DSI/CTL/frame/vblank faults, fresh GNOME rendering passed. Physical panel remained grey after one wake; rejected. Android/graphics/filesystem restoration passed; CI44 retained. Logging/readback timing confounders remain."
   }
 }

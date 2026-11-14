@@ -66,6 +66,15 @@ acknowledgement and physical wake must be checked separately. No clock rates,
 voltages, OPPs or polling deadlines change. Keep CI44 installed; this is not an
 accepted production fix or a full CESTA integration.
 
+CI51 completed one recorded wake cycle. All three bus halts received real
+acknowledgements, and the saved QACTIVE value was restored each time. No matched
+DSI/controller/frame/vblank fault recurred, and fresh GNOME GPU rendering passed.
+However, the physical panel remained grey after wake throughout the fresh-frame
+probes. **Wake is rejected**; software success is not physical display acceptance.
+Android, exact graphics rollback and filesystem checks passed; CI44 remains
+installed. Do not install or repeat CI51 unchanged. The next audit targets panel,
+dual-DSI and DSC output lifecycle; the remaining failure's cause is not established.
+
 CI45 verified the secondary rear OV02B10's full sensor ID and two8-frame RAW10
 capture cycles through SM8750 CAMSS, with clean Android restoration. Frames were
 nearly black. An isolated Debian libcamera 0.7.1 CPU software-ISP test subsequently

@@ -96,3 +96,12 @@ bounds are checked.95 patches must replay exactly. Retain CI50 logs/readbacks;
 this is experimental, not installable. No extra clocks, rates, OPPs, voltages,
 delays or retries. Evaluate halt ACK separately from physical wake/fresh frames.
 No promotion without a later clean candidate and appropriate regression checks.
+
+CI51 completed one recorded wake cycle. All three bus halts received real
+acknowledgements, and the saved QACTIVE value was restored each time. No matched
+DSI/controller/frame/vblank fault recurred, and fresh GNOME GPU rendering passed.
+However, the physical panel remained grey after wake throughout the fresh-frame
+probes. **Wake is rejected**; software success is not physical display acceptance.
+Android, exact graphics rollback and filesystem checks passed; CI44 remains
+installed. Do not install or repeat CI51 unchanged. The next audit targets panel,
+dual-DSI and DSC output lifecycle; the remaining failure's cause is not established.
