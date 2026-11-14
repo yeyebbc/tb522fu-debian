@@ -161,3 +161,11 @@ final configuration and the consumer's actual symbol reference. The 97-patch
 source tree is unchanged and retains diagnostics for the bounded comparison.
 This correction is not physical wake acceptance; keep CI44 installed until the
 camera and callback results pass, followed by a clean candidate and regression.
+
+CI54 stopped before compilation: its config guard caught the board fragment's
+KTZ8866=y becoming effective when the class core changed to built-in. No image
+or hardware test resulted. CI55 explicitly sets KTZ8866=m in the final fragment,
+retaining the guard. A fresh defconfig/fragment merge passes all 95 recipe
+setting assertions; the only functional change from CI53 is the class core=m→y.
+Cross-toolchain labels, pahole availability and an explicitly disabled XML
+validator differ locally. The source and diagnostic scope are unchanged.

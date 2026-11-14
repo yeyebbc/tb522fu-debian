@@ -114,6 +114,8 @@ CONFIG_DEBUG_INFO_NONE=y
 CONFIG_DRM=y
 # DRM's panel/backlight helper is a no-op if this core is modular with DRM=y.
 CONFIG_BACKLIGHT_CLASS_DEVICE=y
+# Override the board fragment explicitly; the modular core previously clamped it.
+CONFIG_BACKLIGHT_KTZ8866=m
 CONFIG_DRM_SIMPLEDRM=y
 CONFIG_DRM_FBDEV_EMULATION=y
 CONFIG_DRM_MSM=m

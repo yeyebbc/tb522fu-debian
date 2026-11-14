@@ -125,6 +125,13 @@ source tree is unchanged and retains diagnostics for the bounded comparison.
 This correction is not physical wake acceptance; keep CI44 installed until the
 camera and callback results pass, followed by a clean candidate and regression.
 
+CI54 stopped at its configuration guard before compilation: making the class
+core built-in exposed an inherited built-in chip-driver setting. No image was
+produced or tested. CI55 explicitly keeps KTZ8866 modular; a fresh configuration
+merge passes all 95 recipe setting checks. The only functional change from CI53
+is the built-in backlight class core. Source and diagnostic scope are unchanged;
+physical wake acceptance is still pending.
+
 CI45 verified the secondary rear OV02B10's full sensor ID and two8-frame RAW10
 capture cycles through SM8750 CAMSS, with clean Android restoration. Frames were
 nearly black. An isolated Debian libcamera 0.7.1 CPU software-ISP test subsequently
