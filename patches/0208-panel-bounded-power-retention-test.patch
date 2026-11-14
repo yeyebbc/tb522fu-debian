@@ -1,0 +1,152 @@
+From 2e6e62d4997d5d7c3d8772e8fe6ac0a58863f0cc Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Sat, 14 Nov 2026 13:27:18 +0800
+Subject: [PATCH] drm/panel: test retained power across Y900 display wake
+
+Keep the existing BOE panel regulator references across unprepare and
+reuse them on the next prepare. First acquisition retains its ordered
+supply sequence and failure unwind. Register a devres release after the
+regulator handles are obtained, and refuse the diagnostic with a reset
+GPIO present. Other panel descriptors retain their normal power
+behavior. Keep the same supply settling waits on retained prepares too,
+to avoid a timing change.
+
+This is a diagnostic, not a production power policy. The tablet
+currently has no accessible physical panel reset and still wakes to a
+backlit blank screen. Retention distinguishes panel rail loss from the
+remaining output path without touching secure GPIOs or changing
+commands, rates or voltages. Remove this patch and its candidate-only
+guard before production acceptance.
+
+Signed-off-by: Codex <codex@localhost>
+---
+ drivers/gpu/drm/panel/panel-novatek-nt36536.c | 54 +++++++++++++++++--
+ 1 file changed, 50 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/gpu/drm/panel/panel-novatek-nt36536.c b/drivers/gpu/drm/panel/panel-novatek-nt36536.c
+index 3192e44ad8ee..a36a5ce61598 100644
+--- a/drivers/gpu/drm/panel/panel-novatek-nt36536.c
++++ b/drivers/gpu/drm/panel/panel-novatek-nt36536.c
+@@ -37,6 +37,7 @@ struct novatek {
+ 	struct regulator_bulk_data *supplies;
+ 	unsigned int num_supplies;
+ 	struct backlight_device *backlight;
++	bool power_retained;
+ };
+ 
+ struct panel_desc {
+@@ -60,6 +61,7 @@ struct panel_desc {
+ 
+ 	bool is_dual_dsi;
+ 	bool has_dcs_backlight;
++	bool test_keep_power;
+ };
+ 
+ static const char *const csot_pp8807hb1_1_supplies[] = {
+@@ -100,11 +102,32 @@ static void novatek_reset(struct novatek *ctx)
+ 	usleep_range(10000, 11000);
+ }
+ 
++static void novatek_release_retained_power(void *data)
++{
++	struct novatek *ctx = data;
++	int ret;
++
++	if (!ctx->power_retained)
++		return;
++
++	ret = regulator_bulk_disable(ctx->num_supplies, ctx->supplies);
++	if (ret) {
++		dev_err(ctx->panel.dev, "Failed to release retained power: %d\n", ret);
++		return;
++	}
++	ctx->power_retained = false;
++}
++
+ static int novatek_prepare(struct drm_panel *panel)
+ {
+ 	y900_dev_info(panel->dev, "Y900PREP enter\n");
+ 	struct novatek *ctx = to_novatek(panel);
+ 	int ret, i;
++	bool reuse = ctx->desc->test_keep_power && ctx->power_retained;
++
++	if (reuse)
++		dev_info(panel->dev, "DISPLAY_POWER reuse retained supplies=%u\n",
++			 ctx->num_supplies);
+ 
+ 	y900_dev_info(panel->dev, "Y900PREP supplies=%d\n", ctx->num_supplies);
+ 	if (ctx->desc->supply_on_delays_us) {
+@@ -112,15 +135,17 @@ static int novatek_prepare(struct drm_panel *panel)
+ 		for (i = 0; i < ctx->num_supplies; i++) {
+ 			unsigned int delay = ctx->desc->supply_on_delays_us[i];
+ 
+-			ret = regulator_enable(ctx->supplies[i].consumer);
+-			if (ret)
+-				goto disable_supplies;
++			if (!reuse) {
++				ret = regulator_enable(ctx->supplies[i].consumer);
++				if (ret)
++					goto disable_supplies;
++			}
+ 			if (delay)
+ 				usleep_range(delay, delay + 1000);
+ 		}
+ 		ret = 0;
+ 	} else {
+-		ret = regulator_bulk_enable(ctx->num_supplies, ctx->supplies);
++		ret = reuse ? 0 : regulator_bulk_enable(ctx->num_supplies, ctx->supplies);
+ 	}
+ 	y900_dev_info(panel->dev, "Y900PREP regulator_bulk_enable -> %d\n", ret);
+ 	if (ret < 0)
+@@ -131,6 +156,11 @@ static int novatek_prepare(struct drm_panel *panel)
+ 			     ctx->desc->post_on_delay_us + 1000);
+ 
+ 	novatek_reset(ctx);
++	if (ctx->desc->test_keep_power && !ctx->power_retained) {
++		ctx->power_retained = true;
++		dev_info(panel->dev, "DISPLAY_POWER acquired supplies=%u\n",
++			 ctx->num_supplies);
++	}
+ 
+ 	/* The init sequence is sent from ->enable(): pre_enable walks the bridge
+ 	 * chain tail-first, so ->prepare() runs before the DSI host is powered. */
+@@ -219,6 +249,11 @@ static int novatek_unprepare(struct drm_panel *panel)
+ 	struct novatek *ctx = to_novatek(panel);
+ 
+ 	dev_dbg(panel->dev, "DISPLAY_OUTPUT unprepare prepared=%d\n", panel->prepared);
++	if (ctx->desc->test_keep_power && ctx->power_retained) {
++		dev_info(panel->dev, "DISPLAY_POWER hold supplies=%u\n",
++			 ctx->num_supplies);
++		return 0;
++	}
+ 	if (ctx->reset_gpio)
+ 		gpiod_set_value_cansleep(ctx->reset_gpio, 1);
+ 	regulator_bulk_disable(ctx->num_supplies, ctx->supplies);
+@@ -586,6 +621,15 @@ static int novatek_probe(struct mipi_dsi_device *dsi)
+ 	ret = devm_regulator_bulk_get(dev, ctx->num_supplies, ctx->supplies);
+ 	if (ret < 0)
+ 		return ret;
++	if (desc->test_keep_power) {
++		if (ctx->reset_gpio)
++			return dev_err_probe(dev, -EINVAL,
++					     "Power retention test requires no reset GPIO\n");
++		/* Release before devres puts the regulator handles. */
++		ret = devm_add_action_or_reset(dev, novatek_release_retained_power, ctx);
++		if (ret)
++			return ret;
++	}
+ 
+ 	if (desc->is_dual_dsi) {
+ 		num_dsi = 2;
+@@ -718,6 +762,8 @@ static const struct panel_desc y900_boe_nt36536e_desc = {
+ 	.supply_names = y900_boe_nt36536e_supplies,
+ 	.supply_on_delays_us = y900_boe_nt36536e_supply_delays,
+ 	.num_supplies = ARRAY_SIZE(y900_boe_nt36536e_supplies),
++	/* Diagnostic only: distinguish rail loss without an accessible reset. */
++	.test_keep_power = true,
+ 	.is_dual_dsi = true,
+ 	.has_dcs_backlight = false,
+ };
+-- 
+2.47.3
+

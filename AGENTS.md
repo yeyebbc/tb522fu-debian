@@ -243,3 +243,16 @@ verification. Android, graphics, filesystem, timers, services and workers were
 independently verified afterward; the raw monitor error is preserved. CI44 stays
 installed. Do not repeat this candidate unchanged or promote it. The next audit
 examines panel supply/reset lifecycle; secure GPIO access remains excluded.
+
+CI59 is a bounded panel-power diagnostic, not a production fix. It retains
+only the BOE panel's three supply references through one screen-off/wake cycle.
+Initial enable ordering and all settling delays, including warm prepares, are
+preserved. Reuse does not add regulator references; devres cleanup releases them
+before their handles are freed. The diagnostic refuses a reset GPIO and leaves
+other panels unchanged. DCS/PPS, backlight, host/PHY/DSC and touch code are unchanged.
+The101-patch tree replays exactly. Actual callbacks pass19 lifecycle/error cases
+and three negative controls; packet checks, ARM64 compilation, strict checkpatch
+and12 recipe tests pass. This tests a power/reset lead; it does not establish
+rail voltages or successful wake. Remove0208 and its candidate-only build guard
+before any production acceptance, even if this experiment wakes visibly. CI44
+remains installed; use one recorded bounded cycle and exact Android restoration.

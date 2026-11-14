@@ -4,6 +4,7 @@
 from pathlib import Path
 import subprocess
 import tempfile
+import re
 
 DISPLAY_MODULES = {'msm', 'dispcc_sm8750', 'ktz8866', 'panel_novatek_nt36536',
                    'gpucc_sm8750', 'gxclkctl_kaanapali'}
@@ -120,6 +121,195 @@ int main(void)
         binary = Path(directory) / 'check'
         c.write_text(harness)
         subprocess.run(['cc', '-std=gnu11', '-Wall', '-Wextra', '-Werror', str(c), '-o', str(binary)], check=True)
+        subprocess.run([str(binary)], check=True)
+
+
+def check_panel_power(source):
+    """Exercise actual panel power callbacks, including partial-enable unwind."""
+    panel = (Path(source) / 'drivers/gpu/drm/panel/panel-novatek-nt36536.c').read_text()
+    assert panel.count('.test_keep_power = true') == 1
+    desc = panel[panel.index('static const struct panel_desc y900_boe_nt36536e_desc'):]
+    assert '.test_keep_power = true' in desc.split('};', 1)[0]
+    probe = panel[panel.index('static int novatek_probe('):]
+    assert (probe.index('devm_regulator_bulk_get(') <
+            probe.index('devm_add_action_or_reset(dev, novatek_release_retained_power, ctx)') <
+            probe.index('devm_drm_panel_add('))
+    assert 'if (ctx->reset_gpio)\n\t\t\treturn dev_err_probe(dev, -EINVAL,' in probe
+
+    def function(name):
+        start = re.search(r'static (?:int|void) ' + name + r'\(', panel).start()
+        opening = panel.index('{', start)
+        depth = 1
+        end = opening + 1
+        while depth:
+            depth += (panel[end] == '{') - (panel[end] == '}')
+            end += 1
+        return panel[start:end]
+
+    actual = '\n'.join(function(name) for name in (
+        'novatek_reset', 'novatek_release_retained_power',
+        'novatek_prepare', 'novatek_unprepare'))
+    harness = r'''
+#include <assert.h>
+#include <errno.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
+#define y900_dev_info(...) ((void)0)
+#define dev_info(...) ((void)0)
+#define dev_dbg(...) ((void)0)
+#define dev_err(...) ((void)0)
+struct regulator { int id, refs; };
+struct regulator_bulk_data { struct regulator *consumer; };
+struct drm_panel { void *dev; bool prepared; };
+struct panel_desc {
+    const unsigned int *supply_on_delays_us;
+    unsigned int post_on_delay_us;
+    bool test_keep_power;
+};
+struct novatek {
+    struct drm_panel panel;
+    const struct panel_desc *desc;
+    void *reset_gpio;
+    struct regulator_bulk_data *supplies;
+    unsigned int num_supplies;
+    bool power_retained;
+};
+struct action { int kind, value; };
+static struct action trace[512];
+static unsigned trace_count, enables, disables, resets, delay_count;
+static int enable_fail = -1, disable_fail = -1;
+static void record(int kind, int value)
+{
+    assert(trace_count < 512);
+    trace[trace_count++] = (struct action){kind, value};
+}
+static struct novatek *to_novatek(struct drm_panel *panel)
+{ return (struct novatek *)panel; }
+static int regulator_enable(struct regulator *r)
+{
+    record('e', r->id);
+    if (r->id == enable_fail) return -EIO;
+    r->refs++; enables++;
+    return 0;
+}
+static int regulator_disable(struct regulator *r)
+{
+    record('d', r->id);
+    if (r->id == disable_fail) return -EIO;
+    assert(r->refs > 0);
+    r->refs--; disables++;
+    return 0;
+}
+static int regulator_bulk_enable(int n, struct regulator_bulk_data *s)
+{
+    int i;
+    for (i = 0; i < n; i++)
+        if (regulator_enable(s[i].consumer)) {
+            while (i--) assert(!regulator_disable(s[i].consumer));
+            return -EIO;
+        }
+    return 0;
+}
+static int regulator_bulk_disable(int n, struct regulator_bulk_data *s)
+{
+    int i;
+    for (i = n - 1; i >= 0; i--)
+        if (regulator_disable(s[i].consumer)) {
+            /* Match regulator core rollback after a failed bulk disable. */
+            for (++i; i < n; i++) assert(!regulator_enable(s[i].consumer));
+            return -EIO;
+        }
+    return 0;
+}
+static void usleep_range(unsigned min, unsigned max)
+{ assert(max > min); delay_count++; record('s', min); }
+static void gpiod_set_value_cansleep(void *gpio, int value)
+{ assert(gpio); resets++; record('g', value); }
+ACTUAL_CALLBACKS
+static void refs(struct regulator *r, int want)
+{ for (int i = 0; i < 3; i++) assert(r[i].refs == want); }
+int main(void)
+{
+    unsigned cases = 0;
+    static const unsigned delays[] = {20000, 0, 20000};
+    for (int retain = 0; retain < 2; retain++)
+    for (int ordered = 0; ordered < 2; ordered++)
+    for (int fail = -1; fail < 3; fail++) {
+        struct regulator r[] = {{0,0}, {1,0}, {2,0}};
+        struct regulator_bulk_data s[] = {{r}, {r+1}, {r+2}};
+        struct panel_desc d = {ordered ? delays : NULL, 7000, retain};
+        struct novatek ctx = {.desc=&d, .supplies=s, .num_supplies=3,
+                              .reset_gpio=retain ? NULL : &d};
+        trace_count=enables=disables=resets=delay_count=0;
+        enable_fail=fail; disable_fail=-1;
+        novatek_release_retained_power(&ctx);
+        assert(trace_count == 0);
+        if (fail >= 0) {
+            assert(novatek_prepare(&ctx.panel) == -EIO);
+            refs(r,0); assert(!ctx.power_retained && !resets);
+            assert(enables == (unsigned)fail && disables == enables);
+            unsigned failed_trace = trace_count;
+            novatek_release_retained_power(&ctx);
+            assert(trace_count == failed_trace);
+        }
+        enable_fail=-1;
+        trace_count=enables=disables=resets=delay_count=0;
+        for (int cycle = 0; cycle < 3; cycle++) {
+            unsigned before = trace_count;
+            assert(!novatek_prepare(&ctx.panel)); refs(r,1);
+            if (retain && cycle)
+                for (unsigned i = before; i < trace_count; i++)
+                    assert(trace[i].kind == 's');
+            assert(!novatek_unprepare(&ctx.panel)); refs(r,retain);
+            assert(ctx.power_retained == !!retain);
+        }
+        assert(enables == (retain ? 3u : 9u));
+        assert(disables == (retain ? 0u : 9u));
+        assert(resets == (retain ? 0u : 15u));
+        assert(delay_count == (unsigned)(3 *
+                                      (1 + (ordered ? 2 : 0) + (retain ? 0 : 4))));
+        /* The first ordered acquisition must preserve its supply/delay order. */
+        if (ordered) {
+            static const struct action expected[] = {
+                {'e',0}, {'s',20000}, {'e',1}, {'e',2}, {'s',20000}, {'s',7000}};
+            assert(!memcmp(trace,expected,sizeof(expected)));
+        }
+        novatek_release_retained_power(&ctx); refs(r,0);
+        assert(!ctx.power_retained && enables == disables);
+        unsigned final = trace_count;
+        novatek_release_retained_power(&ctx);
+        assert(trace_count == final);
+        cases++;
+    }
+    for (int fail = 0; fail < 3; fail++) {
+        struct regulator r[] = {{0,0}, {1,0}, {2,0}};
+        struct regulator_bulk_data s[] = {{r}, {r+1}, {r+2}};
+        struct panel_desc d = {delays,0,true};
+        struct novatek ctx = {.desc=&d,.supplies=s,.num_supplies=3};
+        enable_fail=disable_fail=-1; trace_count=0;
+        assert(!novatek_prepare(&ctx.panel));
+        disable_fail=fail;
+        novatek_release_retained_power(&ctx);
+        refs(r,1); assert(ctx.power_retained);
+        disable_fail=-1;
+        novatek_release_retained_power(&ctx);
+        refs(r,0); assert(!ctx.power_retained);
+        cases++;
+    }
+    printf("Panel power: %u lifecycle/error cases passed\n",cases);
+    return 0;
+}
+'''.replace('ACTUAL_CALLBACKS', actual)
+    with tempfile.TemporaryDirectory(prefix='tb522fu-panel-power-') as directory:
+        c = Path(directory) / 'power.c'
+        binary = Path(directory) / 'power'
+        c.write_text(harness)
+        # The existing kernel callback uses a signed unwind index for an
+        # unsigned supply count; match the kernel's sign-compare policy.
+        subprocess.run(['cc', '-std=gnu11', '-Wall', '-Wextra', '-Werror',
+                        '-Wno-sign-compare',
+                        str(c), '-o', str(binary)], check=True)
         subprocess.run([str(binary)], check=True)
 
 
