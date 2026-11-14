@@ -857,9 +857,12 @@
     "sha256": "2731580a4739d00d4b5b9495cf37c63d79325dd9ce2d9dcc3e7cdc5c91bcd3ca",
     "license": "GPL-2.0-only; existing source-file attribution retained",
     "diagnostic_only": true,
-    "hardware_tested": false,
+    "hardware_tested": true,
     "promotion_allowed": false,
     "source": "Correct only the diagnostic manager guard after CI62 missed PHY1. Existing bonded enable/disable retains both physical PHYs while either logical controller holds phy_enabled. Mirror the OR rule when both peers are present; retain standalone/fallback own-controller behavior.",
-    "validation": "Actual manager enable/disable/log callbacks pass24 lifecycle/error cases and264 per-link/invalid-ID observations. Old guard fails same oracle. Only manager diagnostic helper changes; ARM64 object and strictcheckpatch pass. First-host-start, runtime PM, mapped bounds and PLL-on read guards unchanged. No hardware writes, waits, rates, resets or PM votes added."
+    "validation": "Actual manager enable/disable/log callbacks pass24 lifecycle/error cases and264 per-link/invalid-ID observations. Old guard fails same oracle. Only manager diagnostic helper changes; ARM64 object and strictcheckpatch pass. First-host-start, runtime PM, mapped bounds and PLL-on read guards unchanged. No hardware writes, waits, rates, resets or PM votes added.",
+    "wake_accepted": false,
+    "diagnostic_capture_passed": true,
+    "hardware_result": "CI63 complete20 records from both PHYs at initial/wake. Common gates/RBUF/mux/control/outdiv and cached state match; master fractional lowbyte differs by one. Camera still blank after wake, routing configuration matches except transient line counters. No matched controller fault. Normal restoration verified, CI44 retained. Capture guard fixed, physical wake unresolved; no wire/frequency or full PHY exclusion claim."
   }
 }

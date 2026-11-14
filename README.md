@@ -693,3 +693,15 @@ checks pass. First-host-start, runtime power, mapped bounds and PLL-on guards
 remain unchanged, with no added hardware writes, waits, rates, resets or PM votes.
 This fixes capture coverage, not physical wake. A bounded two-link capture and
 exact restoration are still required; keep CI44 installed.
+
+CI63 captured both PHYs successfully, but physical wake remains REJECTED.
+All20 PHY and64 routing records are present. Sampled common gates, receive
+buffers, mux/control/output dividers and cached state match working startup;
+only the master's fractional divider low byte differs by one. Routing settings
+match except transient scan-line counters. These observations do not measure
+physical DSI signals or exclude every PHY/panel cause. Initial greeter pixels
+pass, then the recorded panel stays blank after wake and focus input. No matched
+controller fault appeared. Normal Android, exact graphics, filesystem, timers,
+services and worker restoration passed. CI44 remains installed. The capture
+guard is corrected; no wake fix or promotion is claimed. Audit stock panel/TDDI
+wake ordering before selecting another changed test.
