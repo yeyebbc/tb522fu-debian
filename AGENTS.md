@@ -696,3 +696,16 @@ quotes are escaped in kernel.config. No new driver code, RAM address, mapping,
 idle state, power vote or restart behavior is introduced. Hardware is untested;
 first use remains a bounded two-boot marker diagnostic without a PM cycle.
 Keep CI44 installed and retain prior failures; logging is not wake acceptance.
+
+CI71's diagnostic capture passed on both boots, but the marker was absent.
+All six regions reported invalid signatures equal to zero at early ramoops
+initialization; PMSG was observed at 0.021969 s on the second boot. These
+messages follow ECC handling, which reported no header errors, and precede
+the normal invalid-buffer reset. This excludes later userspace archival as
+the loss point in the controlled EDL/programmer path. It does not establish
+whole-region zeroing, the responsible earlier stage, or hard-reset retention.
+No PM cycle was attempted. Android/CI44/filesystem/timer/host/worker cleanup
+passed. Do not promote or rerun CI71 unchanged; compare stock retention and
+reset handling before choosing the next logging route. Recipe
+`66d94af0d4f13bc07a215fd627f94c09ec7167be`, bounded boot SHA256
+`5f7a1c9091f2465037e3a16bf77bb16deedab6392ccc9217afb22ef74ffd4892`.

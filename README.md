@@ -6,14 +6,19 @@ Experimental native Linux port for the Lenovo Legion Y900 13 / TB522FU
 directions. This remains a development port with substantial peripheral work
 outstanding.
 
-**CI70 still did not recover the log marker after a controlled reboot.
-The default RAM mapping alone is insufficient. Display wake and suspend remain
+**CI71 captured zero signatures in all six retained buffers during early
+ramoops initialization after a controlled EDL/programmer reboot. The marker
+was absent before userspace archival. Display wake and suspend remain
 unresolved; CI44 remains installed.**
 
-The next diagnostic enables the existing ramoops header and region messages
-at boot, only in the bounded `disk-test` profile. It preserves CI70's source,
-device tree and power behavior. The purpose is to inspect retained-buffer
-state before initialization; it is not a suspend fix and has no hardware result.
+The diagnostic enables existing ramoops messages at boot only in `disk-test`.
+Source, device tree and power behavior match CI70. Both boots captured all six
+regions; the second reported zero signatures around 22 ms after kernel startup,
+after ECC handling and before the normal invalid-buffer reset. This locates the
+earliest observed loss before userspace collection, but does not identify the
+responsible firmware, loader or early kernel step, or prove whole buffers were
+zeroed. No suspend was attempted. Exact Android restoration, installed-image
+preservation, filesystem checks and temporary-service cleanup passed.
 
 Current installed kernel: `7.3.0-tb522fu-installed-ci44`, built from recipe
 `0a1847dd0b67991af502bfea9da36c5db50be3c4`. The installed image SHA256 is
