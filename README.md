@@ -20,6 +20,12 @@ stays grey after wake, and requesting a fresh GNOME update triggers CTL reset,
 frame and vblank timeouts. The mux change does not resolve the wake failure.
 The installed kernel remains CI44; do not promote CI46 or repeat it unchanged.
 
+The new source candidate additionally imports upstream
+[32d04280ddeb](https://github.com/torvalds/linux/commit/32d04280ddebb6eb964990931b0f1001f63b35e7)
+unchanged. It disables the secondary DPU encoder before the primary so the final
+shared-controller reset runs after both stop. This differs from the earlier DSI
+host power-off ordering fix. Its wake behavior on this tablet is not yet verified.
+
 CI45 verified the secondary rear OV02B10's full sensor ID and two8-frame RAW10
 capture cycles through SM8750 CAMSS, with clean Android restoration. Frames were
 nearly black. An isolated Debian libcamera 0.7.1 CPU software-ISP test subsequently

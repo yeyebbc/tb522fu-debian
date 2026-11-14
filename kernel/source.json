@@ -92,7 +92,8 @@
     "patches/0158-tb522fu-backlight-dma-provider.patch",
     "patches/0159-tb522fu-staged-adreno.patch",
     "patches/0160-dsi-bonded-slave-power-off-first.patch",
-    "patches/0195-dpu-disconnect-slave-timing-mux.patch"
+    "patches/0195-dpu-disconnect-slave-timing-mux.patch",
+    "patches/0196-dpu-disable-slave-encoder-first.patch"
   ],
-  "patched_tree": "a6f8a46d10ece6456b20d25b271950b6758f4684"
+  "patched_tree": "b9ec9c1dc9d2525d6698cf163a9565601bd40f17"
 }

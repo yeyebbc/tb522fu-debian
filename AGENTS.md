@@ -32,3 +32,7 @@ stock partition images and local environment paths out of tracked files.
 - Isolated libcamera 0.7.1 CPU processing on CI45 captured 90+8 RGB888 frames;
   images remain dark/purple. Quality, timing and ordinary camera apps are open.
   The private bundle preserves Debian 0.4/PipeWire/accepted audio libraries.
+- The next candidate imports upstream 32d04280ddeb unchanged as patch0196:
+  secondary DPU encoder shutdown before primary, with original attribution.
+  It is distinct from DSI host clock shutdown. The90-patch tree must replay
+  exactly; this tablet still needs bounded physical wake validation.

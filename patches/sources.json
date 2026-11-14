@@ -673,10 +673,24 @@
     "local_commit": "d9cff14de9fb94116d08609edda976d5dfd4c5c3",
     "sha256": "344028efb49e2d89298f67e0d7e4eb57a1cf85bc4439e154d35c576d3eb40423",
     "license": "GPL-2.0-only; existing source-file license retained",
-    "hardware_tested": false,
-    "source": "Mirror the existing split-slave INTF sync-mux enable on disable. Keeps the earlier slave-before-master DSI host shutdown. Wake outcome unverified.",
+    "hardware_tested": true,
+    "source": "Mirror the existing split-slave INTF sync-mux enable on disable. CI46 initial rendering passes, but physical wake remains grey with CTL reset/frame/vblank errors; this change alone is insufficient.",
     "references": [
       "https://github.com/lenovo-basements/android_kernel_lenovo_sm8750-modules/blob/e1f324632d70b2427751820cd48eefc45baab0ce/qcom/opensource/display-drivers/msm/sde/sde_encoder_phys_vid.c"
+    ],
+    "wake_accepted": false
+  },
+  "0196-dpu-disable-slave-encoder-first.patch": {
+    "local_commit": "24ab9a5b70459f1fbf77da1d217bef75667e8ce3",
+    "upstream_commit": "32d04280ddebb6eb964990931b0f1001f63b35e7",
+    "patch_id": "b44acc8f61d6a8e19d27894cd7f79688a3b2a172",
+    "sha256": "a115f1c6b797ec0020debce7584754b31aa84ad5054d8458be87d6a5284ec857",
+    "license": "GPL-2.0-only; original author, review and signoffs retained",
+    "hardware_tested": false,
+    "source": "Unchanged upstream fix: disable slave DPU encoder before master so the final shared CTL reset occurs after both timing engines stop.",
+    "references": [
+      "https://github.com/torvalds/linux/commit/32d04280ddebb6eb964990931b0f1001f63b35e7",
+      "https://lore.kernel.org/r/20261002130712.50612-1-26rote@gmail.com"
     ]
   }
 }
