@@ -191,6 +191,7 @@ def main():
     config = (out / '.config').read_text().splitlines()
     for setting in ['CONFIG_Y900_ACM_DIAG_DTB=y', 'CONFIG_INITRAMFS_FORCE=y',
                     'CONFIG_CMDLINE_FORCE=y', 'CONFIG_PANIC_TIMEOUT=5',
+                    'CONFIG_PM_DEBUG=y', 'CONFIG_PM_SLEEP_DEBUG=y',
                     'CONFIG_DEBUG_INFO_NONE=y', 'CONFIG_CRC32=y', 'CONFIG_USB_CONFIGFS=y',
                     'CONFIG_DRM_SIMPLEDRM=y', 'CONFIG_DRM=y', 'CONFIG_BACKLIGHT_CLASS_DEVICE=y',
                     'CONFIG_FONT_TER16x32=y', 'CONFIG_DEBUG_FS=y',
@@ -242,6 +243,7 @@ def main():
     assert '# CONFIG_CFG80211_REG_RELAX_NO_IR is not set' in config
     assert '# CONFIG_ATH_REG_DYNAMIC_USER_CERT_TESTING is not set' in config
     # PMIC coldplug must not replace Debian's saved time with its raw counter.
+    assert '# CONFIG_PM_TEST_SUSPEND is not set' in config
     assert '# CONFIG_RTC_HCTOSYS is not set' in config
     assert '# CONFIG_RTC_SYSTOHC is not set' in config
     cmdline = next(s for s in config if s.startswith('CONFIG_CMDLINE='))

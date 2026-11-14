@@ -1,0 +1,59 @@
+From 76fc0bab5be0793879b4af344746b60552a29ce9 Mon Sep 17 00:00:00 2001
+From: yzddMr6 <yzddmr6@gmail.com>
+Date: Wed, 11 Nov 2026 15:21:13 +0800
+Subject: [PATCH] soc: qcom: llcc-qcom: Reserve ISLAND1 ways on SM8750
+
+The SM8750 table gives the island slice (LLCC_ISLAND1, SCID 12) its way
+mask 0x7fffffff as bonus ways and reserves none. Bonus ways are only
+allocated when no other slice has reserved them, while reserved ways
+belong to the slice alone. The first posting of the SM8750 support [1]
+had these ways reserved, as the downstream table shipped for this SoC
+still has them (res_ways = 0x7fffffff, no bonus ways). They became bonus
+ways when v2 converted the table to designated initializers, and v3,
+which refreshed the table, kept them.
+
+With this table, system suspend can reset the SoC once nothing votes
+for the LPASS core. On a Xiaomi Pad 8 Pro with the LPASS_HW_MACRO_VOTE
+and LPASS_HW_DCODEC_VOTE votes released, 16 suspend attempts (15 with
+s2idle, one with PSCI system suspend) ended in a reset. The PMIC PON log
+shows only PS_HOLD-triggered resets and no PMIC fault. Holding
+LPASS_HW_MACRO_VOTE or LPASS_HW_LPR_VOTE across suspend let one s2idle
+cycle each resume, but cxsd did not increase in either case.
+
+The reset stayed hidden while the LPASS macro codecs took both votes at
+probe and held them until removal, as they did before v7.3. Since v7.3
+the codecs manage these votes through the PM clock framework and drop
+them when they runtime suspend.
+
+Reserve the ways again. With that, all six s2idle cycles that went to
+sleep (48 to 60 s each, no LPASS vote held) resumed normally, with the
+cxsd and ddr residencies in qcom_stats within 0.1 s of the time spent
+asleep. The ADSP island counter increases at runtime with either
+table. The mechanism behind the suspend reset is not yet understood.
+
+The mismatch was found with the help of an AI coding assistant.
+
+Fixes: 2c04e58e30ce ("soc: qcom: llcc-qcom: Add support for SM8750")
+Link: https://lore.kernel.org/r/20250113-sm8750_llcc_master-v1-3-5389b92e2d7a@quicinc.com [1]
+Cc: stable@vger.kernel.org
+Signed-off-by: yzddMr6 <yzddmr6@gmail.com>
+---
+ drivers/soc/qcom/llcc-qcom.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/soc/qcom/llcc-qcom.c b/drivers/soc/qcom/llcc-qcom.c
+index 733999867bbf..40e5d57c6b40 100644
+--- a/drivers/soc/qcom/llcc-qcom.c
++++ b/drivers/soc/qcom/llcc-qcom.c
+@@ -3761,7 +3761,7 @@ static const struct llcc_slice_config sm8750_data[] = {
+ 		.max_cap = 7936,
+ 		.priority = 7,
+ 		.fixed_size = true,
+-		.bonus_ways = 0x7fffffff,
++		.res_ways = 0x7fffffff,
+ 	}, {
+ 		.usecase_id = LLCC_DISP_WB,
+ 		.slice_id = 23,
+-- 
+2.47.3
+

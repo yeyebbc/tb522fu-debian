@@ -213,3 +213,8 @@ CONFIG_VIDEO_V4L2_SUBDEV_API=y
 
 # Keep the GPU clock provider modular for explicit legacy RAM activation.
 CONFIG_SM_GPUCC_8750=m
+
+# Suspend diagnostics only; no automatic suspend at boot.
+CONFIG_PM_DEBUG=y
+CONFIG_PM_SLEEP_DEBUG=y
+# CONFIG_PM_TEST_SUSPEND is not set

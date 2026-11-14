@@ -6,9 +6,9 @@ Experimental native Linux port for the Lenovo Legion Y900 13 / TB522FU
 directions. This remains a development port with substantial peripheral work
 outstanding.
 
-**Latest build: CI64 failed physical wake and intentionally disables touch in
-both profiles. Do not install it. CI44 remains the accepted installed kernel;
-physical display wake is still unresolved.**
+**Current candidate: CI65 tests a cache reservation correction for full-system
+suspend. It restores touch and adds staged PM diagnostics. It is unverified;
+CI44 remains installed. Physical display wake is unresolved.**
 
 Current installed kernel: `7.3.0-tb522fu-installed-ci44`, built from recipe
 `0a1847dd0b67991af502bfea9da36c5db50be3c4`. The installed image SHA256 is
@@ -733,3 +733,21 @@ exact graphics rollback, filesystem checks, timer retirement and all worker
 cleanup passed. CI44 remains installed. Do not install or repeat CI64 unchanged.
 The next user-requested experiment reuses CI63 with touch and keyboard enabled
 to distinguish real whole-system suspend from the earlier display-only cycles.
+
+## CI65 full-driver suspend candidate
+
+Whole-system s2idle on CI63 restarted the tablet after all supported drivers
+and Bluetooth startup were ready. The recovered kernel had a different boot
+ID, so the later visible desktop was a new boot, not a successful resume.
+Persistent crash storage was empty; the failing callback remains unidentified.
+Android, graphics and filesystem restoration passed. CI44 remains installed.
+
+CI65 restores touch after the failed isolation experiment and imports the
+[upstream SM8750 ISLAND1 reservation correction](https://lore.kernel.org/r/20261111-sm8750-llcc-island1-v1-1-64055702ca3f@gmail.com) unchanged.
+Lenovo's pinned stock source agrees with the reserved-way field and register
+mapping. This is a plausible reset fix, not verified on this tablet. Another
+same-SoC report was not fixed by it. PM_DEBUG permits staged freezer, device
+and platform callback tests before real s2idle. All supported modules stay
+loaded. No permanent resource votes or unrelated USB changes are included.
+No promotion until same-boot resume, measurable sleep and physical fresh
+screen output pass, followed by exact restoration.

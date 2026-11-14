@@ -876,5 +876,15 @@
     "validation": "Whole compiled DT differs only in touchscreen status okay->disabled; SPI controller, keyboard and all panel/PHY/clock settings preserved. Actual runtime isolation helper accepts absence and rejects six violations. Existing synthetic-focus/fault/compositor helper ASTs unchanged. Native wiring guard passes candidate and rejects prior enabled-touch DT. DTcompile, strictstyle and12 recipe tests pass.",
     "removal": "Remove0213 and the diagnostic-only touch-status build guard before production acceptance. This intentionally disables touch in both built profiles; neither is for installation.",
     "hardware_result": "CI64 runtime touch-isolation checks passed at coldplug and after wake; physical wake failed. Linux touch activity is not necessary for this failure. Shared TDDI hardware/reset remains open. Exact restoration passed; CI44 preserved."
+  },
+  "0214-sm8750-llcc-island-reservation.patch": {
+    "source": "https://lore.kernel.org/r/20261111-sm8750-llcc-island1-v1-1-64055702ca3f@gmail.com",
+    "local_commit": "76fc0bab5be0793879b4af344746b60552a29ce9",
+    "sha256": "c985e2ae69d53c3bcd754642bdcb4e44bf3f253836f6f9627f3133d9b7a48c25",
+    "license": "GPL-2.0-only; original author and Signed-off-by retained",
+    "import_type": "Unchanged upstream mailing-list patch; context offset only",
+    "hardware_tested": false,
+    "source_validation": "Pinned Lenovo sun_data field order and V6 register mapping agree: ISLAND1 reserved mask0x7fffffff, bonus0. Current upstream has these fields reversed.",
+    "limitation": "Matching suspend-reset report on one SM8750 tablet was fixed, another was not. No proven causal attribution to TB522FU yet. No permanent LPASS/DDR votes added."
   }
 }

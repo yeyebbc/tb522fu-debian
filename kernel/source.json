@@ -108,7 +108,7 @@
     "patches/0210-tb522fu-bonded-dsi-master-pll.patch",
     "patches/0211-dsi-powered-phy-state-diagnostics.patch",
     "patches/0212-dsi-bonded-phy-diagnostic-ownership.patch",
-    "patches/0213-tb522fu-touch-isolation-diagnostic.patch"
+    "patches/0214-sm8750-llcc-island-reservation.patch"
   ],
-  "patched_tree": "8d8998b66dab329ba2c0c673cf7736967a8967b5"
+  "patched_tree": "a3bacc8b3e7d690259366a2f8855a2776315df44"
 }
