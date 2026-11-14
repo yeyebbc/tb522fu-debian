@@ -264,7 +264,7 @@
     "local_commit": "6a06f2e614b201e20969d5e505c841dd7d951269",
     "adaptation": "Original patch and attribution retained; context refreshed for pinned base.",
     "source": "https://lore.kernel.org/all/20261011074433.9187-1-franzelfranzel@gmail.com/",
-    "status": "Pending upstream patch by Fran\u00e7ois Roux; not claimed merged"
+    "status": "Pending upstream patch by François Roux; not claimed merged"
   },
   "0150-q6apm-capture-trigger-lifecycle.patch": {
     "sha256": "94b4ca28bfe229b56f821c0c632bd1cd06d4063a95c42accd8e95ea120705bf1",
@@ -958,7 +958,11 @@
     "stock_reference": "https://github.com/lenovo-basements/android_kernel_lenovo_sm8750/blob/210981a0ad749c30080b853d31bc009d9db0592d/drivers/soc/qcom/llcc-qcom.c",
     "stock_normalized_entries_match": 32,
     "license": "Original GPL-2.0-only and author/signoff retained",
-    "hardware_tested": false,
-    "root_cause_proven": false
+    "hardware_tested": true,
+    "root_cause_proven": false,
+    "promotion_allowed": false,
+    "platform_single_cycle_passed": true,
+    "system_suspend_passed": false,
+    "hardware_result": "CI68: one isolated platform-PM diagnostic restored the physical display and fresh frames with all 39 supported modules. A separate cold-boot actual s2idle with verified RTC alarm and no earlier PM cycle rebooted; boot ID changed, pstore empty. The complete table correction is insufficient to fix the reset. Exact Android/graphics/filesystem/timer/service/network/worker restoration passed; CI44 retained."
   }
 }

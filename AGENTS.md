@@ -555,3 +555,26 @@ defects; it is not yet an established explanation or fix for our suspend
 reset. CPU idle states, wake IRQs, DT, power votes and peripheral drivers are
 unchanged. Keep CI44 installed and require all-driver physical wake and actual
 sleep acceptance with exact recovery before any later promotion.
+
+## CI68 suspend results
+
+With the complete upstream LLCC table correction, one isolated platform-PM
+diagnostic restored the greeter and fresh focus changes. All 39 supported
+modules were loaded and Bluetooth startup was complete; the boot ID stayed
+unchanged, with one successful PM cycle and no recorded failure.
+
+A separate cold boot then attempted actual s2idle without a preceding PM
+cycle. The signed-in GNOME session was selected, all drivers remained loaded,
+and the awake RTC interrupt check and 20-second alarm readback passed. The
+request never returned. A changed boot ID and recorded bootloader screen
+confirm a reboot; persistent crash storage was empty. This candidate is
+rejected for installation and unchanged retesting. The full table correction
+is insufficient to fix the reset; the failing component remains unidentified.
+
+Recipe `63d9e96a7ca697580282f8a1872a6051c1a2e5b3`, kernel source
+`7bc64379ce1ced431d52a4e700d8848030a7939f`, boot SHA256
+`1dd0a4d1e5b83c4bf1f3947466931becf73906105860c39acb58c1f82a4dcee6`.
+Both CI profiles built successfully. Exact Android and graphics restoration,
+full filesystem checks, temporary return-unit retirement, host services and
+network/worker cleanup passed after both tests. CI44 remains installed.
+Reliable display wake and actual suspend are still unresolved.
