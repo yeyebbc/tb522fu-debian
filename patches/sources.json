@@ -843,10 +843,13 @@
     "sha256": "43e8a37bea5f4305fdd5c20bea4b09aa2a0d901c1ca03fec5388a35498feb047",
     "license": "GPL-2.0-only; existing source-file attribution retained",
     "diagnostic_only": true,
-    "hardware_tested": false,
+    "hardware_tested": true,
     "promotion_allowed": false,
     "source": "Local first-start readback discriminator, only in SM8750 configuration. Enabled manager PHY and active runtime PM required. Eight common-register reads and seven PLL reads only when pll_on, with mapped resource bounds. No new writes, PM votes, rates, resets or delays; no clock-framework callbacks.",
     "validation": "Four ARM64 objects, strict checkpatch, unchanged compiled DT and actual mapped bounds; 26 actual-C access/error cases and16 old/new host callback comparisons. Existing Y900PHY7 format warning remains. Logging between link starts can perturb timing; values do not measure frequency or DSI wire output.",
-    "removal": "Remove diagnostic code before production promotion; preserve the separately verified bonded PLL0 topology correction."
+    "removal": "Remove diagnostic code before production promotion; preserve the separately verified bonded PLL0 topology correction.",
+    "wake_accepted": false,
+    "diagnostic_capture_passed": false,
+    "hardware_result": "CI62: initial greeter visible, physical wake blank. PHY0 captured at initial/wake; common gates/mux/outdiv match, fractional low divider changes one bit. PHY1 omitted by diagnostic guard treating logical per-controller phy_enabled as physical power. Bonded manager enables both PHYs and retains them while either reference is set. No full PHY exclusion. Normal restoration verified; CI44 retained."
   }
 }

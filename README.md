@@ -671,3 +671,14 @@ cases pass; the inherited trace-format warning remains. Sequential logging
 between link starts can perturb timing, and values do not prove wire output.
 This is diagnostic only and awaits one recorded bounded wake test with exact
 restoration. Keep CI44 installed; remove diagnostics before promotion.
+
+CI62 is tested and REJECTED for physical wake. The master PHY was captured
+at startup and wake; common gates, mux and output divider match, while the
+fractional divider's low byte differs by one. The slave snapshot was skipped:
+the diagnostic mistook a per-controller ownership flag for physical PHY power.
+The bonded manager enables both PHYs while either controller holds a reference.
+This is a capture gap, not evidence that the slave was off or that PHY causes
+are excluded. Correct the diagnostic guard against the actual enable/disable
+lifecycle before another test. Routing capture and normal Android, graphics,
+filesystem, timer, service and worker restoration passed. CI44 remains installed;
+do not repeat CI62 unchanged or promote diagnostic code.
