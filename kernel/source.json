@@ -104,7 +104,7 @@
     "patches/0205-panel-boe-dvt2-long-packets.patch",
     "patches/0206-dsi-link-start-diagnostics.patch",
     "patches/0207-dsi-phy-restore-system-muxes.patch",
-    "patches/0208-panel-bounded-power-retention-test.patch"
+    "patches/0209-dpu-routing-readback-diagnostics.patch"
   ],
-  "patched_tree": "313ccc991e72e432f17066520dba0fd78769255e"
+  "patched_tree": "7e119eb31d360772e19031bef61510c9fd7f9bce"
 }

@@ -609,3 +609,18 @@ pass. Normal Android return, exact graphics rollback, filesystem, timers, host
 services and worker cleanup pass. CI44 stays installed. Remove the temporary
 retention patch and its candidate-only build guard before the next candidate;
 continue a bounded DPU/DSC/INTF routing audit. Do not repeat or promote CI59.
+
+CI60 removes the unsuccessful panel-supply retention experiment and its build
+guard. It adds seven diagnostic formats for actual DSC, CTL and INTF register
+readbacks, restricted to SM8750 and the first kickoff of each enable. Each
+snapshot reads 66 source-defined configuration/status locations across four DSC
+blocks, one controller and two interfaces; 16 records before DSC setup and 16
+after timing/DSI start are expected at startup and wake. There are no new writes,
+delays, IRQ/FIFO reads or per-frame diagnostics. Mapped/subblock bounds, four
+actual-C register allowlists,12 old/new kickoff comparisons, ARM64 objects and
+strict style checks pass. Existing kernel-doc warnings remain. Readbacks/logging
+can perturb timing and shadow-register values do not prove output on the wire.
+This remains diagnostic only; preserve CI44 and require physical camera review
+plus exact restoration. The recent upstream DSC cleanup proposal concerns
+changed resource assignments; no such transition is established by current
+captures, so it is not speculatively included.

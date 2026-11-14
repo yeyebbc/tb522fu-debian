@@ -809,6 +809,17 @@
     "validation": "19 actual-C lifecycle/error cases, three rejected negative controls including removed warm settling delays; unchanged 32-packet/64-failure contract, ARM64 panel object and strict checkpatch pass. No physical voltage or wake claim.",
     "removal": "Remove retention patch and candidate-only check_panel_power build guard before any production promotion.",
     "wake_accepted": false,
-    "hardware_result": "CI59: acquired/hold/reuse callbacks confirmed, but physical camera and user show blank wake. No matched controller fault. Normal Android/graphics/filesystem/timer/host-service/worker restoration passed; CI44 retained. Reference counts do not measure actual rail voltage."
+    "hardware_result": "CI59: acquired/hold/reuse callbacks confirmed, but physical camera and user show blank wake. No matched controller fault. Normal Android/graphics/filesystem/timer/host-service/worker restoration passed; CI44 retained. Reference counts do not measure actual rail voltage.",
+    "applied_in_current_recipe": false
+  },
+  "0209-dpu-routing-readback-diagnostics.patch": {
+    "local_commit": "60163782824ccb11cc2f8c67a02b4d43f57da1d1",
+    "sha256": "9595926bb9370c2236ecacaa2683cecf40a3212d38794d41fb3a3efb53c26073",
+    "license": "GPL-2.0-only; existing source-file attribution retained",
+    "diagnostic_only": true,
+    "hardware_tested": false,
+    "promotion_allowed": false,
+    "source": "Local readback discriminator. SM8750 only, before DSC configuration and after initial timing/DSI start. No new register writes, delays, rates, resets, IRQ/FIFO reads or per-frame diagnostics. Existing power retention experiment removed.",
+    "validation": "Four actual-C read allowlists plus12 old/new kickoff comparisons, ARM64 affected objects, strict checkpatch and mapped/subblock bounds. Sequential readbacks may serialize writes/perturb timing; shadow register values do not prove physical pixels."
   }
 }

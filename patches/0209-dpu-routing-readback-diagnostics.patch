@@ -1,0 +1,216 @@
+From 60163782824ccb11cc2f8c67a02b4d43f57da1d1 Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Sat, 14 Nov 2026 13:48:43 +0800
+Subject: [PATCH] drm/msm/dpu: log bounded SM8750 output routing readbacks
+
+Diagnostic only: compare DSC wrapper/config, CTL active routes and INTF timing/mux registers before DSC preparation and after the initial timing and DSI start. Restrict to SM8750 and the ENABLING transition, with clocks owned by the existing kickoff path. Do not add hardware writes, delays or per-frame reads. Exclude IRQ and FIFO registers. Sequential reads and logging may perturb timing; this is not a production fix or physical pixel acceptance.
+
+Signed-off-by: Codex <codex@localhost>
+---
+ drivers/gpu/drm/msm/disp/dpu1/dpu_encoder.c   | 29 +++++++++++++++++++
+ drivers/gpu/drm/msm/disp/dpu1/dpu_hw_ctl.c    | 19 ++++++++++++
+ drivers/gpu/drm/msm/disp/dpu1/dpu_hw_ctl.h    |  2 ++
+ drivers/gpu/drm/msm/disp/dpu1/dpu_hw_dsc.h    |  2 ++
+ .../gpu/drm/msm/disp/dpu1/dpu_hw_dsc_1_2.c    | 20 +++++++++++++
+ drivers/gpu/drm/msm/disp/dpu1/dpu_hw_intf.c   | 26 +++++++++++++++++
+ drivers/gpu/drm/msm/disp/dpu1/dpu_hw_intf.h   |  2 ++
+ 7 files changed, 100 insertions(+)
+
+diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder.c b/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder.c
+index 0434ff1ade00..916dde278053 100644
+--- a/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder.c
++++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder.c
+@@ -2105,6 +2105,26 @@ static void dpu_encoder_dsc_pipe_cfg(struct dpu_hw_ctl *ctl,
+ 		ctl->ops.update_pending_flush_dsc(ctl, hw_dsc->idx);
+ }
+ 
++/* No IRQ/FIFO reads or writes; called only around the first SM8750 kickoff. */
++static void dpu_encoder_log_routing(struct dpu_encoder_virt *dpu_enc,
++				    const char *stage)
++{
++	struct dpu_encoder_phys *master = dpu_enc->cur_master;
++	unsigned int i;
++
++	if (!master || master->dpu_kms->catalog != &dpu_sm8750_cfg)
++		return;
++
++	for (i = 0; i < MAX_CHANNELS_PER_ENC; i++)
++		if (dpu_enc->hw_dsc[i])
++			dpu_hw_dsc_1_2_log_state(dpu_enc->hw_dsc[i], stage);
++
++	dpu_hw_ctl_log_state(master->hw_ctl, stage);
++	for (i = 0; i < dpu_enc->num_phys_encs; i++)
++		if (dpu_enc->phys_encs[i]->hw_intf)
++			dpu_hw_intf_log_state(dpu_enc->phys_encs[i]->hw_intf, stage);
++}
++
+ static void dpu_encoder_prep_dsc(struct dpu_encoder_virt *dpu_enc,
+ 				 struct drm_dsc_config *dsc)
+ {
+@@ -2153,6 +2173,9 @@ static void dpu_encoder_prep_dsc(struct dpu_encoder_virt *dpu_enc,
+ 			num_active_ss_per_enc, initial_lines,
+ 			dsc->pic_width, dsc->pic_height);
+ 
++	if (enc_master->enable_state == DPU_ENC_ENABLING)
++		dpu_encoder_log_routing(dpu_enc, "before_dsc");
++
+ 	for (i = 0; i < num_dsc; i++) {
+ 		if (enc_master->enable_state == DPU_ENC_ENABLING)
+ 			pr_info("DISPLAY_LINK route enc=%u index=%d dsc=%d pp=%d\n",
+@@ -2262,9 +2285,12 @@ void dpu_encoder_kickoff(struct drm_encoder *drm_enc)
+ 	struct dpu_encoder_virt *dpu_enc;
+ 	struct dpu_encoder_phys *phys;
+ 	unsigned int i;
++	bool first_kickoff;
+ 
+ 	DPU_ATRACE_BEGIN("encoder_kickoff");
+ 	dpu_enc = to_dpu_encoder_virt(drm_enc);
++	first_kickoff = dpu_enc->cur_master &&
++		dpu_enc->cur_master->enable_state == DPU_ENC_ENABLING;
+ 
+ 	trace_dpu_enc_kickoff(DRMID(drm_enc));
+ 
+@@ -2281,6 +2307,9 @@ void dpu_encoder_kickoff(struct drm_encoder *drm_enc)
+ 	/* Both INTFs are timing-configured; start the DSI video engines once. */
+ 	dpu_encoder_phys_vid_start_video_engines();
+ 
++	if (first_kickoff)
++		dpu_encoder_log_routing(dpu_enc, "after_start");
++
+ 	DPU_ATRACE_END("encoder_kickoff");
+ }
+ 
+diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_ctl.c b/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_ctl.c
+index 0b1ebf1f187a..12b87e507363 100644
+--- a/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_ctl.c
++++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_ctl.c
+@@ -63,6 +63,25 @@
+ #define CTL_INVALID_BIT                 0xffff
+ #define CTL_DEFAULT_GROUP_ID		0xf
+ 
++/* Bounded SM8750 first-kickoff diagnostic; caller owns active clocks. */
++void dpu_hw_ctl_log_state(struct dpu_hw_ctl *ctl, const char *stage)
++{
++	struct dpu_hw_blk_reg_map *hw = &ctl->hw;
++
++	pr_info("DISPLAY_ROUTE ctl stage=%s id=%d top=%#x intf=%#x master=%#x dsc=%#x merge=%#x\n",
++		stage, ctl->idx - CTL_0,
++		DPU_REG_READ(hw, CTL_TOP),
++		DPU_REG_READ(hw, CTL_INTF_ACTIVE),
++		DPU_REG_READ(hw, CTL_INTF_MASTER),
++		DPU_REG_READ(hw, CTL_DSC_ACTIVE),
++		DPU_REG_READ(hw, CTL_MERGE_3D_ACTIVE));
++	pr_info("DISPLAY_ROUTE ctl_flush stage=%s id=%d flush=%#x dsc_flush=%#x intf_flush=%#x\n",
++		stage, ctl->idx - CTL_0,
++		DPU_REG_READ(hw, CTL_FLUSH),
++		DPU_REG_READ(hw, CTL_DSC_FLUSH),
++		DPU_REG_READ(hw, CTL_INTF_FLUSH));
++}
++
+ static const u32 fetch_tbl[SSPP_MAX] = {CTL_INVALID_BIT, 16, 17, 18, 19,
+ 	CTL_INVALID_BIT, CTL_INVALID_BIT, CTL_INVALID_BIT, CTL_INVALID_BIT, 0,
+ 	1, 2, 3, 4, 5};
+diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_ctl.h b/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_ctl.h
+index e535bf013825..254915b7ca66 100644
+--- a/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_ctl.h
++++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_ctl.h
+@@ -358,4 +358,6 @@ struct dpu_hw_ctl *dpu_hw_ctl_init(struct drm_device *dev,
+ 				   u32 mixer_count,
+ 				   const struct dpu_lm_cfg *mixer);
+ 
++void dpu_hw_ctl_log_state(struct dpu_hw_ctl *ctl, const char *stage);
++
+ #endif /*_DPU_HW_CTL_H */
+diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_dsc.h b/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_dsc.h
+index 39d93b9df051..6b99abd55dd6 100644
+--- a/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_dsc.h
++++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_dsc.h
+@@ -80,4 +80,6 @@ static inline struct dpu_hw_dsc *to_dpu_hw_dsc(struct dpu_hw_blk *hw)
+ 	return container_of(hw, struct dpu_hw_dsc, base);
+ }
+ 
++void dpu_hw_dsc_1_2_log_state(struct dpu_hw_dsc *dsc, const char *stage);
++
+ #endif /* _DPU_HW_DSC_H */
+diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_dsc_1_2.c b/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_dsc_1_2.c
+index b3395e9c34a1..200695b5a427 100644
+--- a/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_dsc_1_2.c
++++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_dsc_1_2.c
+@@ -58,6 +58,26 @@
+ #define DSC_DATA_IN_SWAP           0x08
+ #define DSC_CLK_CTRL               0x0C
+ 
++/* Bounded SM8750 first-kickoff diagnostic; caller owns active clocks. */
++void dpu_hw_dsc_1_2_log_state(struct dpu_hw_dsc *dsc, const char *stage)
++{
++	struct dpu_hw_blk_reg_map *hw = &dsc->hw;
++	const struct dpu_dsc_sub_blks *sblk = dsc->caps->sblk;
++
++	pr_info("DISPLAY_ROUTE dsc stage=%s id=%d common=%#x mux=%#x cfg=%#x df=%#x main=%#x\n",
++		stage, dsc->idx - DSC_0,
++		DPU_REG_READ(hw, DSC_CMN_MAIN_CNF),
++		DPU_REG_READ(hw, sblk->ctl.base + DSC_CTL),
++		DPU_REG_READ(hw, sblk->ctl.base + DSC_CFG),
++		DPU_REG_READ(hw, sblk->enc.base + ENC_DF_CTRL),
++		DPU_REG_READ(hw, sblk->enc.base + DSC_MAIN_CONF));
++	pr_info("DISPLAY_ROUTE dsc_size stage=%s id=%d picture=%#x slice=%#x chunk=%#x\n",
++		stage, dsc->idx - DSC_0,
++		DPU_REG_READ(hw, sblk->enc.base + DSC_PICTURE_SIZE),
++		DPU_REG_READ(hw, sblk->enc.base + DSC_SLICE_SIZE),
++		DPU_REG_READ(hw, sblk->enc.base + DSC_MISC_SIZE));
++}
++
+ static int _dsc_calc_output_buf_max_addr(struct dpu_hw_dsc *hw_dsc, int num_softslice)
+ {
+ 	int max_addr = 2400 / num_softslice;
+diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_intf.c b/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_intf.c
+index 041274355f2b..cf76944dbdb8 100644
+--- a/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_intf.c
++++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_intf.c
+@@ -101,6 +101,32 @@
+ #define INTF_CFG2_DCE_DATA_COMPRESS     BIT(12)
+ 
+ 
++/* Bounded SM8750 first-kickoff diagnostic; caller owns active clocks. */
++void dpu_hw_intf_log_state(struct dpu_hw_intf *intf, const char *stage)
++{
++	struct dpu_hw_blk_reg_map *hw = &intf->hw;
++
++	pr_info("DISPLAY_ROUTE intf stage=%s id=%d mux=%#x sync=%#x en=%#x cfg=%#x cfg2=%#x format=%#x\n",
++		stage, intf->idx - INTF_0,
++		DPU_REG_READ(hw, INTF_MUX),
++		DPU_REG_READ(hw, INTF_DPU_SYNC_CTRL),
++		DPU_REG_READ(hw, INTF_TIMING_ENGINE_EN),
++		DPU_REG_READ(hw, INTF_CONFIG),
++		DPU_REG_READ(hw, INTF_CONFIG2),
++		DPU_REG_READ(hw, INTF_PANEL_FORMAT));
++	pr_info("DISPLAY_ROUTE intf_timing stage=%s id=%d hsync=%#x vsync=%#x display_h=%#x data_h=%#x\n",
++		stage, intf->idx - INTF_0,
++		DPU_REG_READ(hw, INTF_HSYNC_CTL),
++		DPU_REG_READ(hw, INTF_VSYNC_PERIOD_F0),
++		DPU_REG_READ(hw, INTF_DISPLAY_HCTL),
++		DPU_REG_READ(hw, INTF_DISPLAY_DATA_HCTL));
++	pr_info("DISPLAY_ROUTE intf_count stage=%s id=%d status=%#x frame=%u line=%u\n",
++		stage, intf->idx - INTF_0,
++		DPU_REG_READ(hw, INTF_STATUS),
++		DPU_REG_READ(hw, INTF_FRAME_COUNT),
++		DPU_REG_READ(hw, INTF_LINE_COUNT));
++}
++
+ static void dpu_hw_intf_setup_timing_engine(struct dpu_hw_intf *intf,
+ 		const struct dpu_hw_intf_timing_params *p,
+ 		const struct msm_format *fmt)
+diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_intf.h b/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_intf.h
+index 05e056029e2a..e93b9dfd0094 100644
+--- a/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_intf.h
++++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_intf.h
+@@ -134,4 +134,6 @@ struct dpu_hw_intf *dpu_hw_intf_init(struct drm_device *dev,
+ 				     void __iomem *addr,
+ 				     const struct dpu_mdss_version *mdss_rev);
+ 
++void dpu_hw_intf_log_state(struct dpu_hw_intf *intf, const char *stage);
++
+ #endif /*_DPU_HW_INTF_H */
+-- 
+2.47.3
+
