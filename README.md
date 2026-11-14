@@ -7,7 +7,8 @@ directions. This remains a development port with substantial peripheral work
 outstanding.
 
 **Current candidate: CI66 implements the stock DSI clock handoff before PLL
-shutdown. It is unverified and must not be installed. CI44 remains installed;
+shutdown. It passes the first command-transfer check, but physical wake is
+unresolved and it must not be installed. CI44 remains installed;
 suspend and physical display wake are unresolved.**
 
 Current installed kernel: `7.3.0-tb522fu-installed-ci44`, built from recipe
@@ -781,3 +782,22 @@ or permanent votes are added. Two per-shutdown API-result messages are
 diagnostic only. Source and offline checks pass; hardware is untested. Keep
 CI44 installed and require full-driver staged PM/real-sleep/physical-display
 acceptance with exact Android restoration.
+
+## CI66 staged suspend result
+
+Both display controllers switched to the explicit crystal input successfully.
+The device-PM resume now completes panel initialization and DSC PPS transfer
+without CI65's first-command timeout or DSI lane/FIFO errors. This is partial
+progress, not accepted display wake. The next test stage began about30ms after
+device resume, while asynchronous touch resume was still running. A pending
+frame timeout occurred during that second shutdown, before the platform
+diagnostic reached late/noirq callbacks. Camera footage later showed patterned
+output. Actual s2idle was not attempted.
+
+All supported drivers remained loaded; the boot identity was unchanged. Android,
+exact graphics rollback, filesystem, timer, services, network and workers were
+restored. CI44 remains installed. Preserve this result and do not repeat the
+back-to-back sequence unchanged. A single isolated device-PM cycle followed by
+fresh compositor work and camera observation will distinguish first-resume
+corruption from interference by the second transition. That diagnostic does
+not enter real sleep or permit installation.

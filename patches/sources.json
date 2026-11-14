@@ -891,7 +891,7 @@
   "0215-dsi-idle-xo-binding.patch": {
     "local_commit": "92c4cdfca3a9e7c304165791185bbde20ea16c5f",
     "sha256": "aee19fc679bf348a9119f8f11ef7bdd45f19ae8a87f786ea07f79102b4c26e82",
-    "hardware_tested": false,
+    "hardware_tested": true,
     "promotion_allowed": false,
     "source": "Local explicit-XO adaptation of stock SM8750 shutdown order and tiopex ROCKNIX0048; not an unchanged import.",
     "source_url": "https://github.com/ROCKNIX/distribution/blob/bcf3b5bc574990b96543484575b06f912153a715/projects/ROCKNIX/devices/SM8750/patches/linux/0048-drm-msm-dsi-reparent-byte-pixel-src-to-xo-on-disable.patch",
@@ -899,12 +899,13 @@
     "stock_source_commit": "e1f324632d70b2427751820cd48eefc45baab0ce",
     "license": "Existing GPL-2.0-only driver, dual-licensed binding and BSD-3-Clause DT headers retained",
     "validation": "ARM64 object/DT, binding schema,32 actual power-off callback/error/optional-clock cases; compiled DT changes only both DSI clock lists/names, appending DISPCC parent-zero provider. Old/no-XO and wrong-XO trees rejected.",
-    "limitation": "Observed device-PM DCS timeout is not proof of clock-parent causality. Real hardware and physical pixels required. No new rates, voltage, delay, raw register access or permanent votes."
+    "limitation": "Observed device-PM DCS timeout is not proof of clock-parent causality. Real hardware and physical pixels required. No new rates, voltage, delay, raw register access or permanent votes.",
+    "hardware_result": "CI66 both clock-parent API results0, first device resume panel init/PPS succeed with no prior DSI command timeout. Second PM transition begins30ms later; pending-frame error, canceled touch resume and patterned physical output. Full suspend unaccepted; no real sleep. Isolated single-device-PM evidence follow-up pending. Exact recovery passed; CI44 retained."
   },
   "0216-dsi-park-clocks-before-pll-shutdown.patch": {
     "local_commit": "59747edb0cc41f827ffd5e9c0947a4736a352c91",
     "sha256": "df81fd1b06502df044a1d32de25a47c06bd0110adc768836d4105e2cf5898fc7",
-    "hardware_tested": false,
+    "hardware_tested": true,
     "promotion_allowed": false,
     "source": "Local explicit-XO adaptation of stock SM8750 shutdown order and tiopex ROCKNIX0048; not an unchanged import.",
     "source_url": "https://github.com/ROCKNIX/distribution/blob/bcf3b5bc574990b96543484575b06f912153a715/projects/ROCKNIX/devices/SM8750/patches/linux/0048-drm-msm-dsi-reparent-byte-pixel-src-to-xo-on-disable.patch",
@@ -912,12 +913,13 @@
     "stock_source_commit": "e1f324632d70b2427751820cd48eefc45baab0ce",
     "license": "Existing GPL-2.0-only driver, dual-licensed binding and BSD-3-Clause DT headers retained",
     "validation": "ARM64 object/DT, binding schema,32 actual power-off callback/error/optional-clock cases; compiled DT changes only both DSI clock lists/names, appending DISPCC parent-zero provider. Old/no-XO and wrong-XO trees rejected.",
-    "limitation": "Observed device-PM DCS timeout is not proof of clock-parent causality. Real hardware and physical pixels required. No new rates, voltage, delay, raw register access or permanent votes."
+    "limitation": "Observed device-PM DCS timeout is not proof of clock-parent causality. Real hardware and physical pixels required. No new rates, voltage, delay, raw register access or permanent votes.",
+    "hardware_result": "CI66 both clock-parent API results0, first device resume panel init/PPS succeed with no prior DSI command timeout. Second PM transition begins30ms later; pending-frame error, canceled touch resume and patterned physical output. Full suspend unaccepted; no real sleep. Isolated single-device-PM evidence follow-up pending. Exact recovery passed; CI44 retained."
   },
   "0217-sm8750-dsi-idle-crystal-inputs.patch": {
     "local_commit": "3479088ae89d96a18e6c78400565fbe1228754d3",
     "sha256": "f952e3b74c2c04ed19b74b96eca9a855bc302221dbb6ee8a2a20420022bdb1d9",
-    "hardware_tested": false,
+    "hardware_tested": true,
     "promotion_allowed": false,
     "source": "Local explicit-XO adaptation of stock SM8750 shutdown order and tiopex ROCKNIX0048; not an unchanged import.",
     "source_url": "https://github.com/ROCKNIX/distribution/blob/bcf3b5bc574990b96543484575b06f912153a715/projects/ROCKNIX/devices/SM8750/patches/linux/0048-drm-msm-dsi-reparent-byte-pixel-src-to-xo-on-disable.patch",
@@ -925,6 +927,7 @@
     "stock_source_commit": "e1f324632d70b2427751820cd48eefc45baab0ce",
     "license": "Existing GPL-2.0-only driver, dual-licensed binding and BSD-3-Clause DT headers retained",
     "validation": "ARM64 object/DT, binding schema,32 actual power-off callback/error/optional-clock cases; compiled DT changes only both DSI clock lists/names, appending DISPCC parent-zero provider. Old/no-XO and wrong-XO trees rejected.",
-    "limitation": "Observed device-PM DCS timeout is not proof of clock-parent causality. Real hardware and physical pixels required. No new rates, voltage, delay, raw register access or permanent votes."
+    "limitation": "Observed device-PM DCS timeout is not proof of clock-parent causality. Real hardware and physical pixels required. No new rates, voltage, delay, raw register access or permanent votes.",
+    "hardware_result": "CI66 both clock-parent API results0, first device resume panel init/PPS succeed with no prior DSI command timeout. Second PM transition begins30ms later; pending-frame error, canceled touch resume and patterned physical output. Full suspend unaccepted; no real sleep. Isolated single-device-PM evidence follow-up pending. Exact recovery passed; CI44 retained."
   }
 }
