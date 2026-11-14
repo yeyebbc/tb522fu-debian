@@ -155,6 +155,14 @@ failures and early exits. CI runs that contract check against the patched source
 The 98-patch stack reproduces the pinned tree. Keep CI44 installed while the
 diagnostic candidate undergoes its bounded camera-recorded wake test.
 
+CI56's bounded test also rejects physical wake. Initial GNOME is visible, but
+the image stays blank after wake; the user confirms the backlight is on.
+Panel setup/PPS, both backlight chips and software rendering return success
+without matched display-controller faults. The long-packet correction alone
+is insufficient. Android, exact graphics rollback, filesystem and cleanup
+checks passed; CI44 remains installed. Do not repeat or install CI56 unchanged.
+Next work compares display-link and compression state at startup versus wake.
+
 CI45 verified the secondary rear OV02B10's full sensor ID and two8-frame RAW10
 capture cycles through SM8750 CAMSS, with clean Android restoration. Frames were
 nearly black. An isolated Debian libcamera 0.7.1 CPU software-ISP test subsequently

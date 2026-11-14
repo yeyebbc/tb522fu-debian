@@ -188,3 +188,10 @@ and sequence pass32 packet contracts, LP/HS/channel,64 injected failures and
 3 early exits. The old short-packet behavior fails the independent fixture.
 CI now runs this check;98-patch replay/ARM64W1/strict checkpatch/12 recipe tests
 pass. Still diagnostic only; require fresh physical wake/fault/rollback checks.
+
+CI56 is tested and REJECTED for physical wake. Correct long setup packets,
+PPS and both backlight-chip writes return success, but Pixel6 and user show a
+backlit blank image after wake. No matched controller fault. Both CI profiles,
+Android/graphics/fullfsck/timer/host-service/worker restoration pass. KeepCI44;
+no unchanged repeat. Next compare startup/wake DSI/DSC/PPS state with targeted
+diagnostics; do not guess resets or enable the broad inherited trace switch.
