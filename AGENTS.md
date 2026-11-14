@@ -62,3 +62,10 @@ stock partition images and local environment paths out of tracked files.
   fault checks after each action and exact Android/graphics rollback. No CI48
   lifecycle-debug option for a kernel without its14 sites. No promotion until
   actual fresh screen frames and clean fault logs pass.
+
+- CI49 now fails initial display before DPMS: patterned physical output,
+  DSI FIFO-class errors and panel-init DMA timeout, then CTL reset errors.
+  GPU readback passing does not validate physical display. Android/graphics/
+  filesystem/timer/worker restoration passed; keep CI44. No unchanged repeat.
+  Audit initialization and shared MDSS/DSI bus ownership before another patch;
+  the newly added handshake also runs during pre-registration runtime PM.

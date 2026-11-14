@@ -33,8 +33,14 @@ patch IDs. It halts the display bus before runtime power collapse and releases
 it on resume, enabled only for SM8750. Its register sequence and bounded polling
 match Lenovo's stock display driver. The 93-patch stack replays exactly, eight
 ARM64 objects compile, and 12 recipe tests pass. CI48's diagnostic patch is
-excluded. Hardware wake validation is still pending; this is not an accepted
-fix or an installed update. The code-only style check passes; original commit
+excluded. Hardware testing rejects CI49 before the wake cycle: startup shows
+patterned display corruption, DSI FIFO-class errors, a panel-initialization DMA
+timeout and controller reset failures. SSH eventually becomes available, and
+GPU pixel tests pass, but the physical display fails. No DPMS test is attempted.
+Android, exact graphics rollback and filesystem checks are restored; CI44 stays
+installed. Do not install or repeat the unchanged CI49 candidate. The next source
+audit examines initialization and shared display-bus power ownership; no specific
+cause is yet established. The code-only style check passes; original commit
 messages retain their missing author signoffs and nonstandard co-author tags,
 rather than inventing certifications for their authors.
 
