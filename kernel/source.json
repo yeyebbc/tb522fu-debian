@@ -94,7 +94,9 @@
     "patches/0160-dsi-bonded-slave-power-off-first.patch",
     "patches/0195-dpu-disconnect-slave-timing-mux.patch",
     "patches/0196-dpu-disable-slave-encoder-first.patch",
-    "patches/0197-dpu-scoped-wake-lifecycle-diagnostics.patch"
+    "patches/0198-dpu-vbif-axi-halt-ops.patch",
+    "patches/0199-dpu-vbif-runtime-halt.patch",
+    "patches/0200-sm8750-vbif-axi-halt.patch"
   ],
-  "patched_tree": "5b73b3b9d74a8841d8c8db052d11ec05ee9e5d44"
+  "patched_tree": "991d81ee8596f763c1816099977369fdab58c772"
 }

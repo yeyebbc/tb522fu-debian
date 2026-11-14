@@ -1,0 +1,145 @@
+From b67ded2285a60e2353decd18fa8723f7ebad7899 Mon Sep 17 00:00:00 2001
+From: yzddmr6 <46088090+yzddmr6@users.noreply.github.com>
+Date: Sat, 26 Sep 2026 10:33:10 +0800
+Subject: [PATCH] drm/msm/dpu: halt the VBIF AXI ports before runtime suspend
+
+The DPU runtime suspend drops the clocks and the bus votes and then lets
+the MDSS power domain collapse with the VBIF AXI ports never halted.
+The downstream SDE driver does not: on every pre-disable power event it
+forces the VBIF clock on and requests the AXI halt, waits for the
+acknowledgment, and leaves the collapse to clear the request
+(sde_kms_handle_power_event() -> sde_vbif_axi_halt_request()).  The GPU
+side of this driver does the same with its GBIF before its own collapse
+(a6xx_bus_clear_pending_transactions()).
+
+On SM8750 the missing handshake breaks the next power-up, not the
+power-down.  The blank itself goes through: the panel off commands are
+sent, the DSI hosts power down and the MDSS domain collapses.  After
+the domain comes back, the first DSI command DMA never has its data
+fetched: CMD_MODE_DMA_BUSY stays set on both links of the bonded pair,
+the lanes sit in stop state, the FIFOs are empty, and the transfer
+fails with -ETIMEDOUT.  The panel is left uninitialised, the vblank and
+commit waits that follow time out, and the screen stays black until
+reboot.  The same blank with the domain kept up recovers.  Resetting
+the whole MDSS through its BCR on resume does not help, so the state
+that goes bad lives on the far side of the AXI port rather than in the
+MDSS registers, which is also why the first enable after boot, with no
+un-halted collapse before it, always works.
+
+Halt the AXI ports in dpu_runtime_suspend() before the clocks go, where
+the VBIF asks for it, and release them in dpu_runtime_resume() before
+the memory types are programmed again.  The collapse clears the halt by
+itself, so the release only matters when the domain stayed up, but
+nothing else would release it then.  A halt that is not acknowledged in
+time is reported and the suspend carries on, as downstream does.
+
+In a bounded on-device A/B of the four candidates on this boundary (bus
+clocks and votes kept over the collapse, GDSC collapsed without
+retention, MDSS reset on resume, AXI halt before the collapse), only
+the halt brought the panel back: the halt was acknowledged, the domain
+still collapsed, the 122 init commands went out, the next frames were
+committed and the DSI status registers read healthy again.
+
+This changes nothing until a catalog entry sets DPU_VBIF_AXI_HALT.
+
+Assisted-by: LLM
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+(cherry picked from commit c343837c783a7e026bb7358460c880026e6aa5d2)
+Signed-off-by: Codex <codex@localhost>
+---
+ drivers/gpu/drm/msm/disp/dpu1/dpu_kms.c  |  7 +++++
+ drivers/gpu/drm/msm/disp/dpu1/dpu_vbif.c | 36 ++++++++++++++++++++++++
+ drivers/gpu/drm/msm/disp/dpu1/dpu_vbif.h |  4 +++
+ 3 files changed, 47 insertions(+)
+
+diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_kms.c b/drivers/gpu/drm/msm/disp/dpu1/dpu_kms.c
+index 771f61cc98fe..d558e8d560cb 100644
+--- a/drivers/gpu/drm/msm/disp/dpu1/dpu_kms.c
++++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_kms.c
+@@ -1453,6 +1453,12 @@ static int __maybe_unused dpu_runtime_suspend(struct device *dev)
+ 	struct msm_drm_private *priv = platform_get_drvdata(pdev);
+ 	struct dpu_kms *dpu_kms = to_dpu_kms(priv->kms);
+ 
++	/*
++	 * The MDSS power domain may collapse as soon as the clocks are gone;
++	 * halt the VBIF AXI ports first where the hardware asks for it.
++	 */
++	dpu_vbif_axi_halt_request(dpu_kms);
++
+ 	clk_bulk_disable_unprepare(dpu_kms->num_clocks, dpu_kms->clocks);
+ 
+ 	for (i = 0; i < dpu_kms->num_paths; i++)
+@@ -1478,6 +1484,7 @@ static int __maybe_unused dpu_runtime_resume(struct device *dev)
+ 		return rc;
+ 	}
+ 
++	dpu_vbif_axi_halt_release(dpu_kms);
+ 	dpu_vbif_init_memtypes(dpu_kms);
+ 
+ 	drm_for_each_encoder(encoder, ddev)
+diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_vbif.c b/drivers/gpu/drm/msm/disp/dpu1/dpu_vbif.c
+index 0c6fa9bb0cb6..84e1ddd2f217 100644
+--- a/drivers/gpu/drm/msm/disp/dpu1/dpu_vbif.c
++++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_vbif.c
+@@ -260,6 +260,42 @@ void dpu_vbif_init_memtypes(struct dpu_kms *dpu_kms)
+ 	}
+ }
+ 
++/**
++ * dpu_vbif_axi_halt_request - halt the VBIF AXI ports before power collapse
++ * @dpu_kms:	DPU handler
++ *
++ * Requests the halt and waits for it for a bounded time.  A halt that is
++ * not acknowledged is reported but does not hold up the power collapse.
++ */
++void dpu_vbif_axi_halt_request(struct dpu_kms *dpu_kms)
++{
++	struct dpu_hw_vbif *vbif = dpu_kms->hw_vbif;
++
++	if (!vbif || !vbif->ops.set_axi_halt || !vbif->ops.get_axi_halt_status)
++		return;
++
++	vbif->ops.set_axi_halt(vbif, true);
++	if (vbif->ops.get_axi_halt_status(vbif))
++		DPU_ERROR("VBIF AXI ports did not halt before power collapse\n");
++}
++
++/**
++ * dpu_vbif_axi_halt_release - release the VBIF AXI ports after power up
++ * @dpu_kms:	DPU handler
++ *
++ * A power collapse clears the halt on its own; this releases it when the
++ * power domain stayed up.
++ */
++void dpu_vbif_axi_halt_release(struct dpu_kms *dpu_kms)
++{
++	struct dpu_hw_vbif *vbif = dpu_kms->hw_vbif;
++
++	if (!vbif || !vbif->ops.set_axi_halt)
++		return;
++
++	vbif->ops.set_axi_halt(vbif, false);
++}
++
+ #ifdef CONFIG_DEBUG_FS
+ 
+ void dpu_debugfs_vbif_init(struct dpu_kms *dpu_kms, struct dentry *debugfs_root)
+diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_vbif.h b/drivers/gpu/drm/msm/disp/dpu1/dpu_vbif.h
+index f47a89cb34ea..b97946fb451f 100644
+--- a/drivers/gpu/drm/msm/disp/dpu1/dpu_vbif.h
++++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_vbif.h
+@@ -44,6 +44,10 @@ void dpu_vbif_clear_errors(struct dpu_kms *dpu_kms);
+ 
+ void dpu_vbif_init_memtypes(struct dpu_kms *dpu_kms);
+ 
++void dpu_vbif_axi_halt_request(struct dpu_kms *dpu_kms);
++
++void dpu_vbif_axi_halt_release(struct dpu_kms *dpu_kms);
++
+ void dpu_debugfs_vbif_init(struct dpu_kms *dpu_kms, struct dentry *debugfs_root);
+ 
+ #endif /* __DPU_VBIF_H__ */
+-- 
+2.47.3
+

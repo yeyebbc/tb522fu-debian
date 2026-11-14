@@ -12,29 +12,31 @@ Current installed kernel: `7.3.0-tb522fu-installed-ci44`, built from recipe
 CI39 and CI32 remain available for rollback. Android return, stock boot and
 filesystem checks passed; the temporary acceptance timer has been removed.
 
-CI46 restores native display/GPU support alongside the accepted peripherals and
-adds the split-slave timing-mux disconnect on display disable. Both CI profiles
-build and the complete 89-patch stack reproduces its pinned tree. Hardware testing
-rejects this candidate for installation: initial rendering works, but the panel
-stays grey after wake, and requesting a fresh GNOME update triggers CTL reset,
-frame and vblank timeouts. The mux change does not resolve the wake failure.
-The installed kernel remains CI44; do not promote CI46 or repeat it unchanged.
+Native graphics candidates CI46 and CI47 are rejected for installation.
+Initial rendering works, but the panel remains grey after wake with CTL reset,
+frame and vblank timeouts. The split-slave timing-mux disconnect and unchanged
+[upstream encoder shutdown ordering](https://github.com/torvalds/linux/commit/32d04280ddebb6eb964990931b0f1001f63b35e7)
+are insufficient on this tablet. Do not repeat these candidates unchanged.
 
-The new source candidate additionally imports upstream
-[32d04280ddeb](https://github.com/torvalds/linux/commit/32d04280ddebb6eb964990931b0f1001f63b35e7)
-unchanged. It disables the secondary DPU encoder before the primary so the final
-shared-controller reset runs after both stop. This differs from the earlier DSI
-host power-off ordering fix. Both CI47 profiles build and audit successfully,
-but a bounded test also rejects CI47: after one display power cycle the panel
-is grey and CTL reset/frame/vblank errors recur before any post-wake input.
-This upstream fix is insufficient on this tablet. Stock Android, the original
-graphics policy and filesystem checks were restored; CI44 stays installed.
-Do not install or repeat the unchanged CI47 candidate.
+CI48 added 14 scoped diagnostic callsites. Both controller cleanup resets
+completed successfully before display runtime suspend. The first observed stuck
+reset came after runtime resume and a fresh GNOME frame request. The physical
+panel stayed grey. The existing display fault snapshot was captured, and debug
+flags were restored. This narrows the failure boundary but does not establish a
+root cause: the hardware can initiate controller resets too. Android, exact
+graphics rollback and filesystem checks passed; CI44 remains installed.
 
-The next candidate adds 14 narrowly scoped dynamic-debug callsites for the
-existing controller reset, interface timing and display runtime-PM sequence.
-It is diagnostic only: no new register writes, delays, retries or power votes.
-Its purpose is to locate the first lifecycle failure before selecting a fix.
+The current candidate imports the original three-patch
+[VBIF AXI halt sequence](https://github.com/TheMojoMan/oneplus-erhai-linux-old/commit/8bb2fed028a210cc2fca2eee3b4560e6e78f9f07)
+from the same-SoC community port, with original attribution and unchanged code
+patch IDs. It halts the display bus before runtime power collapse and releases
+it on resume, enabled only for SM8750. Its register sequence and bounded polling
+match Lenovo's stock display driver. The 93-patch stack replays exactly, eight
+ARM64 objects compile, and 12 recipe tests pass. CI48's diagnostic patch is
+excluded. Hardware wake validation is still pending; this is not an accepted
+fix or an installed update. The code-only style check passes; original commit
+messages retain their missing author signoffs and nonstandard co-author tags,
+rather than inventing certifications for their authors.
 
 CI45 verified the secondary rear OV02B10's full sensor ID and two8-frame RAW10
 capture cycles through SM8750 CAMSS, with clean Android restoration. Frames were

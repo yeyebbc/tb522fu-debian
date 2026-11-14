@@ -698,8 +698,53 @@
     "local_commit": "52bc18f1268aab67ff2f03f889203f93198da4bb",
     "sha256": "92e8b947085c57e9c594b58789253ec57e58d6c0b3816ec8b23193473c320a56",
     "license": "GPL-2.0-only; existing source-file attribution retained",
-    "hardware_tested": false,
+    "hardware_tested": true,
     "diagnostic_only": true,
-    "source": "Scoped dynamic-debug callsites expose existing CTL reset return and INTF/runtime-PM ordering. No new register writes, delays, retries or power votes. Disabled by default; not a wake fix."
+    "source": "Scoped dynamic-debug callsites expose existing CTL reset return and INTF/runtime-PM ordering. No new register writes, delays, retries or power votes. Disabled by default; not a wake fix.",
+    "wake_accepted": false,
+    "diagnostic_capture_passed": true,
+    "applied_in_current_recipe": false
+  },
+  "0198-dpu-vbif-axi-halt-ops.patch": {
+    "local_commit": "0812e3dc39c497c51780e1ccff5c2dc48676ecec",
+    "upstream_commit": "fccd1e845fe54a43c6a0af98642163e63b0278da",
+    "patch_id": "3ffb811ff9d5f6be9d4be25ba3aeaa5635166751",
+    "sha256": "a40dc4fae2436891f258b9559caf139aec46919b078529281c18d5f4680a4f73",
+    "license": "GPL-2.0-only; original author, co-author and source-file attribution retained",
+    "hardware_tested": false,
+    "source": "Unchanged isolated VBIF AXI halt series from the pinned same-SoC port; original code patch ID preserved. Source behavior cross-checked with Lenovo SDE power-event/AXI halt sequence.",
+    "references": [
+      "https://github.com/TheMojoMan/oneplus-erhai-linux-old/commit/fccd1e845fe54a43c6a0af98642163e63b0278da",
+      "https://github.com/lenovo-basements/android_kernel_lenovo_sm8750-modules/blob/e1f324632d70b2427751820cd48eefc45baab0ce/qcom/opensource/display-drivers/msm/sde/sde_hw_vbif.c"
+    ],
+    "checkpatch_metadata": "Original nominal-author signoff absent; original nonstandard Co-Authored-By tag and unfetched earlier cherry-pick reference retained. Code-only strict checkpatch passes. No author certification fabricated."
+  },
+  "0199-dpu-vbif-runtime-halt.patch": {
+    "local_commit": "b67ded2285a60e2353decd18fa8723f7ebad7899",
+    "upstream_commit": "8bb2fed028a210cc2fca2eee3b4560e6e78f9f07",
+    "patch_id": "5919550f89689113ff94826f40adf36e160f393a",
+    "sha256": "ef9aaae6d5f5beee2793126e8e6bef13ead86b7f3b42a005e533399e287e447b",
+    "license": "GPL-2.0-only; original author, co-author and source-file attribution retained",
+    "hardware_tested": false,
+    "source": "Unchanged isolated VBIF AXI halt series from the pinned same-SoC port; original code patch ID preserved. Source behavior cross-checked with Lenovo SDE power-event/AXI halt sequence.",
+    "references": [
+      "https://github.com/TheMojoMan/oneplus-erhai-linux-old/commit/8bb2fed028a210cc2fca2eee3b4560e6e78f9f07",
+      "https://github.com/lenovo-basements/android_kernel_lenovo_sm8750-modules/blob/e1f324632d70b2427751820cd48eefc45baab0ce/qcom/opensource/display-drivers/msm/sde/sde_hw_vbif.c"
+    ],
+    "checkpatch_metadata": "Original nominal-author signoff absent; original nonstandard Co-Authored-By tag and unfetched earlier cherry-pick reference retained. Code-only strict checkpatch passes. No author certification fabricated."
+  },
+  "0200-sm8750-vbif-axi-halt.patch": {
+    "local_commit": "21bdd843d84614d371bd17e1a8e7e74d455d0fea",
+    "upstream_commit": "b691d5e969786e80cf4281cc8bc78de504c23703",
+    "patch_id": "2852abe33402e3108c6862ffaf985789b3be7a82",
+    "sha256": "0b3b35947a3a84b946577c20e5d5cd6e2dde9d1527567408187d09a583db1ca5",
+    "license": "GPL-2.0-only; original author, co-author and source-file attribution retained",
+    "hardware_tested": false,
+    "source": "Unchanged isolated VBIF AXI halt series from the pinned same-SoC port; original code patch ID preserved. Source behavior cross-checked with Lenovo SDE power-event/AXI halt sequence.",
+    "references": [
+      "https://github.com/TheMojoMan/oneplus-erhai-linux-old/commit/b691d5e969786e80cf4281cc8bc78de504c23703",
+      "https://github.com/lenovo-basements/android_kernel_lenovo_sm8750-modules/blob/e1f324632d70b2427751820cd48eefc45baab0ce/qcom/opensource/display-drivers/msm/sde/sde_hw_vbif.c"
+    ],
+    "checkpatch_metadata": "Original nominal-author signoff absent; original nonstandard Co-Authored-By tag and unfetched earlier cherry-pick reference retained. Code-only strict checkpatch passes. No author certification fabricated."
   }
 }

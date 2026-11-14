@@ -1,0 +1,182 @@
+From 0812e3dc39c497c51780e1ccff5c2dc48676ecec Mon Sep 17 00:00:00 2001
+From: yzddmr6 <46088090+yzddmr6@users.noreply.github.com>
+Date: Sat, 26 Sep 2026 10:32:40 +0800
+Subject: [PATCH] drm/msm/dpu: add VBIF AXI port halt operations
+
+The VBIF can halt its AXI ports towards the bus as a whole, next to the
+per-client halt the driver already uses: a request bit in
+VBIF_AXI_HALT_CTRL0, acknowledged in bit 0 of VBIF_AXI_HALT_CTRL1, which
+also reports in bits 4 and 5 whether AXI ports 0 and 1 are idle.  The
+downstream SDE driver requests this halt before every MDSS power
+collapse (sde_vbif_axi_halt_request()), with the VBIF clock forced on
+through VBIF_CLKON while it does.
+
+Add set_axi_halt() and get_axi_halt_status() to the VBIF ops, following
+the downstream sequence: force the clock on and request the halt, then
+poll for the acknowledgment for up to 4 ms and accept idle ports once
+that runs out.  Releasing the halt clears the request and hands the
+clock back to hardware control.
+
+The ops are only set up for a VBIF that has the new DPU_VBIF_AXI_HALT
+feature, which no catalog entry sets yet.
+
+Assisted-by: LLM
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+(cherry picked from commit 0008b33f59a6c5d414a2c4cd662a31be6de49aa4)
+Signed-off-by: Codex <codex@localhost>
+---
+ .../gpu/drm/msm/disp/dpu1/dpu_hw_catalog.h    |  2 +
+ drivers/gpu/drm/msm/disp/dpu1/dpu_hw_vbif.c   | 52 +++++++++++++++++++
+ drivers/gpu/drm/msm/disp/dpu1/dpu_hw_vbif.h   | 23 ++++++++
+ 3 files changed, 77 insertions(+)
+
+diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_catalog.h b/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_catalog.h
+index f45faf87333e..50ae8792bca9 100644
+--- a/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_catalog.h
++++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_catalog.h
+@@ -132,11 +132,13 @@ enum {
+  * VBIF sub-blocks and features
+  * @DPU_VBIF_QOS_OTLIM        VBIF supports OT Limit
+  * @DPU_VBIF_QOS_REMAP        VBIF supports QoS priority remap
++ * @DPU_VBIF_AXI_HALT         VBIF AXI ports are halted before power collapse
+  * @DPU_VBIF_MAX              maximum value
+  */
+ enum {
+ 	DPU_VBIF_QOS_OTLIM = 0x1,
+ 	DPU_VBIF_QOS_REMAP,
++	DPU_VBIF_AXI_HALT,
+ 	DPU_VBIF_MAX
+ };
+ 
+diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_vbif.c b/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_vbif.c
+index 112df3f31e2b..31b287aa041e 100644
+--- a/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_vbif.c
++++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_vbif.c
+@@ -2,6 +2,8 @@
+ /* Copyright (c) 2015-2018, The Linux Foundation. All rights reserved.
+  */
+ 
++#include <linux/iopoll.h>
++
+ #include <drm/drm_managed.h>
+ 
+ #include "dpu_hwio.h"
+@@ -9,6 +11,7 @@
+ #include "dpu_hw_vbif.h"
+ 
+ #define VBIF_VERSION			0x0000
++#define VBIF_CLKON			0x0004
+ #define VBIF_CLK_FORCE_CTRL0		0x0008
+ #define VBIF_CLK_FORCE_CTRL1		0x000C
+ #define VBIF_QOS_REMAP_00		0x0020
+@@ -31,9 +34,20 @@
+ #define VBIF_XIN_CLR_ERR		0x019C
+ #define VBIF_XIN_HALT_CTRL0		0x0200
+ #define VBIF_XIN_HALT_CTRL1		0x0204
++#define VBIF_AXI_HALT_CTRL0		0x0208
++#define VBIF_AXI_HALT_CTRL1		0x020C
+ #define VBIF_XINL_QOS_RP_REMAP_000	0x0550
+ #define VBIF_XINL_QOS_LVL_REMAP_000(vbif)	(VBIF_XINL_QOS_RP_REMAP_000 + (vbif)->cap->qos_rp_remap_size)
+ 
++#define VBIF_CLKON_FORCE_ON		BIT(0)
++#define VBIF_AXI_HALT_REQ		BIT(0)
++#define VBIF_AXI_HALT_ACK		BIT(0)
++#define VBIF_AXI_PORT0_IDLE		BIT(4)
++#define VBIF_AXI_PORT1_IDLE		BIT(5)
++
++#define VBIF_AXI_HALT_POLL_US		100
++#define VBIF_AXI_HALT_TIMEOUT_US	4000
++
+ static void dpu_hw_clear_errors(struct dpu_hw_vbif *vbif,
+ 		u32 *pnd_errors, u32 *src_errors)
+ {
+@@ -154,6 +168,40 @@ static bool dpu_hw_get_halt_ctrl(struct dpu_hw_vbif *vbif,
+ 	return (reg_val & BIT(xin_id)) ? true : false;
+ }
+ 
++static void dpu_hw_set_axi_halt(struct dpu_hw_vbif *vbif, bool enable)
++{
++	struct dpu_hw_blk_reg_map *c = &vbif->hw;
++	u32 clkon;
++
++	clkon = DPU_REG_READ(c, VBIF_CLKON);
++
++	if (enable) {
++		DPU_REG_WRITE(c, VBIF_CLKON, clkon | VBIF_CLKON_FORCE_ON);
++		DPU_REG_WRITE(c, VBIF_AXI_HALT_CTRL0, VBIF_AXI_HALT_REQ);
++		/* the request has to reach the VBIF before it is polled for */
++		wmb();
++	} else {
++		DPU_REG_WRITE(c, VBIF_AXI_HALT_CTRL0, 0);
++		DPU_REG_WRITE(c, VBIF_CLKON, clkon & ~VBIF_CLKON_FORCE_ON);
++	}
++}
++
++static int dpu_hw_get_axi_halt_status(struct dpu_hw_vbif *vbif)
++{
++	struct dpu_hw_blk_reg_map *c = &vbif->hw;
++	u32 status;
++	int ret;
++
++	ret = readl_poll_timeout(c->blk_addr + VBIF_AXI_HALT_CTRL1, status,
++				 status & VBIF_AXI_HALT_ACK,
++				 VBIF_AXI_HALT_POLL_US,
++				 VBIF_AXI_HALT_TIMEOUT_US);
++	if (ret && (status & (VBIF_AXI_PORT0_IDLE | VBIF_AXI_PORT1_IDLE)))
++		ret = 0;
++
++	return ret;
++}
++
+ static void dpu_hw_set_qos_remap(struct dpu_hw_vbif *vbif,
+ 		u32 xin_id, u32 level, u32 remap_level)
+ {
+@@ -206,6 +254,10 @@ static void _setup_vbif_ops(struct dpu_hw_vbif_ops *ops,
+ 	ops->get_limit_conf = dpu_hw_get_limit_conf;
+ 	ops->set_halt_ctrl = dpu_hw_set_halt_ctrl;
+ 	ops->get_halt_ctrl = dpu_hw_get_halt_ctrl;
++	if (test_bit(DPU_VBIF_AXI_HALT, &cap)) {
++		ops->set_axi_halt = dpu_hw_set_axi_halt;
++		ops->get_axi_halt_status = dpu_hw_get_axi_halt_status;
++	}
+ 	if (test_bit(DPU_VBIF_QOS_REMAP, &cap))
+ 		ops->set_qos_remap = dpu_hw_set_qos_remap;
+ 	ops->set_mem_type = dpu_hw_set_mem_type;
+diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_vbif.h b/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_vbif.h
+index 96ec4e35e549..47a5edd1a0a3 100644
+--- a/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_vbif.h
++++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_vbif.h
+@@ -54,6 +54,29 @@ struct dpu_hw_vbif_ops {
+ 	bool (*get_halt_ctrl)(struct dpu_hw_vbif *vbif,
+ 			u32 xin_id);
+ 
++	/**
++	 * @set_axi_halt: request or release the halt of the AXI ports
++	 * @vbif: vbif context driver
++	 * @enable: true to request the halt, false to release it
++	 *
++	 * This halts the VBIF towards the bus as a whole, unlike
++	 * @set_halt_ctrl which halts a single client.  The VBIF clock is
++	 * forced on while the halt is requested and handed back to hardware
++	 * control when it is released.
++	 */
++	void (*set_axi_halt)(struct dpu_hw_vbif *vbif, bool enable);
++
++	/**
++	 * @get_axi_halt_status: wait for the AXI ports to halt
++	 * @vbif: vbif context driver
++	 *
++	 * Polls for the acknowledgment of a halt requested through
++	 * @set_axi_halt.  AXI ports that report idle when the wait runs out
++	 * count as halted, since they have nothing left in flight.
++	 * Returns: 0 if the AXI ports are halted, -ETIMEDOUT otherwise
++	 */
++	int (*get_axi_halt_status)(struct dpu_hw_vbif *vbif);
++
+ 	/**
+ 	 * @set_qos_remap: set QoS priority remap
+ 	 * @vbif: vbif context driver
+-- 
+2.47.3
+

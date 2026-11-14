@@ -1,0 +1,72 @@
+From 21bdd843d84614d371bd17e1a8e7e74d455d0fea Mon Sep 17 00:00:00 2001
+From: yzddmr6 <46088090+yzddmr6@users.noreply.github.com>
+Date: Sat, 26 Sep 2026 10:33:29 +0800
+Subject: [PATCH] drm/msm/dpu: halt the VBIF AXI ports on SM8750
+
+SM8750 needs its VBIF AXI ports halted before the MDSS power domain
+collapses: without it the first DSI command DMA after the collapse never
+fetches its data and the display does not come back from a blank.  Give
+it its own VBIF configuration, identical to the SM8650 one it shared so
+far apart from DPU_VBIF_AXI_HALT.
+
+The downstream SDE driver requests the halt on every target it
+supports, from MSM8996 on, so the handshake itself is not specific to
+this SoC.  It is only enabled where it has been tested: other SoCs using
+the SM8650 or earlier VBIF configurations collapse the same domain
+without it and no failure has been reported for them, and whether they
+need it has not been checked on hardware.
+
+Assisted-by: LLM
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+(cherry picked from commit 2bb3a45c45d9b63ce653ef1b3092a8f1bea9553c)
+Signed-off-by: Codex <codex@localhost>
+---
+ .../drm/msm/disp/dpu1/catalog/dpu_12_0_sm8750.h |  2 +-
+ drivers/gpu/drm/msm/disp/dpu1/dpu_hw_catalog.c  | 17 +++++++++++++++++
+ 2 files changed, 18 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/gpu/drm/msm/disp/dpu1/catalog/dpu_12_0_sm8750.h b/drivers/gpu/drm/msm/disp/dpu1/catalog/dpu_12_0_sm8750.h
+index 3889eb8a5428..2c3ac369fb66 100644
+--- a/drivers/gpu/drm/msm/disp/dpu1/catalog/dpu_12_0_sm8750.h
++++ b/drivers/gpu/drm/msm/disp/dpu1/catalog/dpu_12_0_sm8750.h
+@@ -485,7 +485,7 @@ const struct dpu_mdss_cfg dpu_sm8750_cfg = {
+ 	.cwb = sm8650_cwb,
+ 	.intf_count = ARRAY_SIZE(sm8750_intf),
+ 	.intf = sm8750_intf,
+-	.vbif = &sm8650_vbif,
++	.vbif = &sm8750_vbif,
+ 	.perf = &sm8750_perf_data,
+ };
+ 
+diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_catalog.c b/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_catalog.c
+index 9a993cdfab85..a4d747b4c47e 100644
+--- a/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_catalog.c
++++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_catalog.c
+@@ -655,6 +655,23 @@ static const struct dpu_vbif_cfg sm8650_vbif = {
+ 	.memtype = {3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3},
+ };
+ 
++static const struct dpu_vbif_cfg sm8750_vbif = {
++	.len = 0x1074,
++	.features = BIT(DPU_VBIF_QOS_REMAP) | BIT(DPU_VBIF_AXI_HALT),
++	.xin_halt_timeout = 0x4000,
++	.qos_rp_remap_size = 0x40,
++	.qos_rt_tbl = {
++		.npriority_lvl = ARRAY_SIZE(sm8650_rt_pri_lvl),
++		.priority_lvl = sm8650_rt_pri_lvl,
++		},
++	.qos_nrt_tbl = {
++		.npriority_lvl = ARRAY_SIZE(sdm845_nrt_pri_lvl),
++		.priority_lvl = sdm845_nrt_pri_lvl,
++		},
++	.memtype_count = 16,
++	.memtype = {3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3},
++};
++
+ /*************************************************************
+  * PERF data config
+  *************************************************************/
+-- 
+2.47.3
+

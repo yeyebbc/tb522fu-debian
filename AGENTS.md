@@ -45,3 +45,20 @@ stock partition images and local environment paths out of tracked files.
   replay exactly. Enable only DPU_LIFECYCLE formats for a bounded test; collect
   the display driver's stored devcoredump without triggering a fresh snapshot.
   This does not make CI47 wake accepted and must not be promoted to production.
+
+## Current candidate: CI49 VBIF handshake
+
+- CI48 diagnostic capture passed, wake failed. Both teardown resets returned0;
+  first pending reset was observed after resume/fresh-frame request. Do not infer
+  a particular root cause from the ordering. Android/graphics/fullfsck and all
+  worker cleanup passed. CI44 remains installed.
+- Current93-patch recipe excludes0197 and adds0198–0200, imported unchanged from
+  the pinned same-SoC port. Preserve original author/co-author/license metadata;
+  do not fabricate missing nominal-author signoffs to silence checkpatch.
+- Only SM8750 enables AXI halt; other VBIF fields are unchanged. No OPP, panel,
+  RAM, camera or accepted audio changes. Source/ARM64/replay/12 recipe checks
+  pass; original metadata findings are separate from the clean code-style check.
+- First hardware test remains one bounded DPMS cycle, physical camera evidence,
+  fault checks after each action and exact Android/graphics rollback. No CI48
+  lifecycle-debug option for a kernel without its14 sites. No promotion until
+  actual fresh screen frames and clean fault logs pass.
