@@ -1,0 +1,143 @@
+From 2dc4f93d874e40907832e0574f3d64fdbeea3dd7 Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Sat, 14 Nov 2026 12:20:11 +0800
+Subject: [PATCH] drm/panel: preserve BOE DVT2 long command packets
+
+The active Lenovo BOE DVT2 stock descriptor uses DCS long-write packets
+(type 0x39) for all 30 vendor setup commands, including 23 two-byte
+payloads. The generic DCS write helper selects type 0x15 for those
+payloads. Command bytes, ordering and delays already match stock.
+
+Use a board-specific long-write helper for the vendor setup sequence,
+retaining the virtual channel, LP flag, accumulated-error behavior and
+existing host transfer path. Keep sleep-out/display-on as standard short
+commands, and leave shutdown, PPS/compression, regulators, reset and the
+CSOT panel unchanged. Match the existing helper's negative-return error
+contract; the MSM host returns padded DMA length on success.
+
+This corrects a transport encoding mismatch, not a demonstrated wake
+cause. CI55 fixed backlight association but still showed a blank image
+after wake. Keep diagnostics and require a fresh recorded bounded test.
+
+Signed-off-by: Codex <codex@localhost>
+---
+ drivers/gpu/drm/panel/panel-novatek-nt36536.c | 100 ++++++++++++------
+ 1 file changed, 70 insertions(+), 30 deletions(-)
+
+diff --git a/drivers/gpu/drm/panel/panel-novatek-nt36536.c b/drivers/gpu/drm/panel/panel-novatek-nt36536.c
+index baa6f9377774..6758c83185ff 100644
+--- a/drivers/gpu/drm/panel/panel-novatek-nt36536.c
++++ b/drivers/gpu/drm/panel/panel-novatek-nt36536.c
+@@ -355,39 +355,79 @@ static int csot_pp8807hb1_1_init_seq(struct mipi_dsi_multi_context *dsi_ctx)
+ 	return dsi_ctx->accum_err;
+ }
+ 
++static void y900_dcs_long_write_multi(struct mipi_dsi_multi_context *ctx,
++				      const void *data, size_t len)
++{
++	struct mipi_dsi_device *dsi = ctx->dsi;
++	const struct mipi_dsi_host_ops *ops = dsi->host->ops;
++	struct mipi_dsi_msg msg = {
++		.channel = dsi->channel,
++		.type = MIPI_DSI_DCS_LONG_WRITE,
++		.tx_buf = data,
++		.tx_len = len,
++	};
++	ssize_t ret;
++
++	if (ctx->accum_err)
++		return;
++	if (!ops || !ops->transfer) {
++		ctx->accum_err = -EOPNOTSUPP;
++		return;
++	}
++	if (dsi->mode_flags & MIPI_DSI_MODE_LPM)
++		msg.flags |= MIPI_DSI_MSG_USE_LPM;
++
++	/* Stock sends every DVT2 vendor command as 0x39, even two-byte ones. */
++	ret = ops->transfer(dsi->host, &msg);
++	if (ret < 0) {
++		ctx->accum_err = ret;
++		dev_err(&dsi->dev, "sending DCS long data %*ph failed: %zd\n",
++			(int)len, data, ret);
++	}
++}
++
++#define y900_dcs_long_write_seq_multi(ctx, seq...) \
++	do { \
++		static const u8 data[] = { seq }; \
++		y900_dcs_long_write_multi(ctx, data, ARRAY_SIZE(data)); \
++	} while (0)
++
+ static int y900_boe_nt36536e_init_seq(struct mipi_dsi_multi_context *dsi_ctx)
+ {
+ 	/* The active stock panel is the BOE DVT2 revision. */
+-	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xff, 0x23);
+-	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xfb, 0x01);
+-	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x89, 0xa4);
+-	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x8b, 0xc1);
+-	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xff, 0x2a);
+-	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xfb, 0x01);
+-	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xbc, 0x77, 0x07);
+-	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xff, 0xf0);
+-	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xfb, 0x01);
+-	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xe6, 0x02);
+-	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xff, 0x27);
+-	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xfb, 0x01);
+-	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xd0, 0x33);
+-	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xd1, 0x05, 0x00);
+-	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xde, 0x43);
+-	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xdf, 0x02);
+-	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xff, 0xd0);
+-	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xfb, 0x01);
+-	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x02, 0x42);
+-	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x1c, 0xaa);
+-	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x1d, 0x0a);
+-	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xff, 0x10);
+-	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xfb, 0x01);
+-	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x3b, 0x03, 0x12, 0x1a, 0x04, 0x04, 0x01, 0x80, 0x36, 0x36);
+-	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x60, 0x00);
+-	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x90, 0x03, 0x00);
+-	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x91, 0xab, 0xa8, 0x00, 0x14, 0xd2, 0x00, 0x00, 0x00, 0x02, 0x52, 0x00, 0x0d, 0x05, 0x7a, 0x02, 0xdd);
+-	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x92, 0x10, 0xf0);
+-	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xb2, 0x91, 0x80);
+-	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xb3, 0x40);
++	y900_dcs_long_write_seq_multi(dsi_ctx, 0xff, 0x23);
++	y900_dcs_long_write_seq_multi(dsi_ctx, 0xfb, 0x01);
++	y900_dcs_long_write_seq_multi(dsi_ctx, 0x89, 0xa4);
++	y900_dcs_long_write_seq_multi(dsi_ctx, 0x8b, 0xc1);
++	y900_dcs_long_write_seq_multi(dsi_ctx, 0xff, 0x2a);
++	y900_dcs_long_write_seq_multi(dsi_ctx, 0xfb, 0x01);
++	y900_dcs_long_write_seq_multi(dsi_ctx, 0xbc, 0x77, 0x07);
++	y900_dcs_long_write_seq_multi(dsi_ctx, 0xff, 0xf0);
++	y900_dcs_long_write_seq_multi(dsi_ctx, 0xfb, 0x01);
++	y900_dcs_long_write_seq_multi(dsi_ctx, 0xe6, 0x02);
++	y900_dcs_long_write_seq_multi(dsi_ctx, 0xff, 0x27);
++	y900_dcs_long_write_seq_multi(dsi_ctx, 0xfb, 0x01);
++	y900_dcs_long_write_seq_multi(dsi_ctx, 0xd0, 0x33);
++	y900_dcs_long_write_seq_multi(dsi_ctx, 0xd1, 0x05, 0x00);
++	y900_dcs_long_write_seq_multi(dsi_ctx, 0xde, 0x43);
++	y900_dcs_long_write_seq_multi(dsi_ctx, 0xdf, 0x02);
++	y900_dcs_long_write_seq_multi(dsi_ctx, 0xff, 0xd0);
++	y900_dcs_long_write_seq_multi(dsi_ctx, 0xfb, 0x01);
++	y900_dcs_long_write_seq_multi(dsi_ctx, 0x02, 0x42);
++	y900_dcs_long_write_seq_multi(dsi_ctx, 0x1c, 0xaa);
++	y900_dcs_long_write_seq_multi(dsi_ctx, 0x1d, 0x0a);
++	y900_dcs_long_write_seq_multi(dsi_ctx, 0xff, 0x10);
++	y900_dcs_long_write_seq_multi(dsi_ctx, 0xfb, 0x01);
++	y900_dcs_long_write_seq_multi(dsi_ctx, 0x3b, 0x03, 0x12, 0x1a, 0x04,
++				      0x04, 0x01, 0x80, 0x36, 0x36);
++	y900_dcs_long_write_seq_multi(dsi_ctx, 0x60, 0x00);
++	y900_dcs_long_write_seq_multi(dsi_ctx, 0x90, 0x03, 0x00);
++	y900_dcs_long_write_seq_multi(dsi_ctx, 0x91, 0xab, 0xa8, 0x00, 0x14,
++				      0xd2, 0x00, 0x00, 0x00, 0x02, 0x52, 0x00,
++				      0x0d, 0x05, 0x7a, 0x02, 0xdd);
++	y900_dcs_long_write_seq_multi(dsi_ctx, 0x92, 0x10, 0xf0);
++	y900_dcs_long_write_seq_multi(dsi_ctx, 0xb2, 0x91, 0x80);
++	y900_dcs_long_write_seq_multi(dsi_ctx, 0xb3, 0x40);
+ 	mipi_dsi_msleep(dsi_ctx, 16);
+ 	mipi_dsi_dcs_exit_sleep_mode_multi(dsi_ctx);
+ 	mipi_dsi_msleep(dsi_ctx, 105);
+-- 
+2.47.3
+

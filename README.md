@@ -143,6 +143,18 @@ filesystem checks and cleanup pass. CI44 remains installed; do not install or
 repeat CI55 unchanged. The next audit targets panel/video restart, not additional
 backlight writes. Software rendering success remains separate from physical wake.
 
+The next candidate preserves the stock BOE DVT2 setup packet types. All 32
+command payloads and delays match stock, but the generic helper encoded 23
+two-byte vendor commands as short writes (0x15), whereas stock uses long writes
+(0x39). A board-specific helper retains long packets for the 30 vendor commands;
+sleep-out/display-on remain standard short commands. Other panels, shutdown,
+PPS/compression, reset pins and supplies are unchanged. This is a verified
+protocol mismatch, not yet a verified wake fix. The actual C sequence passes a
+host test of all packets, LP/HS flags, channel handling, 64 injected transfer
+failures and early exits. CI runs that contract check against the patched source.
+The 98-patch stack reproduces the pinned tree. Keep CI44 installed while the
+diagnostic candidate undergoes its bounded camera-recorded wake test.
+
 CI45 verified the secondary rear OV02B10's full sensor ID and two8-frame RAW10
 capture cycles through SM8750 CAMSS, with clean Android restoration. Frames were
 nearly black. An isolated Debian libcamera 0.7.1 CPU software-ISP test subsequently

@@ -178,3 +178,13 @@ Android/graphics/fullfsck/timer/host-service/worker restoration passed; keepCI44
 No unchanged repeat or installation. Investigate panel/video restart; do not
 guess reserved reset GPIOs or unsupported DCS reads. Diagnostic cleanup remains
 conditional on later physical success and fresh broader regression acceptance.
+
+Next candidate0205 corrects the DVT2 setup packet encoding only:23 two-byte
+vendor payloads become stock type0x39 instead of generic type0x15. All32 payloads
+and waits match stock; no PPS, shutdown, reset, supply or other-panel change.
+The helper retains LP/channel and accumulated errors; MSM returns padded DMA
+length, so successful transfer need not equal payload length. Actual C helper
+and sequence pass32 packet contracts, LP/HS/channel,64 injected failures and
+3 early exits. The old short-packet behavior fails the independent fixture.
+CI now runs this check;98-patch replay/ARM64W1/strict checkpatch/12 recipe tests
+pass. Still diagnostic only; require fresh physical wake/fault/rollback checks.
