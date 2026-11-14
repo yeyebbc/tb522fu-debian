@@ -1,0 +1,35 @@
+From 54fcde23311bf88f547a9c2cbfa246445476d01a Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Sat, 14 Nov 2026 21:08:32 +0800
+Subject: [PATCH] arm64: dts: qcom: tb522fu: use default ramoops memory mapping
+
+A controlled two-boot marker test accepts a PMSG write but recovers no
+record through the EDL/programmer boot path. That observation does not
+establish where the data was lost.
+
+Use the documented write-combined default instead of the cached mapping
+to isolate mapping-dependent retention. Keep the existing reserved
+address, sizes, ECC, reason filter and all power-management parameters.
+This is a retention diagnostic, not a suspend fix.
+---
+ arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+index fe702d35dcc2..44c5412c3eef 100644
+--- a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
++++ b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+@@ -144,7 +144,9 @@ ramoops_mem: ramoops-region@c2000000 {
+ &ramoops_mem {
+  compatible = "ramoops";
+  record-size = <0x10000>; console-size = <0x40000>; pmsg-size = <0x40000>;
+- ecc-size = <16>; mem-type = <2>; max-reason = <4>;
++	ecc-size = <16>;
++	mem-type = <0>;
++	max-reason = <4>;
+ };
+ 
+ &uart7 { status = "disabled"; };
+-- 
+2.47.3
+

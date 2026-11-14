@@ -33,8 +33,8 @@ def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def check_ss3_diagnostic(dtb):
-    """Candidate-only guard: omit SS3 without removing CPU/cluster idle."""
+def check_retention_diagnostic(dtb):
+    """Use default ramoops mapping while preserving geometry and all idle states."""
     def value(node, prop):
         return capture(['fdtget', '-t', 'x', dtb, node, prop])
 
@@ -42,7 +42,7 @@ def check_ss3_diagnostic(dtb):
         return value(node, 'phandle')
 
     system = '/psci/power-domain-system'
-    assert 'domain-idle-states' not in capture(['fdtget', '-p', dtb, system]).splitlines()
+    assert value(system, 'domain-idle-states') == ref('/cpus/domain-idle-states/domain-sleep-0')
     assert value(system, '#power-domain-cells') == '0'
     for i in range(2):
         cluster = '/psci/power-domain-cluster' + str(i)
@@ -63,6 +63,14 @@ def check_ss3_diagnostic(dtb):
         assert int(value(node, 'arm,psci-suspend-param'), 16) == param
         for prop, expected in zip(('entry-latency-us', 'exit-latency-us', 'min-residency-us'), timing):
             assert int(value(node, prop), 16) == expected
+    ramoops = '/reserved-memory/ramoops-region@c2000000'
+    assert value(ramoops, 'reg') == '0 c2000000 0 c0000'
+    assert 'no-map' in capture(['fdtget', '-p', dtb, ramoops]).splitlines()
+    assert 'ftrace-size' not in capture(['fdtget', '-p', dtb, ramoops]).splitlines()
+    for prop, expected in (('mem-type', 0), ('record-size', 0x10000),
+                           ('console-size', 0x40000), ('pmsg-size', 0x40000),
+                           ('ecc-size', 16), ('max-reason', 4)):
+        assert int(value(ramoops, prop), 16) == expected, prop
 
 
 def check_keyboard_wiring(dtb):
@@ -295,7 +303,7 @@ def main():
         assert 'CONFIG_EXT4_FS=y' in config
     run(make + [spec['board_dtb']])
     dtb = out / 'arch/arm64/boot/dts' / spec['board_dtb']
-    check_ss3_diagnostic(dtb)
+    check_retention_diagnostic(dtb)
     bt_uart = '/soc@0/geniqup@8c0000/serial@898000'
     bt = bt_uart + '/bluetooth'
     assert capture(['fdtget', '-t', 's', dtb, '/aliases', 'serial1']) == bt_uart

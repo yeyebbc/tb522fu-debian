@@ -113,7 +113,7 @@
     "patches/0217-sm8750-dsi-idle-crystal-inputs.patch",
     "patches/0218-dwc3-defer-glue-role-notification.patch",
     "patches/0219-sm8750-llcc-settings.patch",
-    "patches/0220-tb522fu-ss3-isolation-diagnostic.patch"
+    "patches/0221-tb522fu-ramoops-default-mapping.patch"
   ],
-  "patched_tree": "d70b46fa362ea763aeb1f4ee7cfae6f60545996f"
+  "patched_tree": "57468fc57780b4a734cc55e0a0f9e0f8e96e3663"
 }

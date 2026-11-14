@@ -6,9 +6,9 @@ Experimental native Linux port for the Lenovo Legion Y900 13 / TB522FU
 directions. This remains a development port with substantial peripheral work
 outstanding.
 
-**CI69 returned from a platform-PM diagnostic, but the display stayed black.
-Actual sleep was skipped. Display wake and suspend remain unresolved;
-CI44 remains the installed baseline.**
+**A controlled two-boot PMSG test did not recover its marker, despite a mounted
+pstore filesystem and complete live/archive reads. CI70 tests the documented
+default RAM mapping; it is not a suspend fix. CI44 remains installed.**
 
 Current installed kernel: `7.3.0-tb522fu-installed-ci44`, built from recipe
 `0a1847dd0b67991af502bfea9da36c5db50be3c4`. The installed image SHA256 is
@@ -973,3 +973,36 @@ return-unit retirement and host service/network/worker cleanup passed. CI44
 remains installed. Remove the SS3 diagnostic restriction before selecting the
 next functional candidate; improve retained failure evidence before more sleep
 tests.
+
+
+## CI70 retained-log mapping diagnostic
+
+A non-suspend two-boot test on unchanged CI68 accepted a PMSG marker on the
+first boot but found no stored record on the second. Pstore was mounted, both
+live and archived directories were empty, and systemd skipped archival for an
+empty directory. The previous marker was also absent from the second boot's
+journal. Both local capture services and the USB reconnect path worked; Android
+restoration and filesystem/temporary-service/host cleanup passed. This does not
+identify loss in cache, firmware, the programmer path or early kernel startup.
+
+CI70 replaces the rejected SS3 isolation patch with one ramoops mapping change
+relative to CI68: `mem-type = <2>` becomes the documented default `<0>`. The
+[upstream ramoops documentation](https://www.kernel.org/doc/html/latest/admin-guide/ramoops.html)
+describes type2 as cacheable and recommends write-combined type0. Both the
+vmap and ioremap paths select the normal noncacheable mapping for type0 on
+arm64; the actual prior runtime mapping was not measured. This is a diagnostic
+hypothesis, not an established explanation or a suspend correction.
+
+The reserved address, region and record sizes, ECC and reason filter stay
+unchanged. CPU C4, cluster CL5 and system SS3 are all restored to the CI68
+configuration; no idle restriction, clock/power vote or restart-handler change
+is added. First hardware acceptance is a bounded two-boot marker check without
+suspend. Do not promote this image or claim hard-reset retention from a clean
+EDL/programmer test. CI44 remains installed and prior failures remain recorded.
+
+Local DT compilation and comparison of all1,201 nodes show only the ramoops
+`mem-type` change relative to CI68. Eight negative geometry/idle guards pass;
+keyboard, camera and display wiring guards remain satisfied. The complete
+110-patch series replays to tree`57468fc57780b4a734cc55e0a0f9e0f8e96e3663`;
+12 recipe tests and the new patch's strict code-style check pass. Hardware
+retention remains untested for this candidate.
