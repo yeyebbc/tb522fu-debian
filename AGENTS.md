@@ -887,3 +887,17 @@ cluster sleep. Preserve clk_ignore_unused/pd_ignore_unused and exact provenance;
 this is not clock cleanup or a proven causal fix. Builder verifies presence or
 absence of the GCC power-domain property according to the selected patch set.
 Require physical startup/all39/BT/platform return before real sleep or promotion.
+
+
+## Current system-state isolation diagnostic
+
+CI77 now passed one warning-clean greeter platform callback and physical fresh
+focus cycle, then reset in real unrestricted s2idle. No SS3 entry proof; no
+unchanged rerun or promotion. Current112-patch stack adds unchanged0220 toCI77:
+omit only system_pd domain-idle-states. CPU/cluster/performance/RSC topology
+remains. Default system-domain state has no PSCI data, so CPU/cluster parameter
+selection is retained while the domain notifier path remains. This is not a
+permanent sleep policy or accepted fix. Require exact replay/DT guards/all39/BT/
+physical callback return before one actual RTC cycle. Counter names for the
+default root state must not be mislabeled SS3. Preserve selectedCI74 and current
+graphics, independent clean/EDL return and exact Android recovery. No subagents.

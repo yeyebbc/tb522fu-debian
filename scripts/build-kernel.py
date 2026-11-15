@@ -45,8 +45,8 @@ def check_gcc_cx_dependency(dtb, expected=True):
                     '/soc@0/clock-controller@100000', 'power-domains']) == parent + ' 0'
 
 
-def check_idle_comparison(dtb):
-    """Preserve the complete CI68 idle topology and retained-buffer layout."""
+def check_idle_comparison(dtb, system_ss3=True):
+    """Verify the selected idle diagnostic and retained-buffer layout."""
     def value(node, prop):
         return capture(['fdtget', '-t', 'x', dtb, node, prop])
 
@@ -54,7 +54,10 @@ def check_idle_comparison(dtb):
         return value(node, 'phandle')
 
     system = '/psci/power-domain-system'
-    assert value(system, 'domain-idle-states') == ref('/cpus/domain-idle-states/domain-sleep-0')
+    if system_ss3:
+        assert value(system, 'domain-idle-states') == ref('/cpus/domain-idle-states/domain-sleep-0')
+    else:
+        assert 'domain-idle-states' not in capture(['fdtget', '-p', dtb, system]).splitlines()
     assert value(system, '#power-domain-cells') == '0'
     for i in range(2):
         cluster = '/psci/power-domain-cluster' + str(i)
@@ -327,7 +330,8 @@ def main():
         assert 'CONFIG_EXT4_FS=y' in config
     run(make + [spec['board_dtb']])
     dtb = out / 'arch/arm64/boot/dts' / spec['board_dtb']
-    check_idle_comparison(dtb)
+    check_idle_comparison(dtb,
+        system_ss3='patches/0220-tb522fu-ss3-isolation-diagnostic.patch' not in spec['applied_patches'])
     check_gcc_cx_dependency(dtb,
         expected='patches/0224-sm8750-gcc-cx-domain.patch' in spec['applied_patches'])
     bt_uart = '/soc@0/geniqup@8c0000/serial@898000'

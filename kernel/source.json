@@ -114,7 +114,8 @@
     "patches/0218-dwc3-defer-glue-role-notification.patch",
     "patches/0219-sm8750-llcc-settings.patch",
     "patches/0225-dsi-ccf-owned-pll-start.patch",
-    "patches/0226-dpu-pending-state-bandwidth.patch"
+    "patches/0226-dpu-pending-state-bandwidth.patch",
+    "patches/0220-tb522fu-ss3-isolation-diagnostic.patch"
   ],
-  "patched_tree": "dd28d2c50afe346214a8ea78c9d5291077e65213"
+  "patched_tree": "68bc2e5c5377485017d86ab5deaf47dec8f2475d"
 }

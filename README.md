@@ -13,14 +13,25 @@ show coloured static after a normal screen-off/on cycle, without system suspend.
 On CI74 a linear console framebuffer also remains corrupt; this excludes
 compressed GNOME scanout as the sole cause for that kernel.
 
-**The next candidate isolates the GCC/CX dependency.** It returns the GCC
-binding, runtime-PM flag and power-domain connection to the earlier CI72 model,
-while retaining CCF-owned DSI startup and the upstream bandwidth-state fix. Only
-those two display fixes differ from the earlier source that passed constrained
-cluster sleep. The unused-clock/domain workarounds remain. This is a resource-
-model comparison, not an established suspend fix; no new rates, voltages, idle
-restrictions or peripheral protocols are introduced. The111-patch tree must
-replay exactly and pass physical full-driver startup/PM tests before promotion.
+**CI77 passed one full-driver platform callback test, but real sleep still resets.**
+The callback cycle retained its boot identity, restored clear physical output and
+fresh focus changes, and reported no matched MSM/display warning. The subsequent
+unrestricted RTC sleep request stayed dark and restarted without a button press.
+Post-sleep counters and a crash log did not survive, so actual SS3 entry and the
+failing resource remain unproven. Android, selected CI74, current graphics,
+filesystem, return timers and host cleanup are verified. No unchanged replay or
+promotion of CI77.
+
+**The next diagnostic omits only the system SS3 state reference.** It retains
+CI77's PLL lifecycle and bandwidth corrections, CPU C4 and cluster CL5 states,
+performance domains, system-domain topology and RPMh notifier. This differs from
+a wakeup-latency constraint, which can block the system-domain power-off path
+itself. The earlier CI69 version failed the physical callback gate and never
+reached real sleep; its result did not answer this question. The112-patch source
+must replay exactly. No invented firmware parameters, rates, voltages, permanent
+latency votes or installed policy changes. This is diagnostic only, not a
+production suspend fix. Require physical startup/all39/BT/callback return before
+one actual RTC cycle, with independent recovery and camera evidence.
 
 The preceding candidate backported [480ba24aa340](https://github.com/torvalds/linux/commit/480ba24aa34031c898d0a711405664cd947bbee4),
 which calculates display memory bandwidth from the new state. CI76 passed one
