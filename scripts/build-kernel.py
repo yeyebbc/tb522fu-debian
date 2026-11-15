@@ -33,8 +33,12 @@ def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def check_gcc_cx_dependency(dtb):
-    """GCC clocks and GDSCs must retain their standard RPMh CX parent."""
+def check_gcc_cx_dependency(dtb, expected=True):
+    """Validate the selected GCC/CX dependency model."""
+    if not expected:
+        assert 'power-domains' not in capture([
+            'fdtget', '-p', dtb, '/soc@0/clock-controller@100000']).splitlines()
+        return
     parent = capture(['fdtget', '-t', 'x', dtb,
                       '/soc@0/rsc@16500000/power-controller', 'phandle'])
     assert capture(['fdtget', '-t', 'x', dtb,
@@ -324,7 +328,8 @@ def main():
     run(make + [spec['board_dtb']])
     dtb = out / 'arch/arm64/boot/dts' / spec['board_dtb']
     check_idle_comparison(dtb)
-    check_gcc_cx_dependency(dtb)
+    check_gcc_cx_dependency(dtb,
+        expected='patches/0224-sm8750-gcc-cx-domain.patch' in spec['applied_patches'])
     bt_uart = '/soc@0/geniqup@8c0000/serial@898000'
     bt = bt_uart + '/bluetooth'
     assert capture(['fdtget', '-t', 's', dtb, '/aliases', 'serial1']) == bt_uart

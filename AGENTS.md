@@ -869,3 +869,21 @@ CRTC state; retain four-pipeline clock math and all other114-patch inputs.
 No board, voltage/rate, idle-policy or installed-image change. Require exact tree
 replay, ARM64 object, recipe/artifact checks and physical full-driver wake testing.
 Preserve CI74 and CI44 rollback. No promotion from a build or isolated pass.
+
+
+## GCC/CX resource-model isolation
+
+CI76 passed one signed-in physical DPMS/fresh-scene check, then reset during a
+platform callback test. No actual s2idle_loop ran. The CRTC debugfs state reader
+also emits WARN_ON because it calls get_intf_mode without the modeset mutex;
+this affects active controllers too. Do not use that file in future probes.
+Interconnect summaries already captured matching pre/post MDP votes and avoid
+that debugfs path. Do not infer that the warning caused the reset.
+
+Current111-patch candidate omits0222/0223/0224 as one GCC resource-model comparison.
+It preserves0225 PLL lifecycle and0226 pending-state bandwidth fixes. All other
+source matches the earlier CI72/CI68 baseline that passed constrained full-driver
+cluster sleep. Preserve clk_ignore_unused/pd_ignore_unused and exact provenance;
+this is not clock cleanup or a proven causal fix. Builder verifies presence or
+absence of the GCC power-domain property according to the selected patch set.
+Require physical startup/all39/BT/platform return before real sleep or promotion.

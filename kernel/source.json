@@ -113,11 +113,8 @@
     "patches/0217-sm8750-dsi-idle-crystal-inputs.patch",
     "patches/0218-dwc3-defer-glue-role-notification.patch",
     "patches/0219-sm8750-llcc-settings.patch",
-    "patches/0222-sm8750-gcc-cx-binding.patch",
-    "patches/0223-sm8750-gcc-cx-runtime-pm.patch",
-    "patches/0224-sm8750-gcc-cx-domain.patch",
     "patches/0225-dsi-ccf-owned-pll-start.patch",
     "patches/0226-dpu-pending-state-bandwidth.patch"
   ],
-  "patched_tree": "c91acf0dc479cf2c9a21a1039350c4ec9b295401"
+  "patched_tree": "dd28d2c50afe346214a8ea78c9d5291077e65213"
 }

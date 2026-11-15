@@ -13,13 +13,24 @@ show coloured static after a normal screen-off/on cycle, without system suspend.
 On CI74 a linear console framebuffer also remains corrupt; this excludes
 compressed GNOME scanout as the sole cause for that kernel.
 
-**The next candidate imports an upstream bandwidth-state fix.** Patch0226
-backports [480ba24aa340](https://github.com/torvalds/linux/commit/480ba24aa34031c898d0a711405664cd947bbee4),
-which calculates the display's memory-bandwidth requirement from the new state
-instead of the disabled, committed state. This corrects a missing upstream fix
-in our source; its role in this tablet's wake failure is unproven. It changes no
-board wiring, clock/voltage values, idle policy or accepted peripheral support.
-The114-patch source is prepared for bounded physical testing, without installation.
+**The next candidate isolates the GCC/CX dependency.** It returns the GCC
+binding, runtime-PM flag and power-domain connection to the earlier CI72 model,
+while retaining CCF-owned DSI startup and the upstream bandwidth-state fix. Only
+those two display fixes differ from the earlier source that passed constrained
+cluster sleep. The unused-clock/domain workarounds remain. This is a resource-
+model comparison, not an established suspend fix; no new rates, voltages, idle
+restrictions or peripheral protocols are introduced. The111-patch tree must
+replay exactly and pass physical full-driver startup/PM tests before promotion.
+
+The preceding candidate backported [480ba24aa340](https://github.com/torvalds/linux/commit/480ba24aa34031c898d0a711405664cd947bbee4),
+which calculates display memory bandwidth from the new state. CI76 passed one
+signed-in physical DPMS wake and a fresh scene change; a review timeout stopped
+the planned second cycle. It then restarted in a platform callback test before
+real sleep. This test also exposed a missing modeset lock in the CRTC debugfs
+state reader, which emitted warnings before PM; the warning's role in the reset
+is unproven. Future probes use interconnect vote summaries and omit that file.
+CI75 had already reset in the same callback test without that read. Neither
+one wake pass nor a successful build establishes reliable suspend support.
 
 **CI75 is rejected for display wake.** Removing the early PLL-start workaround
 passed two camera-recorded greeter wakes and one later signed-in desktop wake,
