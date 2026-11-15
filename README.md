@@ -13,13 +13,18 @@ show coloured static after a normal screen-off/on cycle, without system suspend.
 A linear console framebuffer also remains corrupt; this excludes compressed
 GNOME scanout as the sole cause.
 
-**The current candidate removes an early PLL-start workaround.** PHY enable
-currently starts the master before restoring its saved PLL configuration and
-also starts the unused slave PLL. The shared master should instead be started
-by the clock framework after both PHYs are ready. XO parking on shutdown is
-retained. This is an untested lifecycle correction, not verified display-wake
-or unrestricted-suspend support. Require native cold boot and camera-verified
-fresh output after repeated screen-off/on cycles before any sleep test.
+**CI75 is rejected for display wake.** Removing the early PLL-start workaround
+passed one camera-recorded greeter wake, but the signed-in desktop stayed black
+after screen-off/on while GNOME continued GPU rendering. A separate platform-PM
+callback test restarted the tablet before any real sleep request. The lifecycle
+correction is insufficient; neither artifact is accepted for installation.
+Android restoration, the selected CI74 image, current graphics, filesystem,
+temporary timers and host cleanup were verified. Preserve the isolated greeter
+pass without treating it as general wake support. No unchanged retry.
+
+Recipe `6325a449fb9d04194222aed507b6381f7d173f8f`, kernel source
+`41447dd39778fd05a699604caf13e5b2f249902a`, bounded boot SHA256
+`27abe48dbb1500baa9949d34a621a43a7535a1236b669b44bf7d109f1fe859d5`.
 
 **CI73 is rejected for a startup regression.** Removing `clk_ignore_unused`
 only from `disk-test` produced a grey panel, delayed USB startup, a GPU IOMMU

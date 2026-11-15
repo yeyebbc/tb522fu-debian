@@ -848,5 +848,11 @@ all five VCO prepares precede panel commands, so no mid-command reset is proven.
 Patch0225 removes the direct VCO prepare from PHY enable: it runs before saved
 PLL restoration and starts the unused slave PLL outside CCF ownership. Keep XO
 parking and ordinary CCF prepare/unprepare.113 patches must replay exactly.
-This is untested; native startup, fresh physical wake and full-driver PM gates
-remain required. Do not claim that the static's root cause is established.
+CI75 is now rejected: one greeter DPMS pass was followed by a physically black
+signed-in wake despite fresh GPU rendering. A separate platform callback test
+reset the tablet; real sleep was not requested. Exact Android/CI74/current
+graphics/filesystem/timer/host cleanup passed. No installation or unchanged
+retry. A changed configuration-retention readback may use the existing regmap
+interface, bounded to documented registers and excluding read-to-clear faults;
+it must retain explicit failed-session admission and independent recovery.
+Do not claim that the static's root cause is established.
