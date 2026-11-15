@@ -1021,5 +1021,15 @@
     "license": "Original source licenses, author, review and signoff retained",
     "hardware_tested": false,
     "promotion_allowed": false
+  },
+  "0225-dsi-ccf-owned-pll-start.patch": {
+    "source": "Local PHY lifecycle correction after bonded warm-wake trace",
+    "local_commit": "41447dd39778fd05a699604caf13e5b2f249902a",
+    "sha256": "fb18e95d20697890206768b9c01ae93a0cc4873606efa1001ea99bcbdd530aa0",
+    "license": "GPL-2.0-only",
+    "scope": "Remove the early direct VCO prepare from PHY enable. Preserve CCF startup after saved PLL configuration and both bonded PHYs are ready; retain XO parking before shutdown.",
+    "hardware_tested": false,
+    "promotion_allowed": false,
+    "limitation": "Physical startup and repeated display wake are required. This does not establish a suspend root cause or deeper-sleep support."
   }
 }

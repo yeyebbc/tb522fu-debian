@@ -837,3 +837,16 @@ checks, physical native startup, all 39 supported modules plus BT, and a fresh
 platform-PM return before considering real sleep. Preserve independent recovery,
 exact graphics rollback and installed CI44. No permanent keepalive votes, new
 rates, guessed PSCI values, idle restrictions or hibernation configuration.
+
+
+## PLL startup lifecycle candidate
+
+CI74 is selected for user-requested experimental use, CI44 retained as rollback.
+User reports static after suspend; a normal DPMS restart reproduces it without
+whole-system sleep. Linear fbcon also remains corrupt. Runtime logging finds
+all five VCO prepares precede panel commands, so no mid-command reset is proven.
+Patch0225 removes the direct VCO prepare from PHY enable: it runs before saved
+PLL restoration and starts the unused slave PLL outside CCF ownership. Keep XO
+parking and ordinary CCF prepare/unprepare.113 patches must replay exactly.
+This is untested; native startup, fresh physical wake and full-driver PM gates
+remain required. Do not claim that the static's root cause is established.

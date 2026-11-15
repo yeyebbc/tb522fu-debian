@@ -6,18 +6,20 @@ Experimental native Linux port for the Lenovo Legion Y900 13 / TB522FU
 directions. This remains a development port with substantial peripheral work
 outstanding.
 
-**CPU and cluster sleep can resume with visible, updating GNOME output, but
-the unconstrained suspend test still restarted the tablet. Reliable unrestricted
-suspend remains unresolved; CI44 remains installed.**
+**Display wake remains unreliable.** CPU and cluster sleep have passed isolated
+constrained tests, but unrestricted sleep restarted the tablet. CI74 is selected
+for requested experimental use, with CI44 retained as rollback. Its display can
+show coloured static after a normal screen-off/on cycle, without system suspend.
+A linear console framebuffer also remains corrupt; this excludes compressed
+GNOME scanout as the sole cause.
 
-**The next candidate restores CI72's boot policy and adds the upstream GCC/CX
-power-domain dependency.** The three SM8750 changes model the clock controller's
-CX supply and enable its existing runtime-PM integration. Local compilation,
-full patch replay and device-tree/schema checks pass; hardware is untested.
-This is a resource-dependency correction to evaluate, not a proven explanation
-of either prior failure. Both `clk_ignore_unused` and `pd_ignore_unused` remain.
-CI44 stays installed; native startup and full-driver platform-PM acceptance
-must pass before any actual-sleep test.
+**The current candidate removes an early PLL-start workaround.** PHY enable
+currently starts the master before restoring its saved PLL configuration and
+also starts the unused slave PLL. The shared master should instead be started
+by the clock framework after both PHYs are ready. XO parking on shutdown is
+retained. This is an untested lifecycle correction, not verified display-wake
+or unrestricted-suspend support. Require native cold boot and camera-verified
+fresh output after repeated screen-off/on cycles before any sleep test.
 
 **CI73 is rejected for a startup regression.** Removing `clk_ignore_unused`
 only from `disk-test` produced a grey panel, delayed USB startup, a GPU IOMMU

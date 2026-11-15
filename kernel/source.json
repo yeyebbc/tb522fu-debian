@@ -115,7 +115,8 @@
     "patches/0219-sm8750-llcc-settings.patch",
     "patches/0222-sm8750-gcc-cx-binding.patch",
     "patches/0223-sm8750-gcc-cx-runtime-pm.patch",
-    "patches/0224-sm8750-gcc-cx-domain.patch"
+    "patches/0224-sm8750-gcc-cx-domain.patch",
+    "patches/0225-dsi-ccf-owned-pll-start.patch"
   ],
-  "patched_tree": "c668507c730ae424ec30ab164f7cc27b24d8913b"
+  "patched_tree": "7ec09d64a0cfcf3241fd7c153785c0e809ddaebb"
 }

@@ -1,0 +1,52 @@
+From 41447dd39778fd05a699604caf13e5b2f249902a Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Sun, 15 Nov 2026 14:37:09 +0800
+Subject: [PATCH] drm/msm/dsi: leave PLL startup to the clock framework
+
+The PHY enable callback starts its PLL before msm_dsi_phy_enable restores the saved PLL configuration. In bonded operation it also starts the unused slave PLL, even though the link clocks are sourced from PLL0. These direct prepares have no matching CCF ownership.
+
+With link clocks parked on XO before PHY shutdown, their next reparent and prepare will start the master PLL after both PHYs are configured and the saved state is restored. Remove the early bring-up workaround and preserve the ordinary CCF prepare/unprepare lifecycle.
+
+This corrects a lifecycle ordering problem; physical display-wake acceptance is still pending.
+
+Prepared with OpenAI Codex (GPT-6).
+
+Signed-off-by: Codex <codex@localhost>
+---
+ drivers/gpu/drm/msm/dsi/phy/dsi_phy_7nm.c | 19 ++++++-------------
+ 1 file changed, 6 insertions(+), 13 deletions(-)
+
+diff --git a/drivers/gpu/drm/msm/dsi/phy/dsi_phy_7nm.c b/drivers/gpu/drm/msm/dsi/phy/dsi_phy_7nm.c
+index c64559eabe8b..9f8fb9cde513 100644
+--- a/drivers/gpu/drm/msm/dsi/phy/dsi_phy_7nm.c
++++ b/drivers/gpu/drm/msm/dsi/phy/dsi_phy_7nm.c
+@@ -1375,20 +1375,13 @@ static int dsi_7nm_phy_enable(struct msm_dsi_phy *phy,
+ 	y900_cphy_lane_override(phy);
+ 
+ 	/*
+-	 * The PLL clock is very likely already marked prepared: modeset runs
+-	 * before pre_enable, so vco_prepare() ran while this PHY was still
+-	 * unpowered, failed to lock and left the clock framework believing it
+-	 * is up.  The PLL core was just reset above, so nothing would ever
+-	 * start it again -- start and lock it explicitly here.
++	 * Leave the PLL stopped until the clock framework prepares it.  The
++	 * caller restores the saved PLL configuration after this function,
++	 * and bonded links must finish configuring both PHYs first.  Starting
++	 * it here also starts the unused slave PLL outside CCF's ownership.
++	 * Host shutdown parks the link clocks on XO before powering down the
++	 * PHY, so the next link-clock prepare starts the shared master PLL.
+ 	 */
+-	ret = dsi_pll_7nm_vco_prepare(&pll->clk_hw);
+-	if (ret) {
+-		DRM_DEV_ERROR(&phy->pdev->dev,
+-			      "%s: PLL start after phy enable failed, %d\n",
+-			      __func__, ret);
+-		return ret;
+-	}
+-	y900_pr("Y900PHY7 PLL restarted after phy enable id=%d\n", phy->id);
+ 
+ 	DBG("DSI%d PHY enabled", phy->id);
+ 
+-- 
+2.47.3
+
