@@ -20,16 +20,31 @@ cycles have produced clear physical images, so those passes do not establish
 reliable unplugged wake. A logging-off/on comparison also showed clear images,
 but user unlocking during its first cycle prevents causal attribution.
 
-**The next diagnostic adds runtime tracing only to disk-test.** The112-patch
-kernel source and device tree are unchanged from CI78. Dynamic function and
-event tracing are available but inactive at boot; installed and RAM profiles
-retain their original tracing configuration. A bounded private probe will
-record selected display, clock and power transitions into memory, with local
-persistence and independent Android recovery. No new MMIO, reset, delay,
-frequency, voltage, latency restriction or functional driver correction is
-included. This is instrumentation for the intermittent display failure, not a
-wake fix. Do not repeat real sleep on the unchanged known-reset source or
-promote from compilation or a single physical pass.
+**CI79 reproduced unplugged Lock/wake failure, not system suspend.** A connected
+baseline returned clear pixels; the unplugged Lock cycle stayed black with
+backlight on even with a scoped500us CPU/system wakeup constraint. Cluster
+counters did not advance during that measured window. Matched connected and
+offline cycles had304 identical clock API events; a later automatic reblank is
+excluded from that comparison. This does not measure physical clock/power state
+or exclude device/shared-domain faults. Exact Android/CI78 recovery passed.
+
+**CI80 backports a real GMU platform driver and component ownership.** This
+tablet has the same pending-GMU supplier warnings as an
+[SM8750 report](https://lkml.iu.edu/2610.2/03310.html). The
+[original v2 series](https://patchew.org/linux/20261030-gmu-sync-state-fix-v2-0-89d3082d97af@oss.qualcomm.com/)
+is adapted to this older source with teardown/error fixes, not blindly imported.
+Original authors, message IDs and patch identities are in `patches/sources.json`.
+The full ARM64 MSM object builds;20 actual-C resource/error cases pass and three
+old unsafe function bodies fail the same runtime oracles. Only inherited
+DPU/PHY build warnings remain. This is not hardware wake acceptance.
+The full113-patch stack replays to the committed tree and all12 recipe tests
+pass. Full CI artifacts and hardware tests are still required.
+
+The candidate retains CI78's diagnostic idle topology and CI79's disk-only
+tracing; installed tracing stays off. Require artifact audit, native/all-driver
+cold boot, actual GMU binding and physical fresh-frame wake before any separate
+RTC-gated real suspend test. CI78 remains selected. No permanent resource votes,
+guessed firmware values, reset commands or promotion from compilation.
 
 The preceding candidate backported [480ba24aa340](https://github.com/torvalds/linux/commit/480ba24aa34031c898d0a711405664cd947bbee4),
 which calculates display memory bandwidth from the new state. CI76 passed one

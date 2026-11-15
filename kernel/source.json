@@ -115,7 +115,8 @@
     "patches/0219-sm8750-llcc-settings.patch",
     "patches/0225-dsi-ccf-owned-pll-start.patch",
     "patches/0226-dpu-pending-state-bandwidth.patch",
-    "patches/0220-tb522fu-ss3-isolation-diagnostic.patch"
+    "patches/0220-tb522fu-ss3-isolation-diagnostic.patch",
+    "patches/0227-gmu-component-lifetimes-backport.patch"
   ],
-  "patched_tree": "68bc2e5c5377485017d86ab5deaf47dec8f2475d"
+  "patched_tree": "05bf57491bda0c940a4db84485cf403f6c6f9b6e"
 }

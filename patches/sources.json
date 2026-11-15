@@ -1046,5 +1046,70 @@
     "hardware_tested": false,
     "promotion_allowed": false,
     "limitation": "Missing upstream correctness fix; causal relevance to intermittent wake requires physical tests. No voltage, rate, idle topology or board wiring changes."
+  },
+  "0227-gmu-component-lifetimes-backport.patch": {
+    "source": "Combined adapted backport of upstream GMU sync-state v2, plus validated lifetime/error corrections",
+    "source_url": "https://patchew.org/linux/20261030-gmu-sync-state-fix-v2-0-89d3082d97af@oss.qualcomm.com/",
+    "review_url": "https://sashiko.dev/#/patchset/20261030-gmu-sync-state-fix-v2-0-89d3082d97af@oss.qualcomm.com?part=6",
+    "same_soc_report": "https://lkml.iu.edu/2610.2/03310.html",
+    "local_commit": "1a897a3eb8f7aaa027e9bcec6270c626c65c3fc9",
+    "sha256": "28ff8d0e47d0fcfdeedb4d446f85108ca1e90c0e29234bb9771c7aa31f399ee8",
+    "license": "Original GPL source headers retained; original authors/message IDs below; this is not an unchanged import",
+    "original_patches": [
+      {
+        "message_id": "<20261030-gmu-sync-state-fix-v2-1-89d3082d97af@oss.qualcomm.com>",
+        "author": "Akhil P Oommen <akhilpo@oss.qualcomm.com>",
+        "original_patch_id": "913b2c86e42fb1086920fb84c015094b8618ffa7",
+        "original_patch_sha256": "4bbe0414d2a87f48bf15b0b009b6ac0bdc9590a3c6a4a26d5492ed2680d5fa54"
+      },
+      {
+        "message_id": "<20261030-gmu-sync-state-fix-v2-2-89d3082d97af@oss.qualcomm.com>",
+        "author": "Akhil P Oommen <akhilpo@oss.qualcomm.com>",
+        "original_patch_id": "2bfb2ff2b6e0b10dd9a8195a7a49cbca96b44202",
+        "original_patch_sha256": "ad23a6313798b11a643df0786fdeb2336b24902274e859f01026bda7e7231d47"
+      },
+      {
+        "message_id": "<20261030-gmu-sync-state-fix-v2-3-89d3082d97af@oss.qualcomm.com>",
+        "author": "Akhil P Oommen <akhilpo@oss.qualcomm.com>",
+        "original_patch_id": "8882844e414d4875dffcf9f7e4ae4b503893fd79",
+        "original_patch_sha256": "798ff2ea8747dfb93e7f55662f4cd84f13f0788b668b304c99a2f5438aa43b05"
+      },
+      {
+        "message_id": "<20261030-gmu-sync-state-fix-v2-4-89d3082d97af@oss.qualcomm.com>",
+        "author": "Akhil P Oommen <akhilpo@oss.qualcomm.com>",
+        "original_patch_id": "19a0d6d88b2f9c11aa363a3004ef29a8a2366350",
+        "original_patch_sha256": "aedbbee0f462db93c01d69e3a1773a5c5eebed66d245a8d7b3c3fc0f0707fe86"
+      },
+      {
+        "message_id": "<20261030-gmu-sync-state-fix-v2-5-89d3082d97af@oss.qualcomm.com>",
+        "author": "Akhil P Oommen <akhilpo@oss.qualcomm.com>",
+        "original_patch_id": "9637b9a5beef62bee607abb55f660e81f775828c",
+        "original_patch_sha256": "0ed40088206e9c06de7609e589c49d323894e93eb13bea52f200f9b0b8910e37"
+      },
+      {
+        "message_id": "<20261030-gmu-sync-state-fix-v2-6-89d3082d97af@oss.qualcomm.com>",
+        "author": "Akhil P Oommen <akhilpo@oss.qualcomm.com>",
+        "original_patch_id": "7e87d360dfdc16299e785e220894dc5bf553dda5",
+        "original_patch_sha256": "33600f1800b457dc589b51386cce67c02bf479988addba5a0a3f047bc6dec248"
+      },
+      {
+        "message_id": "<20261030-gmu-sync-state-fix-v2-7-89d3082d97af@oss.qualcomm.com>",
+        "author": "Haitao Xu <haitao.xu@oss.qualcomm.com>",
+        "original_patch_id": "24d97880951284dd7010b484b5166e25350d472f",
+        "original_patch_sha256": "c491c1eae6d20f33379bb3fde3b75eebc1f6ad5486e1af26d0f565ee0ecd7d1b"
+      },
+      {
+        "message_id": "<20261030-gmu-sync-state-fix-v2-8-89d3082d97af@oss.qualcomm.com>",
+        "author": "Haitao Xu <haitao.xu@oss.qualcomm.com>",
+        "original_patch_id": "7875479012cf3c1e2127e8d4b55f6755baa5cb00",
+        "original_patch_sha256": "ab6f54f5b1395fc5ceebecf35404c2d3c2df14379c02c0cd17b823b5783999e4"
+      }
+    ],
+    "adaptation": "Preserve explicit separate_gpu_kms policy, older node eligibility and local display diagnostics. The newer automatic topology selector and MX link are absent on this base. Clean API/caller cutover; no compatibility alias.",
+    "safety_corrections": "Reject missing GMU before allocation; stop timer and release/null all partial preemption BOs before GPUVM cleanup; no suspend after GMU unbind; remove devfreq before QoS; common GMU mutex/runtime-PM ownership with balanced bind errors.",
+    "validation": "Complete ARM64 MSM object W=1 build passes with two inherited DPU/PHY warnings; strict code checkpatch 0E/0W/0C; 20 actual-C resource/error cases pass and three original unsafe functions fail runtime resource oracles.",
+    "hardware_tested": false,
+    "promotion_allowed": false,
+    "limitation": "Exact pending-GMU warning match is not proof of display or suspend cause. First require native/all-driver startup and bound GMU/provider state, then physical fresh-frame wake and separate RTC-gated actual sleep. CI78 remains selected."
   }
 }
