@@ -1031,5 +1031,20 @@
     "hardware_tested": false,
     "promotion_allowed": false,
     "limitation": "Physical startup and repeated display wake are required. This does not establish a suspend root cause or deeper-sleep support."
+  },
+  "0226-dpu-pending-state-bandwidth.patch": {
+    "source": "Upstream Linux bandwidth-state correction, adapted only for existing integration logging",
+    "source_commit": "480ba24aa34031c898d0a711405664cd947bbee4",
+    "source_url": "https://github.com/torvalds/linux/commit/480ba24aa34031c898d0a711405664cd947bbee4",
+    "author": "Joonhoe Kim <26rote@gmail.com>",
+    "local_commit": "fbb8a20ccad1820eec03a8bfc354d252ad5ad57f",
+    "sha256": "8a062510364c0b282321dddd164bd524b29bb97b56e707dc2f0d80c5c7680c51",
+    "original_patch_id": "a0ba8823dc50943f7fb19a60a3ddd8328147354c",
+    "imported_patch_id": "cc9ebe197a615d4030f1a0c3605bf7dfc0c2b622",
+    "adaptation": "Keep local Y900BWSUM/Y900BWCALC logs and use state->crtc for the first log; original algorithm, authorship, date, review and signoffs retained.",
+    "license": "GPL-2.0-only",
+    "hardware_tested": false,
+    "promotion_allowed": false,
+    "limitation": "Missing upstream correctness fix; causal relevance to intermittent wake requires physical tests. No voltage, rate, idle topology or board wiring changes."
   }
 }

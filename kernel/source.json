@@ -116,7 +116,8 @@
     "patches/0222-sm8750-gcc-cx-binding.patch",
     "patches/0223-sm8750-gcc-cx-runtime-pm.patch",
     "patches/0224-sm8750-gcc-cx-domain.patch",
-    "patches/0225-dsi-ccf-owned-pll-start.patch"
+    "patches/0225-dsi-ccf-owned-pll-start.patch",
+    "patches/0226-dpu-pending-state-bandwidth.patch"
   ],
-  "patched_tree": "7ec09d64a0cfcf3241fd7c153785c0e809ddaebb"
+  "patched_tree": "c91acf0dc479cf2c9a21a1039350c4ec9b295401"
 }

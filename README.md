@@ -10,17 +10,28 @@ outstanding.
 constrained tests, but unrestricted sleep restarted the tablet. CI74 is selected
 for requested experimental use, with CI44 retained as rollback. Its display can
 show coloured static after a normal screen-off/on cycle, without system suspend.
-A linear console framebuffer also remains corrupt; this excludes compressed
-GNOME scanout as the sole cause.
+On CI74 a linear console framebuffer also remains corrupt; this excludes
+compressed GNOME scanout as the sole cause for that kernel.
+
+**The next candidate imports an upstream bandwidth-state fix.** Patch0226
+backports [480ba24aa340](https://github.com/torvalds/linux/commit/480ba24aa34031c898d0a711405664cd947bbee4),
+which calculates the display's memory-bandwidth requirement from the new state
+instead of the disabled, committed state. This corrects a missing upstream fix
+in our source; its role in this tablet's wake failure is unproven. It changes no
+board wiring, clock/voltage values, idle policy or accepted peripheral support.
+The114-patch source is prepared for bounded physical testing, without installation.
 
 **CI75 is rejected for display wake.** Removing the early PLL-start workaround
-passed one camera-recorded greeter wake, but the signed-in desktop stayed black
-after screen-off/on while GNOME continued GPU rendering. A separate platform-PM
-callback test restarted the tablet before any real sleep request. The lifecycle
-correction is insufficient; neither artifact is accepted for installation.
-Android restoration, the selected CI74 image, current graphics, filesystem,
-temporary timers and host cleanup were verified. Preserve the isolated greeter
-pass without treating it as general wake support. No unchanged retry.
+passed two camera-recorded greeter wakes and one later signed-in desktop wake,
+but two other signed-in tests stayed black after screen-off/on while GNOME
+continued rendering. Wake is intermittent. In the passing desktop run, a linear
+console was also visible without restarting DSI; the desktop had already woken
+before that switch, so it does not isolate the cause. Safe readback shows both
+backlight chips retain their configuration in passing and failing scenarios.
+A separate platform-PM callback test restarted the tablet before any real sleep
+request. Neither CI75 artifact is accepted for installation. Android, selected
+CI74, current graphics, filesystem, temporary timers and host cleanup are verified.
+No unchanged retry or general suspend-support claim.
 
 Recipe `6325a449fb9d04194222aed507b6381f7d173f8f`, kernel source
 `41447dd39778fd05a699604caf13e5b2f249902a`, bounded boot SHA256

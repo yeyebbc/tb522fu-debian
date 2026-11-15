@@ -856,3 +856,16 @@ retry. A changed configuration-retention readback may use the existing regmap
 interface, bounded to documented registers and excluding read-to-clear faults;
 it must retain explicit failed-session admission and independent recovery.
 Do not claim that the static's root cause is established.
+
+
+## Pending-state bandwidth candidate
+
+CI75 readbacks found configuration retention in both passing greeter and failed
+signed-in wakes. A later signed-in wake passed before its linear-console control;
+this is intermittent behavior, not proof that VT switching fixes it. Keep both
+failures and passes. Current candidate adds upstream480ba24aa340 as0226,
+adapted only to preserve existing diagnostic logs. Compute BW from the checked
+CRTC state; retain four-pipeline clock math and all other114-patch inputs.
+No board, voltage/rate, idle-policy or installed-image change. Require exact tree
+replay, ARM64 object, recipe/artifact checks and physical full-driver wake testing.
+Preserve CI74 and CI44 rollback. No promotion from a build or isolated pass.
