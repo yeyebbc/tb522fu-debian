@@ -901,3 +901,24 @@ permanent sleep policy or accepted fix. Require exact replay/DT guards/all39/BT/
 physical callback return before one actual RTC cycle. Counter names for the
 default root state must not be mislabeled SS3. Preserve selectedCI74 and current
 graphics, independent clean/EDL return and exact Android recovery. No subagents.
+
+
+## Buffered display lifecycle tracing diagnostic
+
+CI78 was selected at the user's request for experimental offline testing; CI74
+and CI44 rollback remain. Its full-driver callback pass did not prevent a reset
+during real unrestricted s2idle. Later offline black was reproduced without
+system sleep; safety masks remain. Connected DPMS passes, including a logging
+comparison interrupted by user unlock, do not revoke that failure.
+
+The next build changes only disk-test tracing configuration. Preserve the exact
+112-patch CI78 source/tree/DT, all drivers, boot flags and independent return.
+Enable FTRACE/FUNCTION_TRACER/FUNCTION_GRAPH_TRACER with dynamic tracing and
+events, no startup selftest or boot activation. Installed/RAM retain FTRACE off.
+A private bounded probe must select only needed lifecycle functions and clock/
+power events, archive buffer/loss counters locally and restore tracing state.
+No broad per-frame graph, register dump, additional console logging, guessed
+hardware change or actual sleep on this unchanged reset source. Compilation
+and trace collection are not physical wake acceptance. Preserve native camera
+review, exact Android recovery, selected image, graphics, filesystem and host
+cleanup. No subagents.

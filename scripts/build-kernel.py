@@ -226,6 +226,15 @@ def main():
     run([source / 'scripts/config', '--file', out / '.config',
          '--enable' if args.profile == 'disk-test' else '--disable',
          'PM_QOS_CPU_SYSTEM_WAKEUP'])
+    # Buffer-only tracing for the intermittent display wake investigation.
+    # Keep this instrumentation out of installed/RAM profiles. No tracer or
+    # event is selected at boot; a bounded private probe owns activation.
+    run([source / 'scripts/config', '--file', out / '.config',
+         '--enable' if args.profile == 'disk-test' else '--disable', 'FTRACE'])
+    if args.profile == 'disk-test':
+        run([source / 'scripts/config', '--file', out / '.config',
+             '--enable', 'FUNCTION_TRACER', '--enable', 'FUNCTION_GRAPH_TRACER',
+             '--disable', 'FTRACE_STARTUP_TEST'])
     if disk:
         fragment = (ROOT / 'configs/ram-probe.fragment').read_text()
         cmdline = json.loads(re.search(r'^CONFIG_CMDLINE=(.*)$', fragment, re.M)[1])
@@ -314,6 +323,16 @@ def main():
     qos_setting = ('CONFIG_PM_QOS_CPU_SYSTEM_WAKEUP=y' if args.profile == 'disk-test'
                    else '# CONFIG_PM_QOS_CPU_SYSTEM_WAKEUP is not set')
     assert qos_setting in config, 'Wakeup QoS must be limited to the diagnostic profile'
+    if args.profile == 'disk-test':
+        for setting in ('CONFIG_FTRACE=y', 'CONFIG_FUNCTION_TRACER=y',
+                        'CONFIG_FUNCTION_GRAPH_TRACER=y', 'CONFIG_DYNAMIC_FTRACE=y',
+                        'CONFIG_TRACING=y', 'CONFIG_EVENT_TRACING=y',
+                        '# CONFIG_FTRACE_STARTUP_TEST is not set'):
+            assert setting in config, setting
+    else:
+        assert '# CONFIG_FTRACE is not set' in config
+    assert not re.search(r'(?:^| )(?:ftrace|ftrace_filter|ftrace_graph_filter|trace_event|tracing_on)=',
+                         cmdline), 'Tracing must not start from the boot command line'
     assert ('qcom_scm.probe_edl_return=1' in cmdline) == (args.profile != 'installed')
     blocked = {name for value in re.findall(r'modprobe.blacklist=([^ \"]+)', cmdline)
                for name in value.split(',')}
@@ -492,6 +511,8 @@ def main():
                 'busybox_sha256': sha(args.busybox),
                 'patch_sha256': {p: sha(ROOT / p) for p in spec['applied_patches']},
                 'hardware_tested': False,
+                'runtime_tracing_available': args.profile == 'disk-test',
+                'runtime_tracing_boot_enabled': False,
                 'return_mode': ('normal restart; no test timer' if args.profile == 'installed' else
                     f'EDL; kernel timer {seconds} seconds from SCM readiness; host stock restore required'),
                 'test_stage': 'ram-desktop' if args.profile == 'ram' else args.profile,
