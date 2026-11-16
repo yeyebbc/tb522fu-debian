@@ -950,3 +950,11 @@ Require artifact audit, native/all39/BT/touch/physical connected wake before
 a separate battery action. No actual system sleep or installed promotion.
 This is the final refinement in this direction; change mechanism if it fails.
 No subagents.
+
+CI84 is now rejected: a repeat connected wake produced sustained invalid touch
+packets after firmware resume, before any battery action. The first connected
+physical pass does not revoke this accepted-driver failure. A separate producer
+JSON/newline interleaving defect also stopped the host collector; preserve it
+separately. No unchanged repeat or installation. The panel-power direction has
+reached three unsuccessful refinements and is closed. Preserve CI78, all39,
+secure pins and the rejected source; choose an independent mechanism next.

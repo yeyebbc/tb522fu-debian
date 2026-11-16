@@ -105,14 +105,18 @@ negative controls pass locally. CI83 showed clear startup and connected wake,
 but the battery Lock/Space wake stayed physically black. That image is rejected.
 CI78 stays installed.
 
-**The next candidate adds the missing panel I/O power enable on GPIO69.**
+**CI84 tested the missing panel I/O power enable on GPIO69 and is rejected.**
 Stock raises IOVDD after host preparation, waits1ms before panel commands,
 and lowers it5ms after the other panel supplies. The panel driver preserves
 the bootloader-enabled state at probe, applies that sequence and unwinds it
 after a supply failure. GPIO88/98, KTZ registers, voltages, clocks and touch
-phase remain unchanged. This is the final panel-power refinement before a
-different investigation direction if it fails. Hardware acceptance is pending;
-compilation does not establish reliable battery wake or suspend.
+phase remain unchanged. One connected wake returned clear GNOME. A second
+connected test produced a sustained touch-packet checksum storm after firmware
+resume, failing the accepted-driver gate before any battery action. An
+independent log-record interleaving fault also stopped the host collector.
+Preserve both failures; the earlier pass does not establish reliable wake.
+The panel-power direction is closed at three unsuccessful refinements. Do not
+install or repeat CI84 unchanged. CI78 remains selected.
 
 The candidate retains CI78's diagnostic idle topology and CI79's disk-only
 tracing; installed tracing stays off. Require artifact audit, native/all-driver
