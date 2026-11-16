@@ -507,7 +507,7 @@ def main():
     recipe_files = ['configs/' + s for s in scripts] + [
         'configs/ram-probe.fragment', 'configs/udhcpd.conf', 'scripts/build-kernel.py',
         'scripts/camera_checks.py', 'scripts/display_checks.py', 'scripts/gmu_checks.py',
-        'scripts/touch_checks.py']
+        'scripts/panel_power_checks.py']
     seconds = 900 if args.profile == 'disk-test' else 600
     manifest = {'profile': args.profile, 'source': spec, 'compiler': capture([compiler, '--version']).splitlines()[0],
                 'recipe_commit': recipe_commit,
