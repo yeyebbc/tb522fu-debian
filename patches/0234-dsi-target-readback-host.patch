@@ -1,0 +1,99 @@
+From ddd529594c69e01be833a871835557f3a0d4f539 Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Mon, 16 Nov 2026 23:19:17 +0800
+Subject: [PATCH] drm/msm/dsi: target the prepared host for readback commands
+
+The manager prepares only the requested host for reads, but its lower
+DMA trigger still applies bonded write synchronization. A read on host0
+therefore skips the trigger and host1 can trigger an unprepared peer.
+
+Carry the readback context through the static TX helpers and commit to
+the requested host directly. Both the maximum-return-packet command and
+the subsequent read need this context, because the former has no RX
+buffer. Keep ordinary writes on the existing bonded trigger path and
+preserve transfer completion, timeouts and command scheduling.
+
+This repairs the diagnostic transport; it does not establish panel
+readback support or fix the battery display-wake failure.
+---
+ drivers/gpu/drm/msm/dsi/dsi_host.c | 22 ++++++++++++++--------
+ 1 file changed, 14 insertions(+), 8 deletions(-)
+
+diff --git a/drivers/gpu/drm/msm/dsi/dsi_host.c b/drivers/gpu/drm/msm/dsi/dsi_host.c
+index e1671b8e2c2e..412bb29a5c95 100644
+--- a/drivers/gpu/drm/msm/dsi/dsi_host.c
++++ b/drivers/gpu/drm/msm/dsi/dsi_host.c
+@@ -1527,7 +1527,7 @@ int dsi_dma_base_get_v2(struct msm_dsi_host *msm_host, uint64_t *dma_base)
+ 	return 0;
+ }
+ 
+-static int dsi_cmd_dma_tx(struct msm_dsi_host *msm_host, int len)
++static int dsi_cmd_dma_tx(struct msm_dsi_host *msm_host, int len, bool readback)
+ {
+ 	const struct msm_dsi_cfg_handler *cfg_hnd = msm_host->cfg_hnd;
+ 	int ret;
+@@ -1544,8 +1544,14 @@ static int dsi_cmd_dma_tx(struct msm_dsi_host *msm_host, int len)
+ 
+ 	dsi_wait4video_eng_busy(msm_host);
+ 
+-	triggered = msm_dsi_manager_cmd_xfer_trigger(
+-						msm_host->id, dma_base, len);
++	/* Readback prepares only this host, including the return-packet command. */
++	if (readback) {
++		msm_dsi_host_cmd_xfer_commit(&msm_host->base, dma_base, len);
++		triggered = true;
++	} else {
++		triggered = msm_dsi_manager_cmd_xfer_trigger(msm_host->id,
++							     dma_base, len);
++	}
+ 	y900_pr("Y900XTRIG id=%d base=%#llx len=%d trig=%d\n", msm_host->id,
+ 		(unsigned long long)dma_base, len, triggered);
+ 	if (triggered) {
+@@ -1618,7 +1624,7 @@ static int dsi_cmd_dma_rx(struct msm_dsi_host *msm_host,
+ }
+ 
+ static int dsi_cmds2buf_tx(struct msm_dsi_host *msm_host,
+-				const struct mipi_dsi_msg *msg)
++			 const struct mipi_dsi_msg *msg, bool readback)
+ {
+ 	int len, ret;
+ 	int bllp_len = msm_host->mode->hdisplay *
+@@ -1647,7 +1653,7 @@ static int dsi_cmds2buf_tx(struct msm_dsi_host *msm_host,
+ 		return -EINVAL;
+ 	}
+ 
+-	ret = dsi_cmd_dma_tx(msm_host, len);
++	ret = dsi_cmd_dma_tx(msm_host, len, readback);
+ 	if (ret < 0) {
+ 		pr_err("%s: cmd dma tx failed, type=0x%x, data0=0x%x, len=%d, ret=%d\n",
+ 			__func__, msg->type, (*(u8 *)(msg->tx_buf)), len, ret);
+@@ -2353,7 +2359,7 @@ int msm_dsi_host_cmd_tx(struct mipi_dsi_host *host,
+ {
+ 	struct msm_dsi_host *msm_host = to_msm_dsi_host(host);
+ 
+-	return dsi_cmds2buf_tx(msm_host, msg);
++	return dsi_cmds2buf_tx(msm_host, msg, false);
+ }
+ 
+ int msm_dsi_host_cmd_rx(struct mipi_dsi_host *host,
+@@ -2395,7 +2401,7 @@ int msm_dsi_host_cmd_rx(struct mipi_dsi_host *host,
+ 		DBG("rlen=%d pkt_size=%d rx_byte=%d",
+ 			rlen, pkt_size, rx_byte);
+ 
+-		ret = dsi_cmds2buf_tx(msm_host, &max_pkt_size_msg);
++		ret = dsi_cmds2buf_tx(msm_host, &max_pkt_size_msg, true);
+ 		if (ret < 2) {
+ 			pr_err("%s: Set max pkt size failed, %d\n",
+ 				__func__, ret);
+@@ -2412,7 +2418,7 @@ int msm_dsi_host_cmd_rx(struct mipi_dsi_host *host,
+ 			wmb(); /* release cleared status before transfer */
+ 		}
+ 
+-		ret = dsi_cmds2buf_tx(msm_host, msg);
++		ret = dsi_cmds2buf_tx(msm_host, msg, true);
+ 		if (ret < 0) {
+ 			pr_err("%s: Read cmd Tx failed, %d\n", __func__, ret);
+ 			return ret;
+-- 
+2.47.3
+

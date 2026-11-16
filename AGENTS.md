@@ -930,8 +930,10 @@ The external panel-power route closed after CI83 battery black and CI84
 sustained invalid touch reports after a repeat connected wake. Preserve these
 rejections and selected CI78. This branch is CI80 plus one opt-in, BOE-only
 standard DCS0A read after successful enable, through physical host0. Other
-profiles default off; only disk-test adds the module parameter. No GPIO,
-voltage, clock, packet, firmware or touch-phase change.114 patches replay.
+profiles default off; only disk-test adds the module parameter. The original CI85 transport was rejected before hardware; CI86 carries read
+context through both return-packet and read commands to the prepared host.
+Ordinary writes retain bonded broadcast and original completion/error handling.
+No GPIO, voltage, clock, init packet, firmware or touch-phase change.115 patches replay.
 Actual-C enable/error/response tests and negatives protect the diagnostic.
 A cold successful byte with plausible awake bits is required before any DPMS;
 stock TE ESD is not proof of DCS read support. Failed/short reads are unavailable

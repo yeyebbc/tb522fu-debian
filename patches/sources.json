@@ -1111,5 +1111,25 @@
     "hardware_tested": false,
     "promotion_allowed": false,
     "limitation": "Exact pending-GMU warning match is not proof of display or suspend cause. First require native/all-driver startup and bound GMU/provider state, then physical fresh-frame wake and separate RTC-gated actual sleep. CI78 remains selected."
+  },
+  "0234-dsi-target-readback-host.patch": {
+    "source": "Local correction to the existing bonded DSI read path, preserving normal write broadcast",
+    "local_commit": "ddd529594c69e01be833a871835557f3a0d4f539",
+    "sha256": "e237290975c67a4b86fdd5f015cd0d61b96805969d045630b9a1894e901a0daf",
+    "license": "GPL-2.0-only; original source header retained",
+    "validation": "Actual manager, host read/write and static DMA functions compiled in routing/error harness; original and seven malformed paths fail runtime oracles. ARM64 W=1 host/panel and target DT compile.",
+    "hardware_tested": false,
+    "promotion_allowed": false,
+    "limitation": "Read support on this BOE panel remains unproved. A valid cold response precedes any screen cycle; transport correction does not fix battery wake."
+  },
+  "0233-nt36536-boe-power-mode-probe.patch": {
+    "source": "Local opt-in BOE panel power-mode observation through the standard MIPI DSI API",
+    "local_commit": "839abfa95a7260d193257d594bd06860ba071fe1",
+    "sha256": "f63aa644d6ae0f7a1d3f7036487b442f24243d1c3567fd4edf50d61c08c28c18",
+    "license": "GPL-2.0-only; original panel source header retained",
+    "validation": "Actual enable, opt-in, board match, ordering and explicit response/error tests.",
+    "hardware_tested": false,
+    "promotion_allowed": false,
+    "limitation": "Requires0234 for targeted bonded read transport. Board read support remains unproved; CI85 alone was rejected before boot."
   }
 }

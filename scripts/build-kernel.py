@@ -19,6 +19,7 @@ from camera_checks import CAMERA_MODULES, check_camera_wiring
 from display_checks import DISPLAY_MODULES, check_native_display_wiring, check_panel_packets
 from gmu_checks import check_gmu_lifecycle
 from panel_readback_checks import check_panel_readback
+from dsi_readback_checks import check_dsi_readback
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -143,6 +144,7 @@ def main():
     check_panel_packets(source)
     check_gmu_lifecycle(source)
     check_panel_readback(source)
+    check_dsi_readback(source)
     run(['python3', ROOT / 'tests/check_ath12k_reg_ranges.py', source])
     epoch = capture(['git', '-C', source, 'show', '-s', '--format=%ct', 'HEAD'])
     os.environ.update(SOURCE_DATE_EPOCH=epoch, KBUILD_BUILD_TIMESTAMP='@' + epoch,
@@ -509,7 +511,7 @@ def main():
     recipe_files = ['configs/' + s for s in scripts] + [
         'configs/ram-probe.fragment', 'configs/udhcpd.conf', 'scripts/build-kernel.py',
         'scripts/camera_checks.py', 'scripts/display_checks.py', 'scripts/gmu_checks.py',
-        'scripts/panel_readback_checks.py']
+        'scripts/panel_readback_checks.py', 'scripts/dsi_readback_checks.py']
     seconds = 900 if args.profile == 'disk-test' else 600
     manifest = {'profile': args.profile, 'source': spec, 'compiler': capture([compiler, '--version']).splitlines()[0],
                 'recipe_commit': recipe_commit,

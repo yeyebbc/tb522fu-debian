@@ -11,10 +11,13 @@ direction is closed: CI83 stayed black on battery and CI84 later failed the
 touch-driver gate before its battery action. Those images remain rejected.
 This branch returns to the CI80 driver baseline and adds an opt-in standard
 DCS power-mode read through the primary physical host after successful panel
-enable. It changes no GPIO, voltage, clock or initialization packet.
+enable. CI85 was rejected before boot: its lower DMA trigger still skipped
+primary-host reads. CI86 targets both the return-packet command and read at
+the prepared host, preserving ordinary write broadcast and completion errors.
+It changes no GPIO, voltage, clock or initialization packet.
 
 Only disk-test enables the readback parameter. Other profiles keep it off.
-The actual enable/response/error checks and negative controls run during every
+The actual manager/host/DMA routing and enable/response/error checks run during every
 build and are included in artifact provenance. Support for this BOE panel's
 readback is unproved: require a usable cold response before any screen cycle.
 A short or failed read is an unavailable observation. Physical battery wake
