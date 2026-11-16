@@ -38,8 +38,8 @@ The full ARM64 MSM object builds;20 actual-C resource/error cases pass and three
 old unsafe function bodies fail the same runtime oracles. Only inherited
 DPU/PHY build warnings remain. This is not hardware wake acceptance.
 The full113-patch stack replays to the committed tree and all12 recipe tests
-pass. Both CI80 profiles and disk-artifact audits now pass; physical wake and
-suspend acceptance remain pending.
+pass. Both CI80 profiles and disk-artifact audits pass; hardware has not
+established reliable display wake or actual suspend.
 
 Hardware now confirms `adreno_gmu` binds and all three formerly blocked clock
 suppliers report synchronized state. One connected greeter DPMS cycle returns
@@ -47,6 +47,16 @@ clear physical pixels and focus changes. A late login retires the GDM bus and
 fails the final UI receipt; that failure is preserved, not counted as a complete
 software pass. Battery Lock/wake and actual sleep remain open. Lock is not
 Suspend; the existing sleep-target safety masks have not been removed.
+
+A signed-in connected DPMS comparison also restores clear pixels. The ensuing
+unplugged GNOME Lock comparison remains black after USB reconnect and Space;
+the user reports backlight on, and camera frames show black output before
+clean return. All three suppliers remain synchronized in30 local samples and
+the actual-suspend success counter stays zero. The150-second manual window
+expires before the completion receipt; its transport refusal and raw probe
+failure remain separate from physical rejection. Exact stock/CI78/graphics and
+all recovery cleanup pass. No unchanged repeat or promotion. This fixes GMU
+ownership, not the battery-wake failure; clock readbacks are not wire proof.
 
 The candidate retains CI78's diagnostic idle topology and CI79's disk-only
 tracing; installed tracing stays off. Require artifact audit, native/all-driver
