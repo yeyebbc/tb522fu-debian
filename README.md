@@ -38,7 +38,15 @@ The full ARM64 MSM object builds;20 actual-C resource/error cases pass and three
 old unsafe function bodies fail the same runtime oracles. Only inherited
 DPU/PHY build warnings remain. This is not hardware wake acceptance.
 The full113-patch stack replays to the committed tree and all12 recipe tests
-pass. Full CI artifacts and hardware tests are still required.
+pass. Both CI80 profiles and disk-artifact audits now pass; physical wake and
+suspend acceptance remain pending.
+
+Hardware now confirms `adreno_gmu` binds and all three formerly blocked clock
+suppliers report synchronized state. One connected greeter DPMS cycle returns
+clear physical pixels and focus changes. A late login retires the GDM bus and
+fails the final UI receipt; that failure is preserved, not counted as a complete
+software pass. Battery Lock/wake and actual sleep remain open. Lock is not
+Suspend; the existing sleep-target safety masks have not been removed.
 
 The candidate retains CI78's diagnostic idle topology and CI79's disk-only
 tracing; installed tracing stays off. Require artifact audit, native/all-driver

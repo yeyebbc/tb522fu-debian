@@ -1108,8 +1108,9 @@
     "adaptation": "Preserve explicit separate_gpu_kms policy, older node eligibility and local display diagnostics. The newer automatic topology selector and MX link are absent on this base. Clean API/caller cutover; no compatibility alias.",
     "safety_corrections": "Reject missing GMU before allocation; stop timer and release/null all partial preemption BOs before GPUVM cleanup; no suspend after GMU unbind; remove devfreq before QoS; common GMU mutex/runtime-PM ownership with balanced bind errors.",
     "validation": "Complete ARM64 MSM object W=1 build passes with two inherited DPU/PHY warnings; strict code checkpatch 0E/0W/0C; 20 actual-C resource/error cases pass and three original unsafe functions fail runtime resource oracles.",
-    "hardware_tested": false,
+    "hardware_tested": true,
+    "hardware_result": "CI80 native/all39+BT and real adreno_gmu binding pass; GCC/GPUCC/GXCLKCTL each reach synchronized state. One connected greeter DPMS cycle physically returns clear pixels/focus and later user desktop. A late login retires the old GDM bus and fails the final UI receipt; raw software failure retained. Battery Lock/wake and actual sleep not tested; CI78 preserved.",
     "promotion_allowed": false,
-    "limitation": "Exact pending-GMU warning match is not proof of display or suspend cause. First require native/all-driver startup and bound GMU/provider state, then physical fresh-frame wake and separate RTC-gated actual sleep. CI78 remains selected."
+    "limitation": "One context-confounded connected physical pass is not a reliable wake or suspend fix. Stable user-session battery Lock/wake, repeated physical output and a separate RTC-gated actual sleep remain required. CI78 remains selected."
   }
 }
