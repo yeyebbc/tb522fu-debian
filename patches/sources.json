@@ -264,7 +264,7 @@
     "local_commit": "6a06f2e614b201e20969d5e505c841dd7d951269",
     "adaptation": "Original patch and attribution retained; context refreshed for pinned base.",
     "source": "https://lore.kernel.org/all/20261011074433.9187-1-franzelfranzel@gmail.com/",
-    "status": "Pending upstream patch by Fran\u00e7ois Roux; not claimed merged"
+    "status": "Pending upstream patch by François Roux; not claimed merged"
   },
   "0150-q6apm-capture-trigger-lifecycle.patch": {
     "sha256": "94b4ca28bfe229b56f821c0c632bd1cd06d4063a95c42accd8e95ea120705bf1",
@@ -1111,5 +1111,15 @@
     "hardware_tested": false,
     "promotion_allowed": false,
     "limitation": "Exact pending-GMU warning match is not proof of display or suspend cause. First require native/all-driver startup and bound GMU/provider state, then physical fresh-frame wake and separate RTC-gated actual sleep. CI78 remains selected."
+  },
+  "patches/0234-dpu-opt-in-linear-scanout.patch": {
+    "source": "Local default-off diagnostic to isolate compressed scanout across battery display wake",
+    "local_commit": "fd7d0301638316f990c0e0605a11da1d1460beb5",
+    "sha256": "597cb3e850642eb0121b083a877bb42ec83461af8283d5eef042aa95e00b58bf",
+    "license": "GPL-2.0-only; existing source header retained",
+    "scope": "Readonly msm.dpu_linear_scanout=1; Lenovo Y900 only. Linear-only DRM plane advertisement and modifier validation; Adreno rendering and power sequence unchanged.",
+    "validation": "Actual C 128 policy/advertisement cases and two error paths; four damaged variants rejected; ARM64 W=1 plane object; strict checkpatch; exact patch replay.",
+    "hardware_tested": false,
+    "promotion_allowed": false
   }
 }

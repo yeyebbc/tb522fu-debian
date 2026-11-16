@@ -116,7 +116,8 @@
     "patches/0225-dsi-ccf-owned-pll-start.patch",
     "patches/0226-dpu-pending-state-bandwidth.patch",
     "patches/0220-tb522fu-ss3-isolation-diagnostic.patch",
-    "patches/0227-gmu-component-lifetimes-backport.patch"
+    "patches/0227-gmu-component-lifetimes-backport.patch",
+    "patches/0234-dpu-opt-in-linear-scanout.patch"
   ],
-  "patched_tree": "05bf57491bda0c940a4db84485cf403f6c6f9b6e"
+  "patched_tree": "5f8d64bb9212b28af229b2d6f11bf06f040b7f98"
 }

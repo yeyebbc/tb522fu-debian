@@ -18,6 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from camera_checks import CAMERA_MODULES, check_camera_wiring
 from display_checks import DISPLAY_MODULES, check_native_display_wiring, check_panel_packets
 from gmu_checks import check_gmu_lifecycle
+from linear_checks import check_linear_scanout
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -141,6 +142,7 @@ def main():
     assert capture(['git', '-C', source, 'write-tree']) == spec['patched_tree'], 'Patched source tree mismatch'
     check_panel_packets(source)
     check_gmu_lifecycle(source)
+    check_linear_scanout(source)
     run(['python3', ROOT / 'tests/check_ath12k_reg_ranges.py', source])
     epoch = capture(['git', '-C', source, 'show', '-s', '--format=%ct', 'HEAD'])
     os.environ.update(SOURCE_DATE_EPOCH=epoch, KBUILD_BUILD_TIMESTAMP='@' + epoch,
@@ -242,6 +244,7 @@ def main():
         cmdline = json.loads(re.search(r'^CONFIG_CMDLINE=(.*)$', fragment, re.M)[1])
         if args.profile == 'disk-test':
             cmdline = cmdline.replace('probe_seconds=600', 'probe_seconds=900')
+            cmdline += ' msm.dpu_linear_scanout=1'
         else:
             cmdline = cmdline.replace(' qcom_scm.probe_edl_return=1', '')
             cmdline = cmdline.replace(' qcom_scm.probe_seconds=600', '')
@@ -320,6 +323,7 @@ def main():
     cmdline = json.loads(next(s.split('=', 1)[1] for s in config
                              if s.startswith('CONFIG_CMDLINE=')))
     assert 'dyndbg=' not in cmdline
+    assert ('msm.dpu_linear_scanout=1' in cmdline.split()) == (args.profile == 'disk-test')
     assert 'clk_ignore_unused' in cmdline.split(), 'Retain the verified boot clock policy'
     assert 'pd_ignore_unused' in cmdline.split(), 'Keep the power-domain policy unchanged'
     qos_setting = ('CONFIG_PM_QOS_CPU_SYSTEM_WAKEUP=y' if args.profile == 'disk-test'
@@ -504,7 +508,8 @@ def main():
     shutil.copy2(ROOT / 'kernel/source.json', target / 'source.json')
     recipe_files = ['configs/' + s for s in scripts] + [
         'configs/ram-probe.fragment', 'configs/udhcpd.conf', 'scripts/build-kernel.py',
-        'scripts/camera_checks.py', 'scripts/display_checks.py', 'scripts/gmu_checks.py']
+        'scripts/camera_checks.py', 'scripts/display_checks.py', 'scripts/gmu_checks.py',
+        'scripts/linear_checks.py']
     seconds = 900 if args.profile == 'disk-test' else 600
     manifest = {'profile': args.profile, 'source': spec, 'compiler': capture([compiler, '--version']).splitlines()[0],
                 'recipe_commit': recipe_commit,

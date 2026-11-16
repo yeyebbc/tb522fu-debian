@@ -1,0 +1,89 @@
+From fd7d0301638316f990c0e0605a11da1d1460beb5 Mon Sep 17 00:00:00 2001
+From: Yeyebbc <yeyebbc@users.noreply.github.com>
+Date: Tue, 17 Nov 2026 02:23:07 +0800
+Subject: [PATCH] drm/msm/dpu: add opt-in linear scanout diagnostic for Y900
+
+Existing battery-wake logs use QCOM compressed XR30 scanout. Allow a
+bounded diagnostic to isolate compression without disabling Adreno
+rendering or changing display power sequencing.
+
+Keep the control readonly and default off. Only the Lenovo Y900 can
+opt in; advertise and validate linear modifiers consistently for all
+planes.
+
+Signed-off-by: Yeyebbc <yeyebbc@users.noreply.github.com>
+---
+ drivers/gpu/drm/msm/disp/dpu1/dpu_plane.c | 24 ++++++++++++++++++++++-
+ 1 file changed, 23 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_plane.c b/drivers/gpu/drm/msm/disp/dpu1/dpu_plane.c
+index 454754564eb3..222cd5631682 100644
+--- a/drivers/gpu/drm/msm/disp/dpu1/dpu_plane.c
++++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_plane.c
+@@ -9,6 +9,8 @@
+ 
+ #include <linux/debugfs.h>
+ #include <linux/dma-buf.h>
++#include <linux/module.h>
++#include <linux/of.h>
+ 
+ #include <drm/drm_atomic.h>
+ #include <drm/drm_atomic_uapi.h>
+@@ -58,6 +60,16 @@
+ 
+ #define DEFAULT_REFRESH_RATE	60
+ 
++static bool y900_linear_scanout;
++module_param_named(dpu_linear_scanout, y900_linear_scanout, bool, 0400);
++MODULE_PARM_DESC(dpu_linear_scanout,
++		 "Use linear-only DPU planes on Lenovo Y900 (diagnostic)");
++
++static bool dpu_plane_linear_scanout(void)
++{
++	return y900_linear_scanout && of_machine_is_compatible("lenovo,y900");
++}
++
+ static const uint32_t qcom_compressed_supported_formats[] = {
+ 	DRM_FORMAT_ABGR8888,
+ 	DRM_FORMAT_ARGB8888,
+@@ -95,6 +107,11 @@ static const uint64_t supported_format_modifiers[] = {
+ 	DRM_FORMAT_MOD_INVALID
+ };
+ 
++static const u64 linear_format_modifiers[] = {
++	DRM_FORMAT_MOD_LINEAR,
++	DRM_FORMAT_MOD_INVALID
++};
++
+ #define to_dpu_plane(x) container_of(x, struct dpu_plane, base)
+ 
+ static struct dpu_kms *_dpu_plane_get_kms(struct drm_plane *plane)
+@@ -1823,6 +1840,9 @@ static bool dpu_plane_format_mod_supported(struct drm_plane *plane,
+ 	if (modifier == DRM_FORMAT_MOD_LINEAR)
+ 		return true;
+ 
++	if (dpu_plane_linear_scanout())
++		return false;
++
+ 	if (modifier == DRM_FORMAT_MOD_QCOM_COMPRESSED && !has_no_ubwc)
+ 		return dpu_find_format(format, qcom_compressed_supported_formats,
+ 				ARRAY_SIZE(qcom_compressed_supported_formats));
+@@ -1868,12 +1888,14 @@ static struct drm_plane *dpu_plane_init_common(struct drm_device *dev,
+ 	struct msm_drm_private *priv = dev->dev_private;
+ 	struct dpu_kms *kms = to_dpu_kms(priv->kms);
+ 	uint32_t supported_rotations;
++	const u64 *modifiers = dpu_plane_linear_scanout() ?
++		linear_format_modifiers : supported_format_modifiers;
+ 	int ret;
+ 
+ 	pdpu = drmm_universal_plane_alloc(dev, struct dpu_plane, base,
+ 				0xff, &dpu_plane_funcs,
+ 				format_list, num_formats,
+-				supported_format_modifiers, type, NULL);
++				modifiers, type, NULL);
+ 	if (IS_ERR(pdpu))
+ 		return ERR_CAST(pdpu);
+ 
+-- 
+2.47.3
+

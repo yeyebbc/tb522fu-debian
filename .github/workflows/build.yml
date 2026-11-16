@@ -44,6 +44,7 @@ jobs:
           path: .ccache
           key: arm64-kernel-${{ matrix.profile }}-${{ hashFiles('kernel/source.json', 'configs/*', 'patches/*.patch', 'scripts/build-kernel.py') }}
           restore-keys: |
+            arm64-kernel-${{ matrix.profile }}-
             arm64-kernel-
       - name: Check root selection and maintenance guards
         run: python3 -m unittest discover -s tests -v
