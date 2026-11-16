@@ -922,3 +922,17 @@ hardware change or actual sleep on this unchanged reset source. Compilation
 and trace collection are not physical wake acceptance. Preserve native camera
 review, exact Android recovery, selected image, graphics, filesystem and host
 cleanup. No subagents.
+
+
+## Panel-reset candidate
+
+This branch starts from the exact113-patch CI80 recipe, excluding the rejected
+GPIO bias/IOVDD and DCS readback experiments. Patch0233 adds a BOE-only standard
+DCS software reset before full initialization, read-only/default off; only
+disk-test opts in. Its120ms gap is conservative standard-DSI practice, not a
+new board power timing. Actual BOE support and equivalence to hardware reset
+remain unproved. No reserved pin request, rail/rate/vote/touch-phase change.
+114 patches must reproduce source.json patched_tree. Keep all39/BT/touch,
+physical startup/wake gates, independent recovery and selectedCI78. No actual
+system sleep or installed promotion before physical battery wake acceptance.
+CI cache restoration now prefers the same profile before the general fallback.

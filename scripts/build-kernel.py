@@ -242,6 +242,7 @@ def main():
         cmdline = json.loads(re.search(r'^CONFIG_CMDLINE=(.*)$', fragment, re.M)[1])
         if args.profile == 'disk-test':
             cmdline = cmdline.replace('probe_seconds=600', 'probe_seconds=900')
+            cmdline += ' panel_novatek_nt36536.boe_soft_reset=1'
         else:
             cmdline = cmdline.replace(' qcom_scm.probe_edl_return=1', '')
             cmdline = cmdline.replace(' qcom_scm.probe_seconds=600', '')
@@ -320,6 +321,8 @@ def main():
     cmdline = json.loads(next(s.split('=', 1)[1] for s in config
                              if s.startswith('CONFIG_CMDLINE=')))
     assert 'dyndbg=' not in cmdline
+    assert ('panel_novatek_nt36536.boe_soft_reset=1' in cmdline.split()) == (
+        args.profile == 'disk-test'), 'Panel reset must be limited to disk-test'
     assert 'clk_ignore_unused' in cmdline.split(), 'Retain the verified boot clock policy'
     assert 'pd_ignore_unused' in cmdline.split(), 'Keep the power-domain policy unchanged'
     qos_setting = ('CONFIG_PM_QOS_CPU_SYSTEM_WAKEUP=y' if args.profile == 'disk-test'

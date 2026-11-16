@@ -1,0 +1,58 @@
+From 7f9ade41dd1bef0d4ae291d9bf3dd1e8731af70a Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Tue, 17 Nov 2026 01:27:30 +0800
+Subject: [PATCH] drm/panel: novatek: add an opt-in BOE in-band reset
+
+The Y900 VM cannot own the reserved panel reset GPIO, so novatek_reset()
+returns without resetting this panel. Test a standard DCS software reset
+before restoring the complete BOE state, using a conservative 120 ms gap.
+Support and wake behavior on this revision still require hardware tests.
+
+Keep the option read-only and disabled by default. A bounded disk-test
+profile may opt in; other panel sequences and all existing packet/error
+handling remain unchanged. Transport errors skip subsequent commands via
+the existing multi-context accumulated error.
+
+Signed-off-by: Codex <codex@localhost>
+---
+ drivers/gpu/drm/panel/panel-novatek-nt36536.c | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
+
+diff --git a/drivers/gpu/drm/panel/panel-novatek-nt36536.c b/drivers/gpu/drm/panel/panel-novatek-nt36536.c
+index 3192e44ad8ee..e76ea43cafd4 100644
+--- a/drivers/gpu/drm/panel/panel-novatek-nt36536.c
++++ b/drivers/gpu/drm/panel/panel-novatek-nt36536.c
+@@ -28,6 +28,11 @@
+ 
+ #include <video/mipi_display.h>
+ 
++static bool y900_boe_soft_reset;
++module_param_named(boe_soft_reset, y900_boe_soft_reset, bool, 0400);
++MODULE_PARM_DESC(boe_soft_reset,
++		 "Use a DCS reset before BOE initialization (experimental)");
++
+ struct novatek {
+ 	struct drm_panel panel;
+ 	struct mipi_dsi_device *dsi[2];
+@@ -401,6 +406,18 @@ static void y900_dcs_long_write_multi(struct mipi_dsi_multi_context *ctx,
+ 
+ static int y900_boe_nt36536e_init_seq(struct mipi_dsi_multi_context *dsi_ctx)
+ {
++	/*
++	 * The Y900 VM cannot own its reserved hardware reset GPIO. Test the
++	 * standard in-band reset before restoring the complete panel state.
++	 * Keep this opt-in until the BOE revision's wake behavior is verified.
++	 */
++	if (y900_boe_soft_reset) {
++		mipi_dsi_dcs_soft_reset_multi(dsi_ctx);
++		mipi_dsi_msleep(dsi_ctx, 120);
++		dev_info(&dsi_ctx->dsi->dev, "DISPLAY_PANEL_RESET ret=%d\n",
++			 dsi_ctx->accum_err);
++	}
++
+ 	/* The active stock panel is the BOE DVT2 revision. */
+ 	y900_dcs_long_write_seq_multi(dsi_ctx, 0xff, 0x23);
+ 	y900_dcs_long_write_seq_multi(dsi_ctx, 0xfb, 0x01);
+-- 
+2.47.3
+

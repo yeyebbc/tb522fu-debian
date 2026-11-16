@@ -1,3 +1,8 @@
+> Experimental panel-reset branch: a default-off standard DSI software reset
+> can be enabled by the bounded disk-test build for this BOE panel. It is an
+> unverified wake hypothesis; do not install it as a confirmed fix. Other
+> profiles leave the option off.
+
 # Debian 13 on Lenovo TB522FU
 
 Experimental native Linux port for the Lenovo Legion Y900 13 / TB522FU

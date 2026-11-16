@@ -116,7 +116,8 @@
     "patches/0225-dsi-ccf-owned-pll-start.patch",
     "patches/0226-dpu-pending-state-bandwidth.patch",
     "patches/0220-tb522fu-ss3-isolation-diagnostic.patch",
-    "patches/0227-gmu-component-lifetimes-backport.patch"
+    "patches/0227-gmu-component-lifetimes-backport.patch",
+    "patches/0233-panel-boe-opt-in-software-reset.patch"
   ],
-  "patched_tree": "05bf57491bda0c940a4db84485cf403f6c6f9b6e"
+  "patched_tree": "566b17677200e0c06eab75de509378a4060770ce"
 }
