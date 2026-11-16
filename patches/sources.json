@@ -1124,8 +1124,35 @@
     "scope": "Use existing panel_enabled/panel_disabling callbacks: queue touch firmware after panel initialization and quiesce touch before panel/DSI disable. Preserve asynchronous work, existing 500ms wait, commands, firmware/CRC path, IRQ/error handling and all board hardware settings.",
     "adaptation": "Patch description reflowed/rephrased for 75-column style; code and stable patch ID equal the source commit. The message-only amend helper rejected an empty worktree, so the original source commit description retains its line-length warning.",
     "validation": "Actual ARM64 W=1 touch object builds without warnings. Actual DRM-panel and NVT C lifecycle/error paths pass; original prepared/unpreparing callbacks fail the same firmware-before-initialization contract. Published patch strict checkpatch 0E/0W/0C.",
+    "hardware_tested": true,
+    "promotion_allowed": false,
+    "limitation": "Both observed outcomes queued touch before panel initialization, but actual firmware I/O followed PPS because of the existing delay. This fixes an ordering contract, not a demonstrated wake cause. New phase scheduling can affect timing; physical coldplug/touch and repeated connected/battery wake remain mandatory.",
+    "hardware_result": "Rejected: connected physical display wake stayed black in separate greeter and signed-in full-driver tests despite completed touch work. No battery action was admitted. Retain the source and failure evidence; current candidate uses CI80 touch phase."
+  },
+  "0229-nt36536-boe-external-bias-binding.patch": {
+    "source": "Local correction derived from the shipped stock board pinctrl and display driver",
+    "local_commit": "25d9082eda62b2fea6b0983ff97b4b9a2c9511c0",
+    "sha256": "7466acd50a2b82770393229d9e77ef2a39675644e63f262a87194ad954320bf3",
+    "original_patch_id": "378a3e1be61698707ace70bb9795c6a05283e9fe",
+    "imported_patch_id": "378a3e1be61698707ace70bb9795c6a05283e9fe",
+    "author": "Codex <codex@localhost>",
+    "license": "GPL-2.0-only OR BSD-2-Clause",
+    "scope": "Describe BOE NT36536E and its two external bias-enable GPIOs; retain CSOT reset requirement.",
     "hardware_tested": false,
     "promotion_allowed": false,
-    "limitation": "Both observed outcomes queued touch before panel initialization, but actual firmware I/O followed PPS because of the existing delay. This fixes an ordering contract, not a demonstrated wake cause. New phase scheduling can affect timing; physical coldplug/touch and repeated connected/battery wake remain mandatory."
+    "limitation": "Physical output, actual GPIO access in the guest, battery wake and repeated cold boot remain unverified. Does not reproduce secure reset/HWEN or establish a root cause."
+  },
+  "0230-nt36536-boe-external-bias-sequence.patch": {
+    "source": "Local correction derived from the shipped stock board pinctrl and display driver",
+    "local_commit": "ea6f2c3ec4f22205ab5c946e0b69eb66857eeb3a",
+    "sha256": "0e32978cac174d23b5e381bc938ca5c656bb8facc831dc06b0bcb4681a891552",
+    "original_patch_id": "715a56874fb0eade1d51bbbf7bd5782ae31baff8",
+    "imported_patch_id": "715a56874fb0eade1d51bbbf7bd5782ae31baff8",
+    "author": "Codex <codex@localhost>",
+    "license": "GPL-2.0-only",
+    "scope": "Panel-owned ENP GPIO72 and ENN GPIO73; positive/5ms/negative/11ms on, negative/5ms/positive off before PMIC supplies. Preserve bootloader pin levels at probe, and unwind bias on PMIC enable failure. No HWEN/reset, I2C configuration, voltage, clock or touch-phase change.",
+    "hardware_tested": false,
+    "promotion_allowed": false,
+    "limitation": "Physical output, actual GPIO access in the guest, battery wake and repeated cold boot remain unverified. Does not reproduce secure reset/HWEN or establish a root cause."
   }
 }

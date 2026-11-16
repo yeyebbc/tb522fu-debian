@@ -178,6 +178,16 @@ def check_native_display_wiring(dtb):
         assert capture(['fdtget', '-t', 'i', dtb, node, 'regulator-min-microvolt']) == uv
         assert capture(['fdtget', '-t', 'i', dtb, node, 'regulator-max-microvolt']) == uv
     assert 'vdd-supply' not in capture(['fdtget', '-p', dtb, panel]).splitlines()
+    tlmm = '/soc@0/pinctrl@f100000'
+    controller = capture(['fdtget', '-t', 'x', dtb, tlmm, 'phandle'])
+    for prop, gpio in [('vsp-gpios', 72), ('vsn-gpios', 73)]:
+        assert capture(['fdtget', '-t', 'x', dtb, panel, prop]) == f'{controller} {gpio:x} 0'
+    reserved = list(map(int, capture(['fdtget', '-t', 'i', dtb, tlmm,
+                                    'gpio-reserved-ranges']).split()))
+    pins = {pin for start, count in zip(reserved[::2], reserved[1::2])
+            for pin in range(start, start + count)}
+    assert {88, 98} <= pins and not ({72, 73} & pins)
+    assert 'reset-gpios' not in capture(['fdtget', '-p', dtb, panel]).splitlines()
     dma = '/soc@0/dma-controller@800000'
     assert capture(['fdtget', '-t', 's', dtb, dma, 'status']) == 'okay'
     assert capture(['fdtget', '-t', 'x', dtb, dma, 'dma-channel-mask']) == '1e'

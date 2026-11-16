@@ -1,0 +1,82 @@
+From 25d9082eda62b2fea6b0983ff97b4b9a2c9511c0 Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Mon, 16 Nov 2026 20:56:49 +0800
+Subject: [PATCH] dt-bindings: display: panel: describe Lenovo BOE external
+ bias
+
+Describe the BOE NT36536E panel and its external positive and negative
+bias enable inputs. Keep the existing CSOT reset requirement, while
+allowing the Lenovo board to preserve its firmware-owned reset pin.
+---
+ .../display/panel/novatek,nt36536.yaml        | 38 ++++++++++++++++---
+ 1 file changed, 33 insertions(+), 5 deletions(-)
+
+diff --git a/Documentation/devicetree/bindings/display/panel/novatek,nt36536.yaml b/Documentation/devicetree/bindings/display/panel/novatek,nt36536.yaml
+index 1e86f5329b22..5c974c6a93c6 100644
+--- a/Documentation/devicetree/bindings/display/panel/novatek,nt36536.yaml
++++ b/Documentation/devicetree/bindings/display/panel/novatek,nt36536.yaml
+@@ -17,13 +17,28 @@ description:
+ 
+ allOf:
+   - $ref: panel-common-dual.yaml#
++  - if:
++      properties:
++        compatible:
++          contains:
++            const: lenovo,y900-boe-nt36536e
++    then:
++      required:
++        - vci-supply
++        - tvdd-supply
++        - vsp-gpios
++        - vsn-gpios
++    else:
++      required:
++        - reset-gpios
+ 
+ properties:
+   compatible:
+-    items:
+-      - enum:
+-          - csot,pp8807hb1-1
+-      - const: novatek,nt36536
++    oneOf:
++      - items:
++          - const: csot,pp8807hb1-1
++          - const: novatek,nt36536
++      - const: lenovo,y900-boe-nt36536e
+ 
+   reg:
+     maxItems: 1
+@@ -34,6 +49,20 @@ properties:
+   vddio-supply:
+     description: I/O source voltage rail
+ 
++  vci-supply:
++    description: Analog source voltage rail
++
++  tvdd-supply:
++    description: Touch controller source voltage rail
++
++  vsp-gpios:
++    description: External positive LCD bias enable
++    maxItems: 1
++
++  vsn-gpios:
++    description: External negative LCD bias enable
++    maxItems: 1
++
+   vsp-supply:
+     description: Positive source voltage rail
+ 
+@@ -47,7 +76,6 @@ required:
+   - compatible
+   - reg
+   - vddio-supply
+-  - reset-gpios
+   - ports
+ 
+ additionalProperties: false
+-- 
+2.47.3
+

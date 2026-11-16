@@ -83,7 +83,26 @@ firmware failure handling, the existing500ms delay and all GPIO/rate/voltage
 settings are unchanged. The actual ARM64 touch object and actual-C lifecycle/
 error checks pass; old callbacks fail the same firmware-order contract.
 Observed firmware I/O was already after PPS in both CI80 outcomes, so this
-source correction is not established as their cause. Physical tests are pending.
+source correction is not established as their cause. Separate connected greeter
+and signed-in physical wake tests stayed black despite completed touch work.
+This direction is closed; its source and failure evidence are retained.
+
+**CI82 tests the external LCD bias sequence on the CI80 source baseline.**
+The stock board maps positive and negative bias enables to GPIO72 and GPIO73.
+The shipped display driver enables positive bias, waits5ms, then enables negative
+bias and waits11ms. Shutdown drops negative bias, waits5ms, then positive bias.
+The existing mainline KTZ8869 setup selects external-enable mode but the panel
+driver never controlled those pins. A normal stock Android screen cycle also
+changes the selected display pinctrl state; this is metadata, not a measurement
+of physical bias voltage or proof of guest access.
+
+The candidate owns those two GPIOs in the panel driver, preserves the enabled
+bootloader handover and sequences them around the existing PMIC supply lifetime.
+It leaves secure HWEN/reset, register configuration, voltages, clocks and touch
+phase unchanged. The CI81 touch-phase patch is omitted from this build. Actual
+ARM64 panel/DT builds, binding validation, power sequencing/error checks and
+negative controls pass locally. Physical startup, connected and battery wake
+remain untested. CI78 stays installed; this is a hypothesis, not a wake fix.
 
 The candidate retains CI78's diagnostic idle topology and CI79's disk-only
 tracing; installed tracing stays off. Require artifact audit, native/all-driver

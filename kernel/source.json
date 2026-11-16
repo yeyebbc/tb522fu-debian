@@ -117,7 +117,8 @@
     "patches/0226-dpu-pending-state-bandwidth.patch",
     "patches/0220-tb522fu-ss3-isolation-diagnostic.patch",
     "patches/0227-gmu-component-lifetimes-backport.patch",
-    "patches/0228-nt36536-follow-panel-enabled-state.patch"
+    "patches/0229-nt36536-boe-external-bias-binding.patch",
+    "patches/0230-nt36536-boe-external-bias-sequence.patch"
   ],
-  "patched_tree": "5bc115b6cc5e3e92a3ba7f1eb8da1df89d233b27"
+  "patched_tree": "9f13cf32330db3ed570fefa2107002706f34cdc3"
 }

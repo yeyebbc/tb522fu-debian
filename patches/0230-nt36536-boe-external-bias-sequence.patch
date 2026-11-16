@@ -1,0 +1,146 @@
+From ea6f2c3ec4f22205ab5c946e0b69eb66857eeb3a Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Mon, 16 Nov 2026 20:56:50 +0800
+Subject: [PATCH] drm/panel: novatek: sequence Lenovo external LCD bias enables
+
+The Lenovo BOE board leaves KTZ8869 REG09 in external-enable mode.
+The stock display driver asserts ENP, waits 5 ms, then asserts ENN and
+waits 11 ms. On shutdown it drops ENN and waits 5 ms before ENP.
+
+Own the two documented GPIOs in the panel driver and apply that sequence
+between the existing PMIC supply and panel command lifecycles. Preserve
+the bootloader-enabled state at probe and drop bias before unwinding a
+failed supply enable. Other panels retain their current behavior.
+
+Do not request HWEN or panel reset, change KTZ register configuration,
+or change the existing voltages, clocks or touch-follower phase. This
+is an independently testable power-lifecycle candidate, not a proven
+display wake fix.
+---
+ .../boot/dts/qcom/sm8750-lenovo-y900-acm.dts  |  3 ++
+ drivers/gpu/drm/panel/panel-novatek-nt36536.c | 46 +++++++++++++++++++
+ 2 files changed, 49 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+index 6f87a5328ad2..79f735112c35 100644
+--- a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
++++ b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+@@ -197,6 +197,9 @@ panel: panel@0 {
+ 		vddio-supply = <&vreg_l12b>;
+ 		vci-supply = <&vreg_l13b>;
+ 		tvdd-supply = <&vreg_l4b>;
++		/* External KTZ8869 bias controls from this board's stock pinctrl. */
++		vsp-gpios = <&tlmm 72 GPIO_ACTIVE_HIGH>;
++		vsn-gpios = <&tlmm 73 GPIO_ACTIVE_HIGH>;
+ 		backlight = <&backlight>;
+ 
+ 		/*
+diff --git a/drivers/gpu/drm/panel/panel-novatek-nt36536.c b/drivers/gpu/drm/panel/panel-novatek-nt36536.c
+index 3192e44ad8ee..34d536a31064 100644
+--- a/drivers/gpu/drm/panel/panel-novatek-nt36536.c
++++ b/drivers/gpu/drm/panel/panel-novatek-nt36536.c
+@@ -34,6 +34,8 @@ struct novatek {
+ 	const struct panel_desc *desc;
+ 	struct drm_dsc_config dsc;
+ 	struct gpio_desc *reset_gpio;
++	struct gpio_desc *vsp_gpio;
++	struct gpio_desc *vsn_gpio;
+ 	struct regulator_bulk_data *supplies;
+ 	unsigned int num_supplies;
+ 	struct backlight_device *backlight;
+@@ -60,6 +62,7 @@ struct panel_desc {
+ 
+ 	bool is_dual_dsi;
+ 	bool has_dcs_backlight;
++	bool has_external_bias;
+ };
+ 
+ static const char *const csot_pp8807hb1_1_supplies[] = {
+@@ -85,6 +88,31 @@ static inline struct mipi_dsi_device *to_primary_dsi(struct novatek *ctx)
+ 	return ctx->desc->is_dual_dsi ? ctx->dsi[1] : ctx->dsi[0];
+ }
+ 
++static void novatek_bias_enable(struct novatek *ctx)
++{
++	if (!ctx->vsp_gpio)
++		return;
++
++	/* Stock KTZ8869 REG09 selects these external ENP/ENN inputs. */
++	gpiod_set_value_cansleep(ctx->vsp_gpio, 1);
++	usleep_range(5000, 5100);
++	gpiod_set_value_cansleep(ctx->vsn_gpio, 1);
++	usleep_range(11000, 11010);
++	dev_dbg(ctx->panel.dev, "DISPLAY_BIAS positive and negative enabled\n");
++}
++
++static void novatek_bias_disable(struct novatek *ctx)
++{
++	if (!ctx->vsp_gpio)
++		return;
++
++	/* Discharge OUTN before removing the positive bias. */
++	gpiod_set_value_cansleep(ctx->vsn_gpio, 0);
++	usleep_range(5000, 5100);
++	gpiod_set_value_cansleep(ctx->vsp_gpio, 0);
++	dev_dbg(ctx->panel.dev, "DISPLAY_BIAS negative and positive disabled\n");
++}
++
+ static void novatek_reset(struct novatek *ctx)
+ {
+ 	if (!ctx->reset_gpio)
+@@ -130,6 +158,7 @@ static int novatek_prepare(struct drm_panel *panel)
+ 		usleep_range(ctx->desc->post_on_delay_us,
+ 			     ctx->desc->post_on_delay_us + 1000);
+ 
++	novatek_bias_enable(ctx);
+ 	novatek_reset(ctx);
+ 
+ 	/* The init sequence is sent from ->enable(): pre_enable walks the bridge
+@@ -137,6 +166,7 @@ static int novatek_prepare(struct drm_panel *panel)
+ 	return 0;
+ 
+ disable_supplies:
++	novatek_bias_disable(ctx);
+ 	while (i--)
+ 		regulator_disable(ctx->supplies[i].consumer);
+ 	return ret;
+@@ -221,6 +251,7 @@ static int novatek_unprepare(struct drm_panel *panel)
+ 	dev_dbg(panel->dev, "DISPLAY_OUTPUT unprepare prepared=%d\n", panel->prepared);
+ 	if (ctx->reset_gpio)
+ 		gpiod_set_value_cansleep(ctx->reset_gpio, 1);
++	novatek_bias_disable(ctx);
+ 	regulator_bulk_disable(ctx->num_supplies, ctx->supplies);
+ 
+ 	return 0;
+@@ -587,6 +618,20 @@ static int novatek_probe(struct mipi_dsi_device *dsi)
+ 	if (ret < 0)
+ 		return ret;
+ 
++	if (desc->has_external_bias) {
++		/* ABL already enables the panel. Preserve that handover state. */
++		ctx->vsp_gpio = devm_gpiod_get(dev, "vsp", GPIOD_OUT_HIGH);
++		if (IS_ERR(ctx->vsp_gpio))
++			return dev_err_probe(dev, PTR_ERR(ctx->vsp_gpio),
++					     "Failed to get vsp-gpios\n");
++		usleep_range(5000, 5100);
++		ctx->vsn_gpio = devm_gpiod_get(dev, "vsn", GPIOD_OUT_HIGH);
++		if (IS_ERR(ctx->vsn_gpio))
++			return dev_err_probe(dev, PTR_ERR(ctx->vsn_gpio),
++					     "Failed to get vsn-gpios\n");
++		usleep_range(11000, 11010);
++	}
++
+ 	if (desc->is_dual_dsi) {
+ 		num_dsi = 2;
+ 		dsi1 = of_graph_get_remote_node(dsi->dev.of_node, 1, -1);
+@@ -720,6 +765,7 @@ static const struct panel_desc y900_boe_nt36536e_desc = {
+ 	.num_supplies = ARRAY_SIZE(y900_boe_nt36536e_supplies),
+ 	.is_dual_dsi = true,
+ 	.has_dcs_backlight = false,
++	.has_external_bias = true,
+ };
+ 
+ static const struct of_device_id novatek_of_match[] = {
+-- 
+2.47.3
+

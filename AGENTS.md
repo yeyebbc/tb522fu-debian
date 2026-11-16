@@ -922,3 +922,16 @@ hardware change or actual sleep on this unchanged reset source. Compilation
 and trace collection are not physical wake acceptance. Preserve native camera
 review, exact Android recovery, selected image, graphics, filesystem and host
 cleanup. No subagents.
+
+## CI82 external LCD bias candidate
+
+Use CI80 source plus the BOE binding and panel-owned GPIO72/73 sequencing.
+Do not apply CI81 touch phase; both its physical connected comparisons failed.
+The static stock sequence and live Android pinctrl cycle support testing this
+power path, not a root-cause claim. Preserve reserved HWEN88/reset98, all KTZ
+registers/voltages/clocks, all drivers, CI78 selection and exact recovery.
+One source draft using standalone boot-on regulators was rejected before any
+boot: unused-regulator cleanup could bypass the required discharge interval.
+Current direct panel ownership avoids that startup race. Physical guest access,
+cold boot and connected wake are required before any battery action. No real
+system sleep or production promotion is admitted by compilation. No subagents.
