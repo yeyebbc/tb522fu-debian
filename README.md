@@ -87,7 +87,7 @@ source correction is not established as their cause. Separate connected greeter
 and signed-in physical wake tests stayed black despite completed touch work.
 This direction is closed; its source and failure evidence are retained.
 
-**CI82 tests the external LCD bias sequence on the CI80 source baseline.**
+**The external LCD bias candidate uses the CI80 source baseline.**
 The stock board maps positive and negative bias enables to GPIO72 and GPIO73.
 The shipped display driver enables positive bias, waits5ms, then enables negative
 bias and waits11ms. Shutdown drops negative bias, waits5ms, then positive bias.
@@ -101,8 +101,18 @@ bootloader handover and sequences them around the existing PMIC supply lifetime.
 It leaves secure HWEN/reset, register configuration, voltages, clocks and touch
 phase unchanged. The CI81 touch-phase patch is omitted from this build. Actual
 ARM64 panel/DT builds, binding validation, power sequencing/error checks and
-negative controls pass locally. Physical startup, connected and battery wake
-remain untested. CI78 stays installed; this is a hypothesis, not a wake fix.
+negative controls pass locally. CI83 showed clear startup and connected wake,
+but the battery Lock/Space wake stayed physically black. That image is rejected.
+CI78 stays installed.
+
+**The next candidate adds the missing panel I/O power enable on GPIO69.**
+Stock raises IOVDD after host preparation, waits1ms before panel commands,
+and lowers it5ms after the other panel supplies. The panel driver preserves
+the bootloader-enabled state at probe, applies that sequence and unwinds it
+after a supply failure. GPIO88/98, KTZ registers, voltages, clocks and touch
+phase remain unchanged. This is the final panel-power refinement before a
+different investigation direction if it fails. Hardware acceptance is pending;
+compilation does not establish reliable battery wake or suspend.
 
 The candidate retains CI78's diagnostic idle topology and CI79's disk-only
 tracing; installed tracing stays off. Require artifact audit, native/all-driver

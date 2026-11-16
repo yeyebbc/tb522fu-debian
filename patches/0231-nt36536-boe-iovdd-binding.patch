@@ -1,0 +1,37 @@
+From 64652b3474e96c9a6074208917cd3aec569f03c1 Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Mon, 16 Nov 2026 22:15:07 +0800
+Subject: [PATCH] dt-bindings: display: panel: describe Lenovo IOVDD enable
+
+The BOE panel uses a separate active-high I/O power enable in addition
+to its VDDIO regulator. Require and describe that board control.
+---
+ .../devicetree/bindings/display/panel/novatek,nt36536.yaml   | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/Documentation/devicetree/bindings/display/panel/novatek,nt36536.yaml b/Documentation/devicetree/bindings/display/panel/novatek,nt36536.yaml
+index 5c974c6a93c6..b0e108525ed7 100644
+--- a/Documentation/devicetree/bindings/display/panel/novatek,nt36536.yaml
++++ b/Documentation/devicetree/bindings/display/panel/novatek,nt36536.yaml
+@@ -28,6 +28,7 @@ allOf:
+         - tvdd-supply
+         - vsp-gpios
+         - vsn-gpios
++        - iovdd-gpios
+     else:
+       required:
+         - reset-gpios
+@@ -63,6 +64,10 @@ properties:
+     description: External negative LCD bias enable
+     maxItems: 1
+ 
++  iovdd-gpios:
++    description: Panel I/O power enable, separate from the VDDIO regulator
++    maxItems: 1
++
+   vsp-supply:
+     description: Positive source voltage rail
+ 
+-- 
+2.47.3
+

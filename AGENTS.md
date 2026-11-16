@@ -935,3 +935,18 @@ boot: unused-regulator cleanup could bypass the required discharge interval.
 Current direct panel ownership avoids that startup race. Physical guest access,
 cold boot and connected wake are required before any battery action. No real
 system sleep or production promotion is admitted by compilation. No subagents.
+
+
+## Final panel-power refinement: IOVDD
+
+CI83 passed connected wake but battery Lock/Space stayed physically black.
+Retain that rejection and CI78 selection. This candidate adds only the stock
+panel I/O enable on GPIO69: preserve ABL high at probe, enable after host
+preparation with1ms before commands, disable5ms after bias/PMIC removal,
+including supply-error unwind. GPIO88/98, KTZ config, voltages, clocks and
+touch phase stay unchanged.117 patches must replay exactly. Actual-C callback
+checks include full cycles, command/backlight/supply failures and legacy paths.
+Require artifact audit, native/all39/BT/touch/physical connected wake before
+a separate battery action. No actual system sleep or installed promotion.
+This is the final refinement in this direction; change mechanism if it fails.
+No subagents.

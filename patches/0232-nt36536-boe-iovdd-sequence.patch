@@ -1,0 +1,115 @@
+From 600e7e4dd81998368f6f12c151ef5bfb333971fa Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Mon, 16 Nov 2026 22:15:07 +0800
+Subject: [PATCH] drm/panel: novatek: sequence Lenovo panel I/O enable
+
+The Lenovo BOE panel has a separate active-high IOVDD enable. The
+stock display path raises it after preparing the host, waits 1 ms,
+then sends panel commands. It lowers it 5 ms after removing the
+other panel supplies.
+
+Acquire the documented GPIO high to preserve bootloader handover.
+Apply its settle interval before panel initialization in enable(),
+then remove it after the bias and PMIC rails in unprepare() and
+supply-error unwind. Describe the additional board control in DT.
+
+Preserve the secure reset/HWEN pins, voltages, KTZ configuration,
+clocks, touch-follower phase and behavior of other panels. This is
+a bounded power-lifecycle candidate, not a proven wake fix.
+---
+ .../boot/dts/qcom/sm8750-lenovo-y900-acm.dts  |  1 +
+ drivers/gpu/drm/panel/panel-novatek-nt36536.c | 31 +++++++++++++++++++
+ 2 files changed, 32 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+index 79f735112c35..ad391dede901 100644
+--- a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
++++ b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+@@ -200,6 +200,7 @@ panel: panel@0 {
+ 		/* External KTZ8869 bias controls from this board's stock pinctrl. */
+ 		vsp-gpios = <&tlmm 72 GPIO_ACTIVE_HIGH>;
+ 		vsn-gpios = <&tlmm 73 GPIO_ACTIVE_HIGH>;
++		iovdd-gpios = <&tlmm 69 GPIO_ACTIVE_HIGH>;
+ 		backlight = <&backlight>;
+ 
+ 		/*
+diff --git a/drivers/gpu/drm/panel/panel-novatek-nt36536.c b/drivers/gpu/drm/panel/panel-novatek-nt36536.c
+index 34d536a31064..5c71079bbd48 100644
+--- a/drivers/gpu/drm/panel/panel-novatek-nt36536.c
++++ b/drivers/gpu/drm/panel/panel-novatek-nt36536.c
+@@ -36,6 +36,7 @@ struct novatek {
+ 	struct gpio_desc *reset_gpio;
+ 	struct gpio_desc *vsp_gpio;
+ 	struct gpio_desc *vsn_gpio;
++	struct gpio_desc *iovdd_gpio;
+ 	struct regulator_bulk_data *supplies;
+ 	unsigned int num_supplies;
+ 	struct backlight_device *backlight;
+@@ -113,6 +114,27 @@ static void novatek_bias_disable(struct novatek *ctx)
+ 	dev_dbg(ctx->panel.dev, "DISPLAY_BIAS negative and positive disabled\n");
+ }
+ 
++static void novatek_iovdd_enable(struct novatek *ctx)
++{
++	if (!ctx->iovdd_gpio)
++		return;
++
++	gpiod_set_value_cansleep(ctx->iovdd_gpio, 1);
++	usleep_range(1000, 1100);
++	dev_dbg(ctx->panel.dev, "DISPLAY_IOVDD enabled\n");
++}
++
++static void novatek_iovdd_disable(struct novatek *ctx)
++{
++	if (!ctx->iovdd_gpio)
++		return;
++
++	/* Stock drops IOVDD only after the panel supplies have settled off. */
++	usleep_range(5000, 5100);
++	gpiod_set_value_cansleep(ctx->iovdd_gpio, 0);
++	dev_dbg(ctx->panel.dev, "DISPLAY_IOVDD disabled\n");
++}
++
+ static void novatek_reset(struct novatek *ctx)
+ {
+ 	if (!ctx->reset_gpio)
+@@ -169,6 +191,7 @@ static int novatek_prepare(struct drm_panel *panel)
+ 	novatek_bias_disable(ctx);
+ 	while (i--)
+ 		regulator_disable(ctx->supplies[i].consumer);
++	novatek_iovdd_disable(ctx);
+ 	return ret;
+ }
+ 
+@@ -183,6 +206,8 @@ static int novatek_enable(struct drm_panel *panel)
+ 	dev_dbg(panel->dev,
+ 		"DISPLAY_OUTPUT enable prepared=%d enabled=%d flags=%#lx\n",
+ 		panel->prepared, panel->enabled, dsi->mode_flags);
++	/* The host is prepared here, before the first panel command. */
++	novatek_iovdd_enable(ctx);
+ 	y900_dsi_panel_init_begin();
+ 
+ 	ret = ctx->desc->init_sequence(&dsi_ctx);
+@@ -253,6 +278,7 @@ static int novatek_unprepare(struct drm_panel *panel)
+ 		gpiod_set_value_cansleep(ctx->reset_gpio, 1);
+ 	novatek_bias_disable(ctx);
+ 	regulator_bulk_disable(ctx->num_supplies, ctx->supplies);
++	novatek_iovdd_disable(ctx);
+ 
+ 	return 0;
+ }
+@@ -630,6 +656,11 @@ static int novatek_probe(struct mipi_dsi_device *dsi)
+ 			return dev_err_probe(dev, PTR_ERR(ctx->vsn_gpio),
+ 					     "Failed to get vsn-gpios\n");
+ 		usleep_range(11000, 11010);
++		ctx->iovdd_gpio = devm_gpiod_get(dev, "iovdd", GPIOD_OUT_HIGH);
++		if (IS_ERR(ctx->iovdd_gpio))
++			return dev_err_probe(dev, PTR_ERR(ctx->iovdd_gpio),
++					     "Failed to get iovdd-gpios\n");
++		usleep_range(1000, 1100);
+ 	}
+ 
+ 	if (desc->is_dual_dsi) {
+-- 
+2.47.3
+
