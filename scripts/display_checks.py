@@ -178,6 +178,8 @@ def check_native_display_wiring(dtb):
         assert capture(['fdtget', '-t', 'i', dtb, node, 'regulator-min-microvolt']) == uv
         assert capture(['fdtget', '-t', 'i', dtb, node, 'regulator-max-microvolt']) == uv
     assert 'vdd-supply' not in capture(['fdtget', '-p', dtb, panel]).splitlines()
+    for prop in ('iovdd-gpios', 'vsp-gpios', 'vsn-gpios'):
+        assert prop not in capture(['fdtget', '-p', dtb, panel]).splitlines()
     dma = '/soc@0/dma-controller@800000'
     assert capture(['fdtget', '-t', 's', dtb, dma, 'status']) == 'okay'
     assert capture(['fdtget', '-t', 'x', dtb, dma, 'dma-channel-mask']) == '1e'

@@ -922,3 +922,20 @@ hardware change or actual sleep on this unchanged reset source. Compilation
 and trace collection are not physical wake acceptance. Preserve native camera
 review, exact Android recovery, selected image, graphics, filesystem and host
 cleanup. No subagents.
+
+
+## Powered-panel response diagnostic
+
+The external panel-power route closed after CI83 battery black and CI84
+sustained invalid touch reports after a repeat connected wake. Preserve these
+rejections and selected CI78. This branch is CI80 plus one opt-in, BOE-only
+standard DCS0A read after successful enable, through physical host0. Other
+profiles default off; only disk-test adds the module parameter. No GPIO,
+voltage, clock, packet, firmware or touch-phase change.114 patches replay.
+Actual-C enable/error/response tests and negatives protect the diagnostic.
+A cold successful byte with plausible awake bits is required before any DPMS;
+stock TE ESD is not proof of DCS read support. Failed/short reads are unavailable
+observations. Preserve all39/BT/touch, physical camera, independent return and
+exact Android/CI78 recovery. No actual system sleep or installed promotion.
+Use the fixed atomic persistent-probe logger, leaving the strict host parser.
+No subagents.

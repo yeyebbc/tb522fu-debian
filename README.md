@@ -6,6 +6,20 @@ Experimental native Linux port for the Lenovo Legion Y900 13 / TB522FU
 directions. This remains a development port with substantial peripheral work
 outstanding.
 
+**Current diagnostic: panel response after wake.** The external panel-power
+direction is closed: CI83 stayed black on battery and CI84 later failed the
+touch-driver gate before its battery action. Those images remain rejected.
+This branch returns to the CI80 driver baseline and adds an opt-in standard
+DCS power-mode read through the primary physical host after successful panel
+enable. It changes no GPIO, voltage, clock or initialization packet.
+
+Only disk-test enables the readback parameter. Other profiles keep it off.
+The actual enable/response/error checks and negative controls run during every
+build and are included in artifact provenance. Support for this BOE panel's
+readback is unproved: require a usable cold response before any screen cycle.
+A short or failed read is an unavailable observation. Physical battery wake
+and real suspend remain unaccepted; CI78 stays selected.
+
 **Display wake and unrestricted suspend remain unreliable.** CI78 is selected
 for the user's experimental offline testing; CI74 and CI44 remain rollback
 options. CI78 passed a full-driver platform callback test, then reset during
