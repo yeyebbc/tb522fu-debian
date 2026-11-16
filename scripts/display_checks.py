@@ -26,6 +26,8 @@ def check_panel_packets(source):
                          ','.join(str(b) for b in data)))
     path = Path(source) / 'drivers/gpu/drm/panel/panel-novatek-nt36536.c'
     panel = path.read_text()
+    assert '\nstatic bool y900_boe_soft_reset;\n' in panel, 'Reset must default off'
+    assert 'module_param_named(boe_soft_reset, y900_boe_soft_reset, bool, 0400);' in panel
     start = panel.index('static void y900_dcs_long_write_multi(')
     end = panel.index('static int y900_boe_nt36536e_exit_seq(', start)
     actual = panel[start:end]
@@ -33,6 +35,7 @@ def check_panel_packets(source):
 #include <assert.h>
 #include <errno.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
@@ -42,6 +45,8 @@ typedef uint8_t u8;
 #define MIPI_DSI_MODE_LPM 1
 #define MIPI_DSI_MSG_USE_LPM 2
 #define dev_err(...) ((void)0)
+#define dev_info(...) ((void)0)
+static bool y900_boe_soft_reset;
 struct mipi_dsi_msg { unsigned channel, type, flags; const void *tx_buf; size_t tx_len; };
 struct mipi_dsi_host;
 struct mipi_dsi_host_ops { ssize_t (*transfer)(struct mipi_dsi_host *, const struct mipi_dsi_msg *); };
@@ -49,13 +54,14 @@ struct mipi_dsi_host { const struct mipi_dsi_host_ops *ops; };
 struct mipi_dsi_device { unsigned channel, mode_flags; struct mipi_dsi_host *host; int dev; };
 struct mipi_dsi_multi_context { struct mipi_dsi_device *dsi; int accum_err; };
 struct packet { unsigned type, len, wait_ms; u8 data[32]; };
-static const struct packet expected[] = { EXPECTED_PACKETS };
+static const struct packet stock[] = { EXPECTED_PACKETS };
+static struct packet expected[33];
 static unsigned count, delays, want_flags, want_channel;
 static int fail_at;
 static ssize_t transfer(struct mipi_dsi_host *host, const struct mipi_dsi_msg *msg)
 {
     (void)host;
-    assert(count < ARRAY_SIZE(expected));
+    assert(count < ARRAY_SIZE(stock) + y900_boe_soft_reset);
     const struct packet *p = &expected[count];
     assert(msg->type == p->type && msg->tx_len == p->len);
     assert(msg->flags == want_flags && msg->channel == want_channel);
@@ -70,9 +76,13 @@ static void standard(struct mipi_dsi_multi_context *ctx, u8 command)
     struct mipi_dsi_msg msg = { .channel=ctx->dsi->channel, .type=5,
         .flags=ctx->dsi->mode_flags ? MIPI_DSI_MSG_USE_LPM : 0,
         .tx_buf=&command, .tx_len=1 };
+    const struct mipi_dsi_host_ops *ops = ctx->dsi->host->ops;
+    if (!ops || !ops->transfer) { ctx->accum_err=-ENOSYS; return; }
     ssize_t ret = ctx->dsi->host->ops->transfer(ctx->dsi->host, &msg);
     if (ret < 0) ctx->accum_err = ret;
 }
+static void mipi_dsi_dcs_soft_reset_multi(struct mipi_dsi_multi_context *ctx)
+{ standard(ctx, 0x01); }
 static void mipi_dsi_dcs_exit_sleep_mode_multi(struct mipi_dsi_multi_context *ctx)
 { standard(ctx, 0x11); }
 static void mipi_dsi_dcs_set_display_on_multi(struct mipi_dsi_multi_context *ctx)
@@ -90,17 +100,23 @@ int main(void)
     struct mipi_dsi_host host = { .ops=&ops };
     struct mipi_dsi_device dsi = { .host=&host };
     struct mipi_dsi_multi_context ctx = { .dsi=&dsi };
-    for (unsigned lp=0; lp<2; lp++) {
+    for (unsigned reset=0; reset<2; reset++) {
+        y900_boe_soft_reset=reset;
+        unsigned total=ARRAY_SIZE(stock)+reset;
+        expected[0]=(struct packet){5,1,120,{1}};
+        memcpy(expected+reset,stock,sizeof(stock));
+        host.ops=&ops;
+        for (unsigned lp=0; lp<2; lp++) {
         dsi.mode_flags = lp ? MIPI_DSI_MODE_LPM : 0;
         want_flags = lp ? MIPI_DSI_MSG_USE_LPM : 0;
         dsi.channel = want_channel = lp ? 0 : 2;
-        for (fail_at=-1; fail_at<32; fail_at++) {
+        for (fail_at=-1; fail_at<(int)total; fail_at++) {
             count=delays=0; ctx.accum_err=0;
             int ret=y900_boe_nt36536e_init_seq(&ctx);
             assert(ret == (fail_at < 0 ? 0 : -EIO));
-            assert(count == (fail_at < 0 ? 32u : (unsigned)fail_at+1));
+            assert(count == (fail_at < 0 ? total : (unsigned)fail_at+1));
             unsigned expected_delay=0;
-            for (unsigned i=0; i<(fail_at < 0 ? 32u : (unsigned)fail_at); i++)
+            for (unsigned i=0; i<(fail_at < 0 ? total : (unsigned)fail_at); i++)
                 expected_delay += expected[i].wait_ms;
             assert(delays == expected_delay);
         }
@@ -108,11 +124,13 @@ int main(void)
     count=delays=0; ctx.accum_err=-EIO;
     assert(y900_boe_nt36536e_init_seq(&ctx) == -EIO && !count && !delays);
     ctx.accum_err=0; host.ops=NULL;
-    assert(y900_boe_nt36536e_init_seq(&ctx) == -EOPNOTSUPP && !count && !delays);
+    int missing_ops=y900_boe_soft_reset ? -ENOSYS : -EOPNOTSUPP;
+    assert(y900_boe_nt36536e_init_seq(&ctx) == missing_ops && !count && !delays);
     const struct mipi_dsi_host_ops empty_ops = {0};
     ctx.accum_err=0; host.ops=&empty_ops;
-    assert(y900_boe_nt36536e_init_seq(&ctx) == -EOPNOTSUPP && !count && !delays);
-    puts("DVT2 packets: 32 exact packets, LP/HS/channel, 64 failures and three early exits passed");
+    assert(y900_boe_nt36536e_init_seq(&ctx) == missing_ops && !count && !delays);
+    }
+    puts("DVT2 packets: exact default/opt-in streams, LP/HS/channel, 130 failures and six early exits passed");
 }
 '''.replace('EXPECTED_PACKETS', ',\n'.join(expected)).replace('ACTUAL_SOURCE', actual)
     with tempfile.TemporaryDirectory(prefix='tb522fu-panel-check-') as directory:
