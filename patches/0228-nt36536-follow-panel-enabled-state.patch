@@ -1,0 +1,110 @@
+From 0fda5b0b934899895b9853d093599a2ca08b4c11 Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Mon, 16 Nov 2026 18:20:38 +0800
+Subject: [PATCH] Input: nt36536 - follow panel enable and disable
+
+Queue follower firmware work only after panel initialization completes,
+and quiesce touch before panel/DSI shutdown. The prepared/unpreparing
+hooks bracket supplies rather than this TDDI protocol.
+
+Use the existing panel_enabled/panel_disabling callbacks, including hot
+attach and removal. Preserve the resume wait, firmware/CRC path, commands,
+IRQ and failure handling. No reset, GPIO, rate or voltage changes.
+
+Actual DRM-panel plus touch C lifecycle/error paths pass. The original
+callbacks fail the same firmware-before-initialization contract. ARM64
+W=1 nt36536.o builds without warnings. Physical wake remains unproven.
+
+Signed-off-by: Codex <codex@localhost>
+---
+ drivers/input/touchscreen/nt36536/nt36536.c | 26 ++++++++++-----------
+ 1 file changed, 12 insertions(+), 14 deletions(-)
+
+diff --git a/drivers/input/touchscreen/nt36536/nt36536.c b/drivers/input/touchscreen/nt36536/nt36536.c
+index 2915b011f642..e7823d373f82 100644
+--- a/drivers/input/touchscreen/nt36536/nt36536.c
++++ b/drivers/input/touchscreen/nt36536/nt36536.c
+@@ -2046,17 +2046,15 @@ static int32_t nvt_ts_resume(struct device *dev)
+ 	ts->ic_state = NVT_IC_RESUME_IN;
+ 
+ 	/*
+-	 * The vendor core waits touchpanel,irq_need_dev_resume_time (500ms in
+-	 * the stock dtsi) after resume before touching the IC, letting the
+-	 * TDDI analog block (charge pump / AVDD) settle after the shared
+-	 * panel reset.  Mirror that before the firmware download.
++	 * Preserve the existing device-resume wait.  The panel-enabled callback,
++	 * not this delay, orders the download after panel initialization.
+ 	 */
+ 	msleep(500);
+ 
+ 	/*
+-	 * The first prepare is the first time a follower may access the die;
++	 * The first enable is the first time a follower may access the die;
+ 	 * read the chip id and select the memory map now.  A failure leaves
+-	 * the chip unidentified and is retried on the next prepare.
++	 * the chip unidentified and is retried on the next enable.
+ 	 */
+ 	if (!ts->chip_identified) {
+ 		ret = nvt_ts_check_chip_ver_trim();
+@@ -2069,7 +2067,7 @@ static int32_t nvt_ts_resume(struct device *dev)
+ 	}
+ 
+ 	/*
+-	 * The panel has already reset and initialized the shared TDDI.  A
++	 * Panel initialization has completed for this enable cycle.  A
+ 	 * follower may only use the HW-CRC download path, which is explicitly
+ 	 * guaranteed not to issue a standalone engineering reset.
+ 	 */
+@@ -2176,7 +2174,7 @@ static const struct dev_pm_ops nvt_dev_pm_ops = {
+ 	.resume = nvt_pm_resume,
+ };
+ 
+-static int panel_prepared(struct drm_panel_follower *follower)
++static int panel_enabled(struct drm_panel_follower *follower)
+ {
+ 	struct nvt_ts_data *ts = container_of(follower, struct nvt_ts_data,
+ 					       panel_follower);
+@@ -2188,7 +2186,7 @@ static int panel_prepared(struct drm_panel_follower *follower)
+ 	queue_resume = ts->resources_ready && !ts->stopping;
+ 	spin_unlock_irqrestore(&ts->lifecycle_lock, flags);
+ 
+-	NVT_LOG("panel prepared\n");
++	NVT_LOG("panel enabled\n");
+ 
+ 	if (queue_resume)
+ 		queue_work(ts->event_wq, &ts->resume_work);
+@@ -2196,7 +2194,7 @@ static int panel_prepared(struct drm_panel_follower *follower)
+ 	return 0;
+ }
+ 
+-static int panel_unpreparing(struct drm_panel_follower *follower)
++static int panel_disabling(struct drm_panel_follower *follower)
+ {
+ 	struct nvt_ts_data *ts = container_of(follower, struct nvt_ts_data,
+ 					       panel_follower);
+@@ -2208,9 +2206,9 @@ static int panel_unpreparing(struct drm_panel_follower *follower)
+ 	resources_ready = ts->resources_ready;
+ 	spin_unlock_irqrestore(&ts->lifecycle_lock, flags);
+ 
+-	NVT_LOG("panel unpreparing\n");
++	NVT_LOG("panel disabling\n");
+ 
+-	/* The callback is the barrier before the panel's physical reset. */
++	/* Quiesce touch before the panel and DSI stop accepting commands. */
+ 	if (ts->event_wq)
+ 		cancel_work_sync(&ts->resume_work);
+ 
+@@ -2220,8 +2218,8 @@ static int panel_unpreparing(struct drm_panel_follower *follower)
+ }
+ 
+ static struct drm_panel_follower_funcs nt36536_panel_follower_funcs = {
+-	.panel_prepared = panel_prepared,
+-	.panel_unpreparing = panel_unpreparing,
++	.panel_enabled = panel_enabled,
++	.panel_disabling = panel_disabling,
+ };
+ 
+ /*
+-- 
+2.47.3
+

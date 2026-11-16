@@ -67,6 +67,24 @@ and camera evidence. New counted CPU/cluster idle entries in that interval are
 not required to reproduce; device domains, shared rails and earlier history
 remain open. No permanent constraint or wake fix is accepted.
 
+A complete same-boot resource comparison now captures four active-command/IRQ
+pairs in each outcome, with zero trace loss. Selected CX/MMCX requests and
+completions match; no XO vote transition is captured. Connected pixels return,
+but battery Lock/wake remains black. Those protocol observations and cached
+clock reference counts do not measure physical rails, clocks or wire output.
+USB enumeration also occurs after the selected wake-vote restore; that is not
+physical cable/VBUS timing or proof of a USB role bug.
+
+**CI81 corrects touch-panel follower ordering, not an accepted wake fix.**
+Touch firmware was queued from panel prepare, before panel init/PPS, and touch
+sleep ran after panel disable. Existing enabled/disabling callbacks bracket
+the required protocol instead, including hot attach/removal. Commands, IRQ/
+firmware failure handling, the existing500ms delay and all GPIO/rate/voltage
+settings are unchanged. The actual ARM64 touch object and actual-C lifecycle/
+error checks pass; old callbacks fail the same firmware-order contract.
+Observed firmware I/O was already after PPS in both CI80 outcomes, so this
+source correction is not established as their cause. Physical tests are pending.
+
 The candidate retains CI78's diagnostic idle topology and CI79's disk-only
 tracing; installed tracing stays off. Require artifact audit, native/all-driver
 cold boot, actual GMU binding and physical fresh-frame wake before any separate

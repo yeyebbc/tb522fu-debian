@@ -1109,8 +1109,23 @@
     "safety_corrections": "Reject missing GMU before allocation; stop timer and release/null all partial preemption BOs before GPUVM cleanup; no suspend after GMU unbind; remove devfreq before QoS; common GMU mutex/runtime-PM ownership with balanced bind errors.",
     "validation": "Complete ARM64 MSM object W=1 build passes with two inherited DPU/PHY warnings; strict code checkpatch 0E/0W/0C; 20 actual-C resource/error cases pass and three original unsafe functions fail runtime resource oracles.",
     "hardware_tested": true,
-    "hardware_result": "CI80 native/all39+BT and real adreno_gmu binding pass; GCC/GPUCC/GXCLKCTL each reach synchronized state. One connected greeter DPMS cycle physically returns clear pixels/focus and later user desktop. A late login retires the old GDM bus and fails the final UI receipt; raw software failure retained. Battery Lock/wake and actual sleep not tested; CI78 preserved.",
+    "hardware_result": "CI80 native/all39+BT and real adreno_gmu binding pass; GCC/GPUCC/GXCLKCTL reach synchronized state. Connected physical wake passes, but signed-in battery Lock/wake remains black. A complete calibrated comparison captures matching selected CX/MMCX command/completion sequences with zero loss in both outcomes. No physical rail/clock measurement or actual-sleep acceptance; CI78 remains selected.",
     "promotion_allowed": false,
-    "limitation": "One context-confounded connected physical pass is not a reliable wake or suspend fix. Stable user-session battery Lock/wake, repeated physical output and a separate RTC-gated actual sleep remain required. CI78 remains selected."
+    "limitation": "GMU ownership is corrected, not reliable display wake or suspend. Battery failure also reproduced with no new counted C4/CL5 entries during a scoped ordinary-latency comparison. Other domains, transient physical state and earlier history remain open; no permanent constraint or production promotion."
+  },
+  "0228-nt36536-follow-panel-enabled-state.patch": {
+    "source": "Local NT36536 panel-follower lifecycle correction",
+    "local_commit": "0fda5b0b934899895b9853d093599a2ca08b4c11",
+    "sha256": "ef2f230fd77fc4261408c6d86398a5818981093398d3e9ed8fc6889d6f7267c3",
+    "original_patch_id": "2e44f64727591594915718925d158a486426c829",
+    "imported_patch_id": "2e44f64727591594915718925d158a486426c829",
+    "author": "Codex <codex@localhost>",
+    "license": "GPL-2.0-only",
+    "scope": "Use existing panel_enabled/panel_disabling callbacks: queue touch firmware after panel initialization and quiesce touch before panel/DSI disable. Preserve asynchronous work, existing 500ms wait, commands, firmware/CRC path, IRQ/error handling and all board hardware settings.",
+    "adaptation": "Patch description reflowed/rephrased for 75-column style; code and stable patch ID equal the source commit. The message-only amend helper rejected an empty worktree, so the original source commit description retains its line-length warning.",
+    "validation": "Actual ARM64 W=1 touch object builds without warnings. Actual DRM-panel and NVT C lifecycle/error paths pass; original prepared/unpreparing callbacks fail the same firmware-before-initialization contract. Published patch strict checkpatch 0E/0W/0C.",
+    "hardware_tested": false,
+    "promotion_allowed": false,
+    "limitation": "Both observed outcomes queued touch before panel initialization, but actual firmware I/O followed PPS because of the existing delay. This fixes an ordering contract, not a demonstrated wake cause. New phase scheduling can affect timing; physical coldplug/touch and repeated connected/battery wake remain mandatory."
   }
 }
