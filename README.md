@@ -58,6 +58,15 @@ failure remain separate from physical rejection. Exact stock/CI78/graphics and
 all recovery cleanup pass. No unchanged repeat or promotion. This fixes GMU
 ownership, not the battery-wake failure; clock readbacks are not wire proof.
 
+A scoped ordinary CPU-latency0us comparison also stays physically black:
+all eight WFI counters advance, all C4 and both cluster entry deltas stay zero
+over the measured285.86-second interval. All40 sampled limits are0us; closing
+the owned descriptor restores2000000000us without changing CPU flags.
+The final review-marker SSH timeout is preserved separately from local counter
+and camera evidence. New counted CPU/cluster idle entries in that interval are
+not required to reproduce; device domains, shared rails and earlier history
+remain open. No permanent constraint or wake fix is accepted.
+
 The candidate retains CI78's diagnostic idle topology and CI79's disk-only
 tracing; installed tracing stays off. Require artifact audit, native/all-driver
 cold boot, actual GMU binding and physical fresh-frame wake before any separate
