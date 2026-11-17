@@ -7,7 +7,21 @@ The Ubuntu trial keeps the CI89 kernel source and DT unchanged. Only an explicit
 bounded disk-test root-environment may select the separate Ubuntu directory;
 installed/default selection stays Debian. Validate staged root identity and
 matching modules before enabling writes. Preserve all existing root geometry,
-independent return and accepted-driver checks. No Ubuntu or wake acceptance yet.
+independent return and accepted-driver checks. CI90 now passes physical Ubuntu
+cold boot, Adreno rendering and connected display wake, but reproduces the
+unplugged Lock/Space black screen. Actual system sleep stayed masked. Preserve
+the failed physical result; software display-on state is insufficient.
+See docs/checkpoints/2026-11-17-ubuntu-ci90.md for the current checkpoint;
+older candidate sections below are historical. Selected Debian remains CI78.
+The user requested EndeavourOS next and is supplying the image. Validate ARM64,
+actual kernel source/configuration, DT and matching modules before staging;
+our existing custom kernel is already 7.3. Follow docs/endeavouros-trial.md.
+Keep kernel/display work paused during this distro comparison.
+
+For unplugged tests, the UDC can retain `configured` after cable removal.
+Use the verified USB power-supply `online` reading for power presence; retain
+UDC state as a separate diagnostic. Missing/unknown power state must not be
+silently interpreted as unplugged. Keep logging local while USB is absent.
 
 - Kernel source and imported drivers must retain pinned origins and licenses.
 - Build artifacts do not establish hardware support. State only observed results.

@@ -6,12 +6,25 @@ Experimental native Linux port for the Lenovo Legion Y900 13 / TB522FU
 directions. This remains a development port with substantial peripheral work
 outstanding.
 
-An optional Ubuntu 26.04.1 userspace comparison is being prepared. It uses the
-same custom kernel/DT/drivers and a separate directory inside the existing
-Linux filesystem. It does not replace the selected Debian system or repartition
-storage. `workflow_dispatch` with `ubuntu_trial=true` embeds the explicit Ubuntu
-selector only in the bounded disk-test artifact; installed remains Debian.
-This is not an installer and does not establish Ubuntu hardware or wake support.
+**Ubuntu 26.04.1 reproduces the battery display-wake failure.** CI90 cold-boots
+to a physically visible, hardware-accelerated GNOME desktop and passes a
+connected display off/on cycle. After unplugging USB, locking and pressing
+Space while still unplugged, the backlight comes on but the image stays black.
+Local input/power logs and camera frames verify that this happens before USB
+is reconnected. Actual system suspend stayed masked throughout this test.
+
+The comparison retains CI89's kernel source, DT, effective configuration,
+firmware and Mesa 26.1.6+A830 support. It argues against a Debian-only cause and
+focuses the next investigation on the shared graphics stack; it does not
+isolate the kernel from Mesa or firmware. See the
+[Ubuntu checkpoint](docs/checkpoints/2026-11-17-ubuntu-ci90.md) and
+[next EndeavourOS comparison](docs/endeavouros-trial.md).
+
+Ubuntu occupies a separate directory inside the existing Linux filesystem.
+Android, selected Debian CI78 and partition boundaries are preserved, and
+recovery/cleanup is complete. `workflow_dispatch` with `ubuntu_trial=true`
+embeds the Ubuntu selector only in the bounded disk-test artifact; installed
+selection remains Debian. This repository is not a general installer.
 
 **Display wake and unrestricted suspend remain unreliable.** CI78 is selected
 for the user's experimental offline testing; CI74 and CI44 remain rollback
