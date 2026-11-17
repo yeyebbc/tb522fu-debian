@@ -3,6 +3,16 @@
 This repository is public. Keep firmware, identifiers, credentials, backups,
 stock partition images and local environment paths out of tracked files.
 
+Current installed state: the user explicitly requested latest CI96 plus all
+matching drivers and the finalized backlight fix on Debian13. That installation
+is complete and Debian13.7 is running. Read docs/debian13-display-return.md.
+All39 baseline module loads, native Adreno GNOME and connected physical compat
+blank/unblank pass. First-boot return is retired and host cleanup is verified.
+CI78/CI74/CI44, Android, comparison roots and settings remain preserved. Actual
+sleep stays masked. No Debian battery or normal-path kernel-wake acceptance is
+inferred. The latest installation authorization supersedes prepare-only/default
+CI78 restrictions in historical notes below; other safety/privacy rules remain.
+
 Both OnePlus routes are now explicitly authorized. Follow
 docs/oneplus-display-method.md: the minimal pinned post-link FIFO/controller
 reset pair and a separately selectable backlight-only compatibility path.

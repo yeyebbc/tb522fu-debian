@@ -4,8 +4,9 @@ The [audit checkpoint](checkpoints/2026-11-17-oneplus-display-audit.md) preserve
 the failed CI91 battery-wake baseline. Subsequent implementation covers both
 the donor's kernel wake sequence and selectable backlight-only blanking.
 The backlight workaround restored a physically visible lock screen on battery.
-The kernel sequence has passed builds; its tablet test is deferred. Installed
-Debian CI78 remains selected while the Debian13 return is prepared.
+CI96 now boots installed Debian13 with the compatibility path and passes a
+connected physical backlight cycle. The kernel sequence's independent normal
+display-power wake test is deferred; CI78 remains a rollback option.
 
 ## Kernel sequence candidate
 

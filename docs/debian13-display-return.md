@@ -1,60 +1,64 @@
-# Debian13 return preparation
+# Debian 13 return completed
 
-The user selected Debian13 after the Fedora backlight workaround restored a
-visible lock screen on battery. Android is running after verified recovery.
-Debian CI78 remains selected on the existing256GiB filesystem; both comparison
-roots and rollback kernels are preserved. No new kernel is installed by the
-display overlay or this plan.
+Debian 13.7 is now running `7.3.0-tb522fu-installed-ci96` on the original 256 GiB
+filesystem, with matching modules and the finalized backlight compatibility
+fix. The user's later explicit installation request superseded the earlier
+prepare-only/defaultCI78 plan. CI78/CI74/CI44 rollback images, Android and the
+Ubuntu/Fedora comparison roots remain. The existing account, locale, firmware,
+brightness policy and native Debian graphics libraries were preserved.
 
-Read-only preparation has verified the installed Debian13.7 root, selectedCI78,
-approved geometry, unchanged graphics and sleep masks. Debian's GNOME48
-gsd-power dynamically imports the expected setter and its own libgsd defines
-it. All nine overlay destinations are absent. No Debian files were changed.
-
-The CI96 display-power-aarch64 artifact is built from
-`c6941972289c88e6122ad2dca1062c40adcc97b3`. Its source inputs and ARM64 adapter
-bytes match the successful Fedora trial. It requires GLIBC_2.17. The verified
-overlay archive SHA256 is
-`8dbdc78aec00a26b3c196babf5a2bc27a0bb927dfa0d08b41db5485f5d41ef04`.
-Exact install/removal payloads are prepared with Debian OS/GSD hashes and
-selectedCI78/graphics guards. They have not been applied or boot-tested.
+## Installed versions
 
 [CI96](https://github.com/yeyebbc/tb522fu-debian/actions/runs/44095613555)
-publishes this overlay and builds the two Debian-root kernel profiles. CI94/95
-caught missing Git and container-checkout ownership handling in packaging;
-both are corrected, and the ownership failure has a local reproduction check.
-The overlay build and29 checks pass in CI96. Kernel build status remains
-separate from tablet acceptance.
+passed both Debian-root kernel profiles and the ARM64 backlight overlay build.
+The build recipe is `c6941972289c88e6122ad2dca1062c40adcc97b3`; its 117-patch
+kernel tree is `a6fa3410d3f9e3b61d5788505b9215ccff2bc570`.
 
-The Build ARM64 artifacts workflow produces installed and bounded Debian-root
-kernel images when dispatched with trial_root=debian. It also publishes
-display-power-aarch64: the board-scoped overlay, source/file manifest and
-SHA256SUMS. The kernel contains the117-patch source stack and the separate,
-hardware-untested post-link PHY/controller sequence. A successful build does
-not accept its display-wake behavior.
+- Selected installed boot image SHA256:
+  `5587888d02086c27c98bac0ed9f06e79efbc402c681ffe18f02266f31e876c02`.
+- Matching installed modules archive SHA256:
+  `ebd746209985b764aa0d5278faee8f509b545f091683657a8f692fdd518a5566`.
+- Backlight overlay archive SHA256:
+  `8dbdc78aec00a26b3c196babf5a2bc27a0bb927dfa0d08b41db5485f5d41ef04`.
 
-Before the Debian return:
+The eight overlay files and socket-enable symlink were installed with exact
+new-file/hash guards; native Debian GSD 48 libraries were retained. Versioned
+CI96 modules and the installed image were staged with clean unmount/fullfsck.
+CI78 remains available for rollback. Prepared removal now guards CI96; the
+historical CI78-only removal/first-boot payloads must not be replayed unchanged.
 
-1. Recheck AndroidB, selectedCI78 and graphics hashes, filesystem cleanliness
-   and the approved partition geometry through the existing read-only mount.
-2. Inspect Debian13's own gsd-power/libgsd dynamic setter binding and the new
-   adapter's ARM64/glibc requirements. Preserve Debian's distro libraries,
-   account, locale, brightness policy and supported drivers.
-3. Prepare an exact new-file install and hash-checked rollback for the eight
-   overlay files plus socket-enable symlink. Refuse existing or foreign files.
-   The Fedora trial install has already been removed; it must not establish
-   Debian installation or runtime acceptance.
-4. Use the existing Debian selection and independent recovery for a bounded
-   first boot. Verify the active GSD maps the adapter, MDSS stays active and
-   the backlight blanks without KMS shutdown. Check unplugged Lock/Space and
-   unlocking to a fresh desktop before any permanent kernel promotion.
+## Startup and physical verification
 
-Keep actual system-sleep targets masked. The workaround costs power because
-the panel link/GPU display pipeline remain active. Drain, long-duration blanking,
-Power/lid behavior and repeated wake remain pending. Retire compatibility once
-normal unplugged connector power cycling reliably restores physical images and
-its power behavior has been measured.
+The normal on-device switching action booted the selected CI96 installed image.
+All 39 supported baseline modules loaded and no failed system units were listed.
+Wi-Fi connected with its US radio domain, Bluetooth reported Powered=true and
+the TB522FU ALSA card was present. These checks do not establish new pairing,
+camera image quality or full physical acceptance of every peripheral.
 
-The kernel candidate should receive its own normal-path test after removing or
-disabling the adapter/rule/service and proving they are absent from the running
-GSD. Do not use a backlight-only pass to accept kernel or system-suspend wake.
+Debian's existing Mesa 26.1.6 rendered real Adreno 830 pixels; the llvmpipe
+negative control was rejected. The signed-in GNOME process used that hardware
+stack. Native GSD 48 mapped the adapter, MDSS stayed active and KMS kept scanning.
+An automatic connected backlight off/on cycle preserved stored brightness.
+Camera review confirmed clear desktop, physical darkness, then clear desktop;
+no matched display faults appeared before or after the cycle.
+
+An optional BlueZ startup status query initially timed out. Its failed result
+was retained; an owned same-boot diagnostic resume passed all required checks
+and the settled Bluetooth query. No second boot or display-gate weakening was
+used. The independent 600-second first-boot return was retired only after native and
+physical checks. Debian was left running; host network, ModemManager, camera
+settings and owned workers were cleaned up.
+
+## Acceptance limits
+
+This is an experimental installed CI96 plus compat configuration. Connected
+physical blank/unblank passes on Debian. The positive short Fedora battery
+Lock/Space result remains separate; unplugged Debian Lock/Space, longer blanking,
+repeated wake, fresh unlocking and blank-state drain have not been accepted.
+
+The workaround keeps the display link active and costs power. Actual system
+sleep targets remain masked. CI96 contains the new post-link PHY/controller
+sequence, but its normal display-power wake path has not been tested separately
+from compat. Disable/remove the adapter, service and runtime-active rule before
+that independent experiment. A compat pass cannot establish kernel-wake or
+system-suspend acceptance. Existing camera and other peripheral limits remain.

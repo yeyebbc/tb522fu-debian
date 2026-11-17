@@ -6,15 +6,23 @@ Experimental native Linux port for the Lenovo Legion Y900 13 / TB522FU
 directions. This remains a development port with substantial peripheral work
 outstanding.
 
+**Debian13 is now running CI96 with the backlight fix installed.** The normal
+installed boot, all39 supported module loads, hardware Adreno830 desktop and a
+connected physical blank/unblank cycle pass. CI78/CI74/CI44 rollback images and
+Android are preserved. Actual system sleep remains masked; repeated battery
+wake and blank-state power use remain pending. See the
+[installed versions and verification](docs/debian13-display-return.md).
+
 **The backlight-only workaround now has a positive unplugged wake result.**
 On Fedora45 with the unchanged CI91 kernel, GNOME Lock → Space restored a clear
 lock screen before USB power returned, confirmed by camera and the user. The
 display link stayed active; only the LEDs were blanked. This consumes extra
 power and does not fix system suspend. The longer observation/unlock phase
-remains pending. The separate PHY/controller kernel changes pass CI93 builds
-but have not been tested on the tablet. See the
+remains pending. The separate PHY/controller kernel changes are included in
+CI96 startup; their normal display-power wake path remains untested without
+compat. See the
 [implementation and evidence](docs/oneplus-display-method.md) and
-[Debian13 return plan](docs/debian13-display-return.md).
+[Debian13 installed state](docs/debian13-display-return.md).
 
 **Fedora 45 also reproduces the battery display-wake failure.** Native Fedora
 GNOME51/Mesa26.2.6 with our unchanged CI91 tablet kernel passes connected wake
@@ -40,15 +48,18 @@ isolate the kernel from Mesa or firmware. See the
 [next Fedora 45 comparison](docs/fedora45-trial.md).
 
 Ubuntu occupies a separate directory inside the existing Linux filesystem.
-Android, selected Debian CI78 and partition boundaries are preserved, and
-recovery/cleanup is complete. `workflow_dispatch` accepts `trial_root=ubuntu-test`
-or `trial_root=fedora45-test` only for the bounded disk-test artifact; installed
+At the comparison checkpoints, Android, selected Debian CI78 and partition
+boundaries were preserved and recovery/cleanup completed. The later explicit
+Debian return selected CI96 as described above. `workflow_dispatch` accepts
+`trial_root=ubuntu-test` or `trial_root=fedora45-test` only for the bounded
+disk-test artifact; installed
 selection remains Debian. Fedora's separate root selector and comparison are
 complete; its physical battery wake is rejected. This repository is not a general installer.
 
-**Display wake and unrestricted suspend remain unreliable.** CI78 is selected
-for the user's experimental offline testing; CI74 and CI44 remain rollback
-options. CI78 passed a full-driver platform callback test, then reset during
+**Normal display-power wake and unrestricted suspend remain unreliable.**
+CI78 was used for earlier offline testing; CI78/CI74/CI44 are now rollback
+options for the installed CI96 plus backlight workaround. CI78 passed a
+full-driver platform callback test, then reset during
 real unrestricted suspend-to-idle. The missing system SS3 reference is still a
 diagnostic, not an accepted sleep policy or a fix.
 
