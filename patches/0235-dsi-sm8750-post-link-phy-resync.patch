@@ -1,0 +1,151 @@
+From f5c0524c8c0bfec2f18ce86cfb629c6b927a993e Mon Sep 17 00:00:00 2001
+From: slwyts <slwyts@foxmail.com>
+Date: Fri, 23 Oct 2026 07:11:21 +0000
+Subject: [PATCH] drm/msm/dsi: Resynchronize SM8750 PHYs after link clocks
+ start
+
+Invoke two explicit optional PHY operations after both host power_on calls
+have successfully enabled link clocks, before IRQ enable or panel commands.
+First toggle the retime FIFO on both PHYs; then release CLK_EN_SEL on both
+D-PHYs. This matches the OEM caller's two-pass ordering. Only the SM8750
+V7_2 configuration registers these operations. C-PHY only toggles the FIFO;
+other PHYs have neither callback. The existing CLK_CFG1 register lock and
+read-modify-write preserve CLK_EN and all other bits.
+
+The fixed MiCode aa06fd1757c28dce96fbe4e04d4530ec21b52aac v7.2 PHY source
+implements RBUF_CTRL 0 -> wmb -> 1 -> wmb and D-PHY CLK_EN_SEL bit4 clear
+at msm/dsi/dsi_phy_hw_v7_2.c:521-543.
+
+Imported from Project-SunUEFI patches/linux/7.2.9/0012-dsi-sm8750-post-hs-resync.patch
+(commit 2c82709459b9, slwyts); context adapted to this tree. On piano the
+live CLK_CFG1 reads 0x30/0x34 against the stock golden 0x20/0x24; with
+this change it reads 0x20/0x24 like the stock kernel.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+
+(cherry picked from commit 9bb1254f4b1e308236365d0fa0ed2a422bc3f811)
+
+Imported from https://github.com/yzddmr6/linux-sm8750-erhai/commit/282ca2a9a9c49091d8ebb6b16bae341eabf208bc
+Context adapted around the existing log_state callback and older PHY structure; functional additions unchanged.
+---
+ drivers/gpu/drm/msm/dsi/dsi_manager.c     | 10 +++++++++
+ drivers/gpu/drm/msm/dsi/phy/dsi_phy.c     | 12 ++++++++++
+ drivers/gpu/drm/msm/dsi/phy/dsi_phy.h     |  5 +++++
+ drivers/gpu/drm/msm/dsi/phy/dsi_phy_7nm.c | 27 +++++++++++++++++++++++
+ 4 files changed, 54 insertions(+)
+
+diff --git a/drivers/gpu/drm/msm/dsi/dsi_manager.c b/drivers/gpu/drm/msm/dsi/dsi_manager.c
+index c1c0f2587b9c..4e9ff2da6093 100644
+--- a/drivers/gpu/drm/msm/dsi/dsi_manager.c
++++ b/drivers/gpu/drm/msm/dsi/dsi_manager.c
+@@ -247,6 +247,16 @@ static int dsi_mgr_bridge_power_on(struct drm_bridge *bridge)
+ 		}
+ 	}
+ 
++	/* Both HS clock paths are ready: synchronize both PHYs first. */
++	msm_dsi_phy_toggle_resync_fifo(msm_dsi->phy);
++	if (is_bonded_dsi && msm_dsi1)
++		msm_dsi_phy_toggle_resync_fifo(msm_dsi1->phy);
++
++	/* Release D-PHY CLK_EN_SEL only after both FIFOs are synchronized. */
++	msm_dsi_phy_reset_clk_en_sel(msm_dsi->phy);
++	if (is_bonded_dsi && msm_dsi1)
++		msm_dsi_phy_reset_clk_en_sel(msm_dsi1->phy);
++
+ 	/*
+ 	 * Enable before preparing the panel, disable after unpreparing, so
+ 	 * that the panel can communicate over the DSI link.
+diff --git a/drivers/gpu/drm/msm/dsi/phy/dsi_phy.c b/drivers/gpu/drm/msm/dsi/phy/dsi_phy.c
+index 17a6e78859cb..3ec13e9decec 100644
+--- a/drivers/gpu/drm/msm/dsi/phy/dsi_phy.c
++++ b/drivers/gpu/drm/msm/dsi/phy/dsi_phy.c
+@@ -811,6 +811,18 @@ void msm_dsi_phy_disable(struct msm_dsi_phy *phy)
+ 	pm_runtime_put(&phy->pdev->dev);
+ }
+ 
++void msm_dsi_phy_toggle_resync_fifo(struct msm_dsi_phy *phy)
++{
++	if (phy && phy->cfg->ops.toggle_resync_fifo)
++		phy->cfg->ops.toggle_resync_fifo(phy);
++}
++
++void msm_dsi_phy_reset_clk_en_sel(struct msm_dsi_phy *phy)
++{
++	if (phy && phy->cfg->ops.reset_clk_en_sel)
++		phy->cfg->ops.reset_clk_en_sel(phy);
++}
++
+ void msm_dsi_phy_set_usecase(struct msm_dsi_phy *phy,
+ 			     enum msm_dsi_phy_usecase uc)
+ {
+diff --git a/drivers/gpu/drm/msm/dsi/phy/dsi_phy.h b/drivers/gpu/drm/msm/dsi/phy/dsi_phy.h
+index 248bdff416c1..5d5bfe2b1fa2 100644
+--- a/drivers/gpu/drm/msm/dsi/phy/dsi_phy.h
++++ b/drivers/gpu/drm/msm/dsi/phy/dsi_phy.h
+@@ -22,6 +22,8 @@ struct msm_dsi_phy_ops {
+ 	int (*restore_pll_state)(struct msm_dsi_phy *phy);
+ 	bool (*set_continuous_clock)(struct msm_dsi_phy *phy, bool enable);
+ 	int (*parse_dt_properties)(struct msm_dsi_phy *phy);
++	void (*toggle_resync_fifo)(struct msm_dsi_phy *phy);
++	void (*reset_clk_en_sel)(struct msm_dsi_phy *phy);
+ 	void (*log_state)(struct msm_dsi_phy *phy);
+ };
+ 
+@@ -126,6 +128,9 @@ struct msm_dsi_phy {
+ 	bool state_saved;
+ };
+ 
++void msm_dsi_phy_toggle_resync_fifo(struct msm_dsi_phy *phy);
++void msm_dsi_phy_reset_clk_en_sel(struct msm_dsi_phy *phy);
++
+ /*
+  * PHY internal functions
+  */
+diff --git a/drivers/gpu/drm/msm/dsi/phy/dsi_phy_7nm.c b/drivers/gpu/drm/msm/dsi/phy/dsi_phy_7nm.c
+index 9f8fb9cde513..74cfbdf3c41e 100644
+--- a/drivers/gpu/drm/msm/dsi/phy/dsi_phy_7nm.c
++++ b/drivers/gpu/drm/msm/dsi/phy/dsi_phy_7nm.c
+@@ -472,6 +472,31 @@ static void dsi_pll_cmn_clk_cfg1_update(struct dsi_pll_7nm *pll, u32 mask,
+ 	spin_unlock_irqrestore(&pll->pclk_mux_lock, flags);
+ }
+ 
++static void dsi_7nm_phy_toggle_resync_fifo(struct msm_dsi_phy *phy)
++{
++	void __iomem *base = phy->base;
++
++	writel(0, base + REG_DSI_7nm_PHY_CMN_RBUF_CTRL);
++	wmb();
++	writel(1, base + REG_DSI_7nm_PHY_CMN_RBUF_CTRL);
++	wmb();
++}
++
++static void dsi_7nm_phy_reset_clk_en_sel(struct msm_dsi_phy *phy)
++{
++	struct dsi_pll_7nm *pll = phy->pll_data;
++
++	/* C-PHY retains CLK_EN_SEL after retime synchronization. */
++	if (phy->cphy_mode)
++		return;
++
++	dsi_pll_cmn_clk_cfg1_update(pll,
++			DSI_7nm_PHY_CMN_CLK_CFG1_CLK_EN_SEL, 0);
++	wmb();
++	DBG("DSI PHY%d released CLK_EN_SEL after retime sync: CLK_CFG1=0x%02x",
++	    phy->id, readl(phy->base + REG_DSI_7nm_PHY_CMN_CLK_CFG1));
++}
++
+ static void dsi_pll_disable_global_clk(struct dsi_pll_7nm *pll)
+ {
+ 	dsi_pll_cmn_clk_cfg1_update(pll, DSI_7nm_PHY_CMN_CLK_CFG1_CLK_EN, 0);
+@@ -1565,6 +1590,8 @@ const struct msm_dsi_phy_cfg dsi_phy_5nm_8350_cfgs = {
+ 		.save_pll_state = dsi_7nm_pll_save_state,
+ 		.restore_pll_state = dsi_7nm_pll_restore_state,
+ 		.set_continuous_clock = dsi_7nm_set_continuous_clock,
++		.toggle_resync_fifo = dsi_7nm_phy_toggle_resync_fifo,
++		.reset_clk_en_sel = dsi_7nm_phy_reset_clk_en_sel,
+ 	},
+ 	.min_pll_rate = 600000000UL,
+ #ifdef CONFIG_64BIT
+-- 
+2.47.3
+

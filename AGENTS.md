@@ -3,6 +3,12 @@
 This repository is public. Keep firmware, identifiers, credentials, backups,
 stock partition images and local environment paths out of tracked files.
 
+Both OnePlus routes are now explicitly authorized. Follow
+docs/oneplus-display-method.md: the minimal pinned post-link FIFO/controller
+reset pair and a separately selectable backlight-only compatibility path.
+Keep their physical acceptance separate and retain actual system-sleep masks.
+No unrelated DPU/GMU imports or panel-value changes. Default remains DebianCI78.
+
 The OnePlus source audit is checkpointed before implementation. The user has
 authorized adapting its backlight-only display method next. Follow
 docs/checkpoints/2026-11-17-oneplus-display-audit.md and the pinned source audit.

@@ -264,7 +264,7 @@
     "local_commit": "6a06f2e614b201e20969d5e505c841dd7d951269",
     "adaptation": "Original patch and attribution retained; context refreshed for pinned base.",
     "source": "https://lore.kernel.org/all/20261011074433.9187-1-franzelfranzel@gmail.com/",
-    "status": "Pending upstream patch by François Roux; not claimed merged"
+    "status": "Pending upstream patch by Fran\u00e7ois Roux; not claimed merged"
   },
   "0150-q6apm-capture-trigger-lifecycle.patch": {
     "sha256": "94b4ca28bfe229b56f821c0c632bd1cd06d4063a95c42accd8e95ea120705bf1",
@@ -1121,5 +1121,37 @@
     "validation": "Actual C 128 policy/advertisement cases and two error paths; four damaged variants rejected; ARM64 W=1 plane object; strict checkpatch; exact patch replay.",
     "hardware_tested": false,
     "promotion_allowed": false
+  },
+  "0235-dsi-sm8750-post-link-phy-resync.patch": {
+    "source": "Pinned same-SoC OnePlus SM8750 display sequencing, context-adapted to the existing source",
+    "source_url": "https://github.com/yzddmr6/linux-sm8750-erhai/commit/282ca2a9a9c49091d8ebb6b16bae341eabf208bc",
+    "source_commit": "282ca2a9a9c49091d8ebb6b16bae341eabf208bc",
+    "author": "slwyts <slwyts@foxmail.com>",
+    "local_commit": "f5c0524c8c0bfec2f18ce86cfb629c6b927a993e",
+    "sha256": "ee70e10e7a70b67ee81a2bcc58750bc164c4d3aa6d8fa4ef2ecde5002907c690",
+    "original_patch_id": "1846a4dc5228a22feec76e1b6bb2488daddf6356",
+    "imported_patch_id": "71b7f78dfad9d8d4b4f1476ea64655fdeefeb829",
+    "functional_diff_unchanged": true,
+    "license": "GPL-2.0-only; original source headers and commit attribution retained",
+    "adaptation": "Context only: preserve existing log_state/older PHY fields and clock-parking helper. Exact added/removed lines match donor.",
+    "hardware_tested": false,
+    "promotion_allowed": false,
+    "limitation": "Post-link C-PHY FIFO resync and SM8750 bonded controller reset candidate; preserve D-PHY-only guard. Separate physical native wake acceptance from any backlight-only workaround; system sleep remains masked."
+  },
+  "0236-dsi-sm8750-post-resync-controller-reset.patch": {
+    "source": "Pinned same-SoC OnePlus SM8750 display sequencing, context-adapted to the existing source",
+    "source_url": "https://github.com/yzddmr6/linux-sm8750-erhai/commit/3b4689ae948f0e3fd36fa9b09ade279ae36d4c6b",
+    "source_commit": "3b4689ae948f0e3fd36fa9b09ade279ae36d4c6b",
+    "author": "slwyts <slwyts@foxmail.com>",
+    "local_commit": "63ffe260b42f2c80866fc5db47f05613af186e0b",
+    "sha256": "5987d23e75c167313f3fea77b43214e4b88196afdcdea54c9aa0febf0c84cbfe",
+    "original_patch_id": "a7c0f8bdedfb8dce467f62cf6d838e3de316c7d4",
+    "imported_patch_id": "080777615ebc516d7d21615a13e3e14ed6cdec37",
+    "functional_diff_unchanged": true,
+    "license": "GPL-2.0-only; original source headers and commit attribution retained",
+    "adaptation": "Context only: preserve existing log_state/older PHY fields and clock-parking helper. Exact added/removed lines match donor.",
+    "hardware_tested": false,
+    "promotion_allowed": false,
+    "limitation": "Post-link C-PHY FIFO resync and SM8750 bonded controller reset candidate; preserve D-PHY-only guard. Separate physical native wake acceptance from any backlight-only workaround; system sleep remains masked."
   }
 }
