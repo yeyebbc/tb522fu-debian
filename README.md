@@ -18,7 +18,7 @@ firmware and Mesa 26.1.6+A830 support. It argues against a Debian-only cause and
 focuses the next investigation on the shared graphics stack; it does not
 isolate the kernel from Mesa or firmware. See the
 [Ubuntu checkpoint](docs/checkpoints/2026-11-17-ubuntu-ci90.md) and
-[next EndeavourOS comparison](docs/endeavouros-trial.md).
+[next Fedora 45 comparison](docs/fedora45-trial.md).
 
 Ubuntu occupies a separate directory inside the existing Linux filesystem.
 Android, selected Debian CI78 and partition boundaries are preserved, and

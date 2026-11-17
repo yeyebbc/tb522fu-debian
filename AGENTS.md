@@ -13,9 +13,10 @@ unplugged Lock/Space black screen. Actual system sleep stayed masked. Preserve
 the failed physical result; software display-on state is insufficient.
 See docs/checkpoints/2026-11-17-ubuntu-ci90.md for the current checkpoint;
 older candidate sections below are historical. Selected Debian remains CI78.
-The user requested EndeavourOS next and is supplying the image. Validate ARM64,
-actual kernel source/configuration, DT and matching modules before staging;
-our existing custom kernel is already 7.3. Follow docs/endeavouros-trial.md.
+The user replaced the EndeavourOS plan with Fedora 45 and is downloading the
+image. Validate ARM64, actual kernel source/configuration, DT and matching
+modules before staging; our existing custom kernel is already 7.3. Follow
+docs/fedora45-trial.md. The EndeavourOS plan is retained as superseded history.
 Keep kernel/display work paused during this distro comparison.
 
 For unplugged tests, the UDC can retain `configured` after cable removal.

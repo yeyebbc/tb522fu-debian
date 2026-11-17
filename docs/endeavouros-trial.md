@@ -1,5 +1,10 @@
 # EndeavourOS ARM comparison plan
 
+**Superseded on 2026-11-17:** the user chose
+[Fedora 45 ARM64](fedora45-trial.md) because EndeavourOS does not supply the
+general-purpose ARM64 image they wanted. No EndeavourOS root or kernel was
+installed. The remaining text preserves the earlier assessment.
+
 The user requested EndeavourOS after the Ubuntu battery-wake reproduction and
 is handling the image download. Preserve the
 [Ubuntu checkpoint](checkpoints/2026-11-17-ubuntu-ci90.md) before changing the
