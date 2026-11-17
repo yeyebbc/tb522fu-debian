@@ -26,7 +26,7 @@ jobs:
       - name: Install Fedora-native build dependencies
         if: inputs.distribution == 'fedora45'
         run: |
-          dnf -y --setopt=install_weak_deps=False install git ca-certificates gcc gcc-c++ meson ninja-build pkgconf-pkg-config python3 python3-mako python3-pyyaml python3-packaging bison flex libdrm-devel expat-devel libzstd-devel zlib-ng-compat-devel libglvnd-devel wayland-devel wayland-protocols-devel libX11-devel libXext-devel libXfixes-devel libXrandr-devel libxshmfence-devel libXxf86vm-devel libxcb-devel llvm-devel elfutils-libelf-devel libunwind-devel systemd-devel vulkan-loader-devel spirv-tools-devel spirv-headers glslang python3-ply python3-pycparser python3-setuptools libdisplay-info-devel libpng-devel lm_sensors-devel cmake zstd patch xz
+          dnf -y --setopt=install_weak_deps=False install git ca-certificates gcc gcc-c++ meson ninja-build pkgconf-pkg-config python3 python3-mako python3-pyyaml python3-packaging bison flex libdrm-devel expat-devel libzstd-devel zlib-ng-compat-devel libglvnd-devel wayland-devel wayland-protocols-devel libX11-devel libXext-devel libXfixes-devel libXrandr-devel libxshmfence-devel libXxf86vm-devel libxcb-devel llvm-devel elfutils-libelf-devel libunwind-devel systemd-devel vulkan-loader-devel spirv-tools-devel spirv-headers-devel glslang python3-ply python3-pycparser python3-setuptools libdisplay-info-devel libpng-devel lm_sensors-devel cmake zstd patch xz
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
