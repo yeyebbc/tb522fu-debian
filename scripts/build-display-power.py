@@ -53,7 +53,8 @@ def main():
     enabled.symlink_to('/usr/lib/systemd/system/tb522fu-display-power.socket')
     inputs = {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
               for p in sorted(SOURCE.iterdir()) if p.is_file()}
-    recipe = subprocess.check_output(['git', '-C', str(ROOT), 'rev-parse', 'HEAD'], text=True).strip()
+    git = ['git', '-c', 'safe.directory=' + str(ROOT), '-C', str(ROOT)]
+    recipe = subprocess.check_output(git + ['rev-parse', 'HEAD'], text=True).strip()
     manifest = dict(architecture='aarch64', source_commit=recipe, source_inputs=inputs,
                     files=files, symlinks={str(enabled.relative_to(tree)): os.readlink(enabled)},
                     compiler=subprocess.check_output([a.cc, '--version'], text=True).splitlines()[0],
@@ -61,7 +62,7 @@ def main():
                     source_pin='a82cd442c5e4c1e460bfc65483d4344698ced62a',
                     hardware_tested=False, system_suspend_enabled=False)
     (out / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
-    epoch = int(subprocess.check_output(['git', '-C', str(ROOT), 'show', '-s', '--format=%ct', 'HEAD'], text=True))
+    epoch = int(subprocess.check_output(git + ['show', '-s', '--format=%ct', 'HEAD'], text=True))
     def normalize(info):
         info.uid = info.gid = 0
         info.uname = info.gname = ''
