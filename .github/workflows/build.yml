@@ -27,6 +27,33 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  display-power:
+    name: ARM64 backlight compatibility overlay
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 10
+    container: debian:trixie
+    steps:
+      - name: Install adapter build tools
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends gcc libc6-dev binutils python3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check backlight authorization and mode switching
+        run: python3 -m unittest discover -s tests -p 'test_display_power*.py' -v
+      - name: Build the ARM64 overlay
+        run: python3 scripts/build-display-power.py --cc gcc --output artifacts/display-power
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: display-power-aarch64
+          path: |
+            artifacts/display-power/display-power.tar
+            artifacts/display-power/manifest.json
+            artifacts/display-power/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 7
+
   kernel:
     name: Kernel (${{ matrix.profile }})
     strategy:

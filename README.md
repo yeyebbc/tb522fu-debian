@@ -6,6 +6,16 @@ Experimental native Linux port for the Lenovo Legion Y900 13 / TB522FU
 directions. This remains a development port with substantial peripheral work
 outstanding.
 
+**The backlight-only workaround now has a positive unplugged wake result.**
+On Fedora45 with the unchanged CI91 kernel, GNOME Lock → Space restored a clear
+lock screen before USB power returned, confirmed by camera and the user. The
+display link stayed active; only the LEDs were blanked. This consumes extra
+power and does not fix system suspend. The longer observation/unlock phase
+remains pending. The separate PHY/controller kernel changes pass CI93 builds
+but have not been tested on the tablet. See the
+[implementation and evidence](docs/oneplus-display-method.md) and
+[Debian13 return plan](docs/debian13-display-return.md).
+
 **Fedora 45 also reproduces the battery display-wake failure.** Native Fedora
 GNOME51/Mesa26.2.6 with our unchanged CI91 tablet kernel passes connected wake
 but leaves the physical panel blank after unplugged Lock/Space. Recovery and

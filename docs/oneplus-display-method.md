@@ -1,9 +1,11 @@
-# Two independently tested display-power paths
+# Two separate display-power paths
 
 The [audit checkpoint](checkpoints/2026-11-17-oneplus-display-audit.md) preserves
 the failed CI91 battery-wake baseline. Subsequent implementation covers both
 the donor's kernel wake sequence and selectable backlight-only blanking.
-Neither is hardware accepted yet; installed Debian CI78 remains selected.
+The backlight workaround restored a physically visible lock screen on battery.
+The kernel sequence has passed builds; its tablet test is deferred. Installed
+Debian CI78 remains selected while the Debian13 return is prepared.
 
 ## Kernel sequence candidate
 
@@ -42,7 +44,12 @@ The first CI92 build exposed an older-header API difference: this manager
 includes dsi.h, whereas the donor placed new declarations in the private PHY
 header. Patch0237 moves those declarations into the existing manager-facing
 API without changing hardware operations. The failed CI92 build is retained;
-the corrected117-patch tree is pinned by kernel/source.json and needs fresh CI.
+the corrected117-patch tree is pinned by kernel/source.json. CI93 at recipe
+`1ee503c68daf00310df99e5dd656fd38db88944a` passed installed and Fedora disk-test
+builds. Its tree is `a6fa3410d3f9e3b61d5788505b9215ccff2bc570`.
+The audited bounded boot image has SHA256
+`5ab604ee02ce4f93137f0a61b1a8239bda5168c9f5923f40c4c8ed678facbcfc`.
+It has not been booted. No normal kernel-wake acceptance is inferred.
 
 ## Backlight compatibility path
 
@@ -70,6 +77,37 @@ imported setter; its no-adapter negative control exits99. A separate ARM64
 socket transport check delivers AUTO3/AUTO0. These are software/interface
 checks, not physical acceptance. The actual Fedora51 gsd-power has an undefined
 dynamic import of the setter and libgsd exports it. No distro library is copied.
+
+## First physical backlight result — 2026-11-17
+
+The unchanged CI91 control kernel ran Fedora45 with only the owned eight-file
+overlay and socket-enable symlink added. All39 supported modules, Adreno pixels,
+software-renderer rejection and the settled fault gate passed. The active user
+GSD mapped the adapter; MDSS stayed runtime-active. Connected blank/unblank
+physically passed with KMS active, Mutter PowerSaveMode0, stored brightness1256
+unchanged and no new panel/DSI lifecycle entries.
+
+During GNOME Lock on battery, the backlight service reported off. Space arrived
+at200.39s uptime while both USB supply indicators were0. The lock screen became
+clearly visible on camera before reconnect, and the user confirmed “It works!”
+The authoritative USB supply stayed0 through204.28s, then returned at205.83s.
+No matched display faults appeared.
+
+The automated probe returned1 because reconnect atSpace+5.44s did not satisfy
+its eight-second offline observation guard. The complete ten-second observation
+and subsequent unlock/fresh desktop phase were therefore not reached. Preserve
+that protocol failure alongside the positive physical wake evidence. This is
+one short unplugged Lock/Space result, not repeated or long-duration acceptance.
+
+Android stock boot readback, boot completion, selectedCI78/graphics preservation,
+timer retirement/fullfsck, ModemManager, temporary network profile, camera and
+owned-worker cleanup were verified. The trial overlay was removed with its
+exact hashes and another fullfsck. Fedora and Ubuntu roots are retained.
+
+The user then requested finalization, CI packaging and return preparation for
+Debian13. CI now publishes display-power-aarch64 independently of the kernel
+artifacts. [Debian return preparation](debian13-display-return.md) keeps the
+successful workaround and untested kernel candidate distinct.
 
 ## Acceptance
 

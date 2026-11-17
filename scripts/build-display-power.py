@@ -72,6 +72,9 @@ def main():
     with tarfile.open(out / 'display-power.tar', 'w') as archive:
         for child in sorted(tree.iterdir()):
             archive.add(child, arcname=child.name, filter=normalize)
+    (out / 'SHA256SUMS').write_text(''.join(
+        hashlib.sha256((out / name).read_bytes()).hexdigest() + '  ' + name + '\n'
+        for name in ['display-power.tar', 'manifest.json']))
     print(json.dumps(dict(output=str(out), files=len(files),
                           archive_sha256=hashlib.sha256((out / 'display-power.tar').read_bytes()).hexdigest())))
 
