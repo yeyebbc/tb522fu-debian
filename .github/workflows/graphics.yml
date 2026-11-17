@@ -2,6 +2,12 @@ name: Build ARM64 graphics stack
 
 on:
   workflow_dispatch:
+    inputs:
+      distribution:
+        description: Native build environment for the isolated graphics stack
+        type: choice
+        options: [debian, fedora45]
+        default: debian
 
 permissions:
   contents: read
@@ -10,20 +16,32 @@ jobs:
   graphics:
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 45
-    container: debian:trixie
+    container: ${{ inputs.distribution == 'fedora45' && 'registry.fedoraproject.org/fedora@sha256:8430348a73c5a0e607b5de2cf9dd4741d9aa0891bbce3108588298102015f8c6' || 'debian:trixie' }}
     steps:
-      - name: Install build dependencies
+      - name: Install Debian build dependencies
+        if: inputs.distribution != 'fedora45'
         run: |
           apt-get update
           apt-get install -y --no-install-recommends git ca-certificates build-essential meson ninja-build pkg-config python3 python3-mako python3-yaml python3-packaging bison flex libdrm-dev libexpat1-dev libzstd-dev zlib1g-dev libglvnd-dev libwayland-dev libwayland-egl-backend-dev wayland-protocols libx11-dev libxext-dev libxfixes-dev libxrandr-dev libxshmfence-dev libxxf86vm-dev libxcb-glx0-dev libxcb-shm0-dev libxcb-present-dev libxcb-randr0-dev libxcb-sync-dev libxcb-xfixes0-dev libxcb-dri2-0-dev libxcb-dri3-dev libx11-xcb-dev llvm-19-dev libelf-dev libunwind-dev libudev-dev libvulkan-dev spirv-tools spirv-headers glslang-tools python3-ply python3-pycparser python3-setuptools libdisplay-info-dev libpng-dev libsensors-dev cmake zstd
+      - name: Install Fedora-native build dependencies
+        if: inputs.distribution == 'fedora45'
+        run: |
+          dnf -y --setopt=install_weak_deps=False install git ca-certificates gcc gcc-c++ meson ninja-build pkgconf-pkg-config python3 python3-mako python3-pyyaml python3-packaging bison flex libdrm-devel expat-devel libzstd-devel zlib-ng-compat-devel libglvnd-devel wayland-devel wayland-protocols-devel libX11-devel libXext-devel libXfixes-devel libXrandr-devel libxshmfence-devel libXxf86vm-devel libxcb-devel llvm-devel elfutils-libelf-devel libunwind-devel systemd-devel vulkan-loader-devel spirv-tools-devel spirv-headers glslang python3-ply python3-pycparser python3-setuptools libdisplay-info-devel libpng-devel lm_sensors-devel cmake zstd patch xz
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Record Fedora-native dependency versions
+        if: inputs.distribution == 'fedora45'
+        run: |
+          mkdir -p artifacts/graphics
+          rpm -q glibc libstdc++ libdrm llvm-libs libglvnd > artifacts/graphics/fedora-dependencies.txt
       - name: Build pinned Mesa and hardware rendering probe
-        run: python3 scripts/build-graphics.py
+        env:
+          GRAPHICS_SOURCE_SPEC: ${{ inputs.distribution == 'fedora45' && 'configs/graphics/source-fedora45.json' || 'configs/graphics/source.json' }}
+        run: python3 scripts/build-graphics.py --source-spec "$GRAPHICS_SOURCE_SPEC"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: graphics-arm64
+          name: ${{ inputs.distribution == 'fedora45' && 'graphics-fedora45-arm64' || 'graphics-arm64' }}
           path: artifacts/graphics/
           if-no-files-found: error
           retention-days: 7
