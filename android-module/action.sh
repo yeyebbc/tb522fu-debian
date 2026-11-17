@@ -16,7 +16,33 @@ parent=$(dirname "$(readlink -f "$node")")
 case "$(readlink -f "$parent/device")" in */1d84000.ufshc/*:0:0:0) ;; *) exit 1;; esac
 [ "$(cat "$parent/queue/logical_block_size")" = 4096 ]
 [ "$(cat "$node/start")" = 454096896 ]
-[ "$(cat "$node/size")" = 536870912 ]
+size=$(cat "$node/size")
+case "$size" in
+    536870912) ;;
+    511705088)
+        swap=
+        for item in /sys/class/block/*; do
+            [ -e "$item/partition" ] || continue
+            grep -qx PARTNAME=debian-swap "$item/uevent" || continue
+            [ -z "$swap" ] || exit 1
+            swap=$item
+        done
+        [ -n "$swap" ]
+        [ "$(dirname "$(readlink -f "$swap")")" = "$parent" ]
+        [ "$(cat "$swap/start")" = 965801984 ]
+        [ "$(cat "$swap/size")" = 25165824 ]
+        [ "$(cat "$swap/partition")" = 18 ]
+        # Never mount a filesystem frozen in a saved hibernation image. Only
+        # a valid ordinary swap header permits Android's mount-based Action.
+        sig=$(dd if="/dev/block/${swap##*/}" bs=4096 count=1 2>/dev/null |
+              od -An -tx1 -j4086 -N10 | tr -d ' \n')
+        [ "$sig" = 53574150535041434532 ] || {
+            echo 'Pending or invalid hibernation image; use host resume/recovery'
+            exit 1
+        }
+        ;;
+    *) exit 1;;
+esac
 dev="/dev/block/${node##*/}"
 [ -b "$dev" ]
 # Refuse an unclean Linux shutdown. ro,noload must not hide pending recovery.
