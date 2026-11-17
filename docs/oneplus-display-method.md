@@ -38,6 +38,12 @@ commit-message/trailer style, uncommented barriers and one alignment check.
 These findings are retained; no original-author signoff is invented. Full
 ARM64 CI and physical wake remain required. No kernel-version change.
 
+The first CI92 build exposed an older-header API difference: this manager
+includes dsi.h, whereas the donor placed new declarations in the private PHY
+header. Patch0237 moves those declarations into the existing manager-facing
+API without changing hardware operations. The failed CI92 build is retained;
+the corrected117-patch tree is pinned by kernel/source.json and needs fresh CI.
+
 ## Backlight compatibility path
 
 Adapt the pinned donor service and generated GSD power-setter adapter. Lenovo's

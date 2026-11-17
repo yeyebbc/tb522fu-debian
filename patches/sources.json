@@ -1153,5 +1153,14 @@
     "hardware_tested": false,
     "promotion_allowed": false,
     "limitation": "Post-link C-PHY FIFO resync and SM8750 bonded controller reset candidate; preserve D-PHY-only guard. Separate physical native wake acceptance from any backlight-only workaround; system sleep remains masked."
+  },
+  "0237-dsi-expose-post-link-phy-api.patch": {
+    "source": "Local API adaptation for the two pinned OnePlus DSI changes",
+    "local_commit": "83523eb0e6fa46e9712ee2b576e01f8f47377ed2",
+    "sha256": "a950ae47a24e9d9e30f461d52b36eaeac9ae539743f51e720aba45f0f0dc2300",
+    "license": "GPL-2.0-only; existing source headers retained",
+    "scope": "Move declarations to the manager-facing dsi.h on this older base; no hardware-operation change",
+    "hardware_tested": false,
+    "promotion_allowed": false
   }
 }

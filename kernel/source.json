@@ -119,7 +119,8 @@
     "patches/0227-gmu-component-lifetimes-backport.patch",
     "patches/0234-dpu-opt-in-linear-scanout.patch",
     "patches/0235-dsi-sm8750-post-link-phy-resync.patch",
-    "patches/0236-dsi-sm8750-post-resync-controller-reset.patch"
+    "patches/0236-dsi-sm8750-post-resync-controller-reset.patch",
+    "patches/0237-dsi-expose-post-link-phy-api.patch"
   ],
-  "patched_tree": "d63040f08622885c246dd033a0542e9cd1c12917"
+  "patched_tree": "a6fa3410d3f9e3b61d5788505b9215ccff2bc570"
 }

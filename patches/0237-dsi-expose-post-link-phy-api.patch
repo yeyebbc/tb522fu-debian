@@ -1,0 +1,44 @@
+From 83523eb0e6fa46e9712ee2b576e01f8f47377ed2 Mon Sep 17 00:00:00 2001
+From: "Yeye B.B.C." <19569343+yeyebbc@users.noreply.github.com>
+Date: Tue, 17 Nov 2026 21:11:41 +0800
+Subject: [PATCH] drm/msm/dsi: expose post-link PHY operations to the manager
+
+The older DSI manager includes dsi.h rather than the private PHY header.
+Move the new public function declarations alongside its existing PHY API
+so both installed and bounded profiles compile without implicit calls.
+Keep the imported FIFO and controller-reset implementations unchanged.
+---
+ drivers/gpu/drm/msm/dsi/dsi.h         | 2 ++
+ drivers/gpu/drm/msm/dsi/phy/dsi_phy.h | 3 ---
+ 2 files changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/gpu/drm/msm/dsi/dsi.h b/drivers/gpu/drm/msm/dsi/dsi.h
+index e8f458bbc766..68ae949ac681 100644
+--- a/drivers/gpu/drm/msm/dsi/dsi.h
++++ b/drivers/gpu/drm/msm/dsi/dsi.h
+@@ -151,6 +151,8 @@ int msm_dsi_phy_enable(struct msm_dsi_phy *phy,
+ 			struct msm_dsi_phy_clk_request *clk_req,
+ 			struct msm_dsi_phy_shared_timings *shared_timings);
+ void msm_dsi_phy_disable(struct msm_dsi_phy *phy);
++void msm_dsi_phy_toggle_resync_fifo(struct msm_dsi_phy *phy);
++void msm_dsi_phy_reset_clk_en_sel(struct msm_dsi_phy *phy);
+ void msm_dsi_phy_set_usecase(struct msm_dsi_phy *phy,
+ 			     enum msm_dsi_phy_usecase uc);
+ void msm_dsi_phy_pll_save_state(struct msm_dsi_phy *phy);
+diff --git a/drivers/gpu/drm/msm/dsi/phy/dsi_phy.h b/drivers/gpu/drm/msm/dsi/phy/dsi_phy.h
+index 5d5bfe2b1fa2..cf2c133948fb 100644
+--- a/drivers/gpu/drm/msm/dsi/phy/dsi_phy.h
++++ b/drivers/gpu/drm/msm/dsi/phy/dsi_phy.h
+@@ -128,9 +128,6 @@ struct msm_dsi_phy {
+ 	bool state_saved;
+ };
+ 
+-void msm_dsi_phy_toggle_resync_fifo(struct msm_dsi_phy *phy);
+-void msm_dsi_phy_reset_clk_en_sel(struct msm_dsi_phy *phy);
+-
+ /*
+  * PHY internal functions
+  */
+-- 
+2.47.3
+
