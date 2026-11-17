@@ -106,13 +106,26 @@ limits. The Ubuntu failure is already established; do not repeat it unchanged.
 ## Build preparation status
 
 Kernel CI91 [run44064248541](https://github.com/yeyebbc/tb522fu-debian/actions/runs/44064248541)
-passed both profiles; artifact and embedded-root admission checks precede use.
+passed both profiles. The downloaded disk-test artifact, embedded Fedora root
+selector/modules and signed Android-format boot image pass admission. All114
+patches, DT bytes and effective config equal CI90. Recipe
+`a83b3187cdcf5e2cb25e79b94d34bff2f343b3fd`, boot SHA-256
+`b6aaf10b944ca71532e35e220843389279ca4ca6456af27a3e499bd6cc6b0983`.
 The first Fedora graphics run stopped before Mesa compilation because the
 Fedora package is `spirv-headers-devel`. That dependency name is corrected;
 [graphics-only run44066742541](https://github.com/yeyebbc/tb522fu-debian/actions/runs/44066742541)
 passed dependency installation, native Mesa compilation and the llvmpipe
 negative control. It uses the same pinned Mesa source and one-line GPU entry.
-Artifact audit and hardware testing remain pending; no kernel rebuild was needed.
+The downloaded GitHub artifact digest, inner hashes, native dependency versions
+and exact one-line source-table delta pass audit; no kernel rebuild was needed.
+Graphics recipe `f7d7f5c45bb9e0276cfe9f21f6dd3ff4374f6f98`.
+
+The prepared root passes native ARM64 library loading, llvmpipe rejection,
+key-only SSH configuration and six relevant systemd unit checks. All39 supported
+module names resolve through modinfo to the matching CI91 ABI. Locale and
+effective GNOME power defaults pass. The full frozen root manifest covers
+162990 entries, ownership/modes and xattrs. Device staging/full verification
+and physical hardware acceptance remain required.
 
 
 ## Fedora compatibility limits
@@ -132,3 +145,10 @@ the USB address. The native Fedora firewall's existing SSH allowance is kept.
 The isolated newer Mesa prefix uses Fedora dependencies; preserve the native
 Vulkan ICD as a private backup before selecting the trial copy. Retire these
 trial overrides when a native supported kernel/Mesa route is accepted.
+
+Fedora's own offline setfiles restores labels replaced during account creation;
+it runs inside the owned root with no host bind mounts. The raw image's native
+wallpaper override emits an obsolete-key warning during normal schema
+compilation and is retained. Validate the trial power override separately with
+strict native XML compilation, then check its actual compiled GSettings values.
+Do not change unrelated Fedora RPM settings to silence that existing warning.
