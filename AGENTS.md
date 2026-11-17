@@ -30,6 +30,14 @@ of Fedora's stock kernel. Do not claim kernel attribution from that comparison.
 source-image SHA and a separate root identity; installed selection stays Debian.
 Preserve explicit Ubuntu mode and all before-write root/geometry/module guards.
 
+Fedora CI91 first hardware boot rendered clear greeter/desktop and real Adreno
+pixels, but final native probe rejected startup vblank/commit faults. No DPMS
+or battery action occurred. A source audit found omitted separate var subvolume;
+retain the failed base, apply a verified missing-only layer, mask repart and
+check both GPT copies. Next require settled whole-boot post-login fault gate
+BEFORE DPMS and physical camera acceptance before battery. Same kernel/DT/config;
+no installation/promotion, error-filter weakening or kernel-only attribution.
+
 For unplugged tests, the UDC can retain `configured` after cable removal.
 Use the verified USB power-supply `online` reading for power presence; retain
 UDC state as a separate diagnostic. Missing/unknown power state must not be

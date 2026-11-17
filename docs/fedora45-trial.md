@@ -4,8 +4,9 @@ The user selected Fedora 45 after the
 [Ubuntu battery-wake reproduction](checkpoints/2026-11-17-ubuntu-ci90.md),
 replacing the EndeavourOS proposal. The user handles the image download;
 integration, driver compatibility, test logging and recovery are agent work.
-The supplied image is verified and host preparation is active. No Fedora
-hardware boot or installed default is accepted yet.
+The supplied image is verified and staged separately. First hardware boot
+passed physical desktop and Adreno rendering, but failed the final display-log
+gate. No battery-wake result or installed default is accepted yet.
 
 ## Verified image and initial route
 
@@ -124,8 +125,10 @@ The prepared root passes native ARM64 library loading, llvmpipe rejection,
 key-only SSH configuration and six relevant systemd unit checks. All39 supported
 module names resolve through modinfo to the matching CI91 ABI. Locale and
 effective GNOME power defaults pass. The full frozen root manifest covers
-162990 entries, ownership/modes and xattrs. Device staging/full verification
-and physical hardware acceptance remain required.
+162990 entries, ownership/modes and xattrs. Device staging/full verification and full filesystem checks passed for that
+frozen preparation. A later source audit found its omitted separate `/var`
+subvolume; the base archive is retained as failed preparation, with a separately
+verified correction layer. Physical acceptance remains scenario-specific.
 
 
 ## Fedora compatibility limits
@@ -152,3 +155,36 @@ wallpaper override emits an obsolete-key warning during normal schema
 compilation and is retained. Validate the trial power override separately with
 strict native XML compilation, then check its actual compiled GSettings values.
 Do not change unrelated Fedora RPM settings to silence that existing warning.
+
+## First hardware result and corrected preparation
+
+The first CI91 Fedora boot displayed a clear greeter and signed-in GNOME
+desktop. The native Mesa hardware pixel test rendered149 frames in2 seconds
+on Adreno830v1; the llvmpipe negative control returned3. All39 listed support
+modules loaded. This establishes those observations, not complete peripheral
+or wake acceptance. Two vblank/commit-timeout pairs appeared just after desktop
+login, so the final native probe returned1 despite the clear, responsive camera
+footage. No DPMS, battery action or system sleep was requested in that session.
+
+The raw Btrfs image contains separate `root`, `home` and `var` subvolumes. The
+initial extraction missed `var`. A separate audited layer restores missing
+stock files and packaged directory permissions without replacing newly created
+account/runtime/log files. The failed base and first-session evidence are kept.
+Future extraction must inspect fstab and every filesystem/subvolume, including
+separate `/var`; copying just the apparent root is insufficient. The unused
+source home is deliberately replaced by the existing local account's new home.
+
+The trial now explicitly masks `systemd-repart.service` as well as growfs.
+Both on-device GPT copies, all approved partition geometry/identities, selected
+Debian image and graphics state pass post-return verification. The custom
+kernel lacks NF_TABLES, so native Fedora firewall compatibility remains an
+explicit limit; do not silently switch firewall backends or change the kernel
+during this comparison. Detailed native service statuses are captured in the
+next probe before any display cycle.
+
+The corrected test retains the identical CI91 boot image, source, DT and
+configuration. It requires a settled45-second signed-in whole-boot fault check
+before connected DPMS, then physical camera review before any unplugged action.
+Actual system sleep remains masked. The host coordinator runs in a persistent
+user systemd unit; independent kernel return and exact Android restoration
+remain armed. No first-boot failure is cleared or reclassified as a pass.
