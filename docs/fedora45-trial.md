@@ -102,3 +102,33 @@ Audit native SELinux expectations and custom-kernel configuration explicitly.
 Do not promote on compilation, GNOME display-on state, screenshots or connected
 wake alone. Report the physical battery result, changed components and remaining
 limits. The Ubuntu failure is already established; do not repeat it unchanged.
+
+## Build preparation status
+
+Kernel CI91 [run44064248541](https://github.com/yeyebbc/tb522fu-debian/actions/runs/44064248541)
+passed both profiles; artifact and embedded-root admission checks precede use.
+The first Fedora graphics run stopped before Mesa compilation because the
+Fedora package is `spirv-headers-devel`. That dependency name is corrected;
+[graphics-only run44066742541](https://github.com/yeyebbc/tb522fu-debian/actions/runs/44066742541)
+passed dependency installation, native Mesa compilation and the llvmpipe
+negative control. It uses the same pinned Mesa source and one-line GPU entry.
+Artifact audit and hardware testing remain pending; no kernel rebuild was needed.
+
+
+## Fedora compatibility limits
+
+The existing tablet kernel has no SELinux LSM, PSI or zram. Preserve the source
+SELinux xattrs in the root/archive and verify them after staging; Android's
+SELinux policy is left unchanged. This bounded comparison does not provide
+Fedora stock SELinux enforcement. Disable only the trial root's zram generator
+and oomd units that need unavailable kernel features. Remove the raw image's
+foreign UUID/growfs fstab entries and mask growfs in the test root; storage
+geometry stays unchanged. These are explicit trial compatibility adjustments,
+not kernel fixes or production Fedora acceptance.
+
+Reuse the existing local account without copying its home, preserve user
+locale/time zone, disable first-run GDM setup, and keep key-only SSH bound to
+the USB address. The native Fedora firewall's existing SSH allowance is kept.
+The isolated newer Mesa prefix uses Fedora dependencies; preserve the native
+Vulkan ICD as a private backup before selecting the trial copy. Retire these
+trial overrides when a native supported kernel/Mesa route is accepted.
