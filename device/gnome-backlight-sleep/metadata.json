@@ -1,0 +1,10 @@
+{
+  "uuid": "backlight-sleep@tb522fu.local",
+  "name": "Backlight-only Suspend",
+  "description": "Make GNOME Suspend lock the screen and turn off only the backlight. The tablet remains awake.",
+  "shell-version": [
+    "48"
+  ],
+  "version": 1,
+  "url": "https://github.com/yeyebbc/tb522fu-debian"
+}

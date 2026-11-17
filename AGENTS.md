@@ -3,6 +3,15 @@
 This repository is public. Keep firmware, identifiers, credentials, backups,
 stock partition images and local environment paths out of tracked files.
 
+Latest user steering requests actual disk hibernation after a successful
+backlight-only Suspend implementation. Preserve the working GNOME48 extension
+and CI96/compat as rollback. Connected and short battery menu Suspend/Space
+passed, including physical pre-reconnect output and password lock; this is
+screen-only sleep, not S3/s2idle or hibernation acceptance. Read
+docs/backlight-sleep.md. No working hibernation selection is installed yet.
+Kernel already has CONFIG_HIBERNATION=y; swap/resume boot path need preparation.
+Keep real-sleep protection until an independently recoverable test is ready.
+
 Current installed state: the user explicitly requested latest CI96 plus all
 matching drivers and the finalized backlight fix on Debian13. That installation
 is complete and Debian13.7 is running. Read docs/debian13-display-return.md.

@@ -6,6 +6,12 @@ Experimental native Linux port for the Lenovo Legion Y900 13 / TB522FU
 directions. This remains a development port with substantial peripheral work
 outstanding.
 
+**GNOME Suspend now supports backlight-only sleep on Debian.** The menu locks
+the session and blanks only the LEDs; Space returns to the password screen.
+Connected and short battery tests pass, including clear camera output before
+USB is reconnected. Actual kernel sleep remains masked. See the
+[behavior, evidence and rollback](docs/backlight-sleep.md).
+
 **Debian13 is now running CI96 with the backlight fix installed.** The normal
 installed boot, all39 supported module loads, hardware Adreno830 desktop and a
 connected physical blank/unblank cycle pass. CI78/CI74/CI44 rollback images and

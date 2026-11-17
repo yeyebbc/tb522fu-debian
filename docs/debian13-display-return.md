@@ -62,3 +62,11 @@ sequence, but its normal display-power wake path has not been tested separately
 from compat. Disable/remove the adapter, service and runtime-active rule before
 that independent experiment. A compat pass cannot establish kernel-wake or
 system-suspend acceptance. Existing camera and other peripheral limits remain.
+
+## Subsequent backlight-only Suspend integration
+
+GNOME48 now has an optional menu-action extension. Connected and short battery
+Suspend/Space tests passed with real kernel sleep masked and physical output
+before USB reconnection. See [backlight sleep](backlight-sleep.md). This later
+result supersedes the pending short battery gate above; long/repeated wake and
+drain remain unmeasured. Actual disk hibernation is a separate new request.
