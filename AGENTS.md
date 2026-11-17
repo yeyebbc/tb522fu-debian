@@ -3,16 +3,18 @@
 This repository is public. Keep firmware, identifiers, credentials, backups,
 stock partition images and local environment paths out of tracked files.
 
-Current: Debian13.7 CI98 is installed on the checked244GiB root +12GiB swap.
-No-image startup, all39 modules and native Adreno desktop pass. The first real
-hibernation request rebooted without restoring; the swap header remains empty.
-Normal backlight-only Suspend remains selected; real-sleep masks are restored.
-Image-free freezer/devices tests returned; processors returned with AMBA/qdss
-clock imbalance warnings. Patch0238 imports the PM maintainer's alternative
-runtime-callback eligibility correction, not the rejected noirq exception.
-Its body is unchanged from the linked review attachment;118 patches pin tree
-aad87dd3c8bb2027292255daea8c867cbabe1434. Hardware acceptance is pending. Do not
-claim the warning proves the original reset cause. Read docs/hibernation.md.
+Current: Debian13.7 CI99 is installed on the checked244GiB root +12GiB swap.
+All39 modules, native Adreno and image-free processors diagnostic pass without
+the CI98 AMBA/qdss clock warnings. The deeper core test returned but failed
+Wi-Fi PCIe recovery; clean reboot restores Wi-Fi. This is not S4 acceptance.
+The earlier CI98 real request reset before any image was written. Normal menu
+still uses accepted backlight-only Suspend; all real-sleep targets stay masked.
+Next candidate adds upstream PCIe hibernation freeze plus its force/PME API
+prerequisites as0239–0241;121-patch tree461f3577347c11567d0f57f047710e2a35a2fbe1.
+The old base lacks suspend_poweroff and the newer R-Car caller, so0240 adapts
+only those API differences. No shutdown/MSI policy or unrelated fix imported.
+Native core, actual image restore and power-off acceptance remain required.
+Do not attribute the original reset to either issue yet. Read docs/hibernation.md.
 
 Active hibernation preparation is documented in docs/hibernation.md. The user
 authorizes repartitioning Debian and explicitly chooses12GiB swap, leaving244GiB

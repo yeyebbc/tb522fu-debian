@@ -121,7 +121,10 @@
     "patches/0235-dsi-sm8750-post-link-phy-resync.patch",
     "patches/0236-dsi-sm8750-post-resync-controller-reset.patch",
     "patches/0237-dsi-expose-post-link-phy-api.patch",
-    "patches/0238-pm-runtime-callback-smart-suspend.patch"
+    "patches/0238-pm-runtime-callback-smart-suspend.patch",
+    "patches/0239-pci-d3cold-complete-bus-walk.patch",
+    "patches/0240-pci-dwc-explicit-force-l2.patch",
+    "patches/0241-pci-qcom-hibernation-controller-freeze.patch"
   ],
-  "patched_tree": "aad87dd3c8bb2027292255daea8c867cbabe1434"
+  "patched_tree": "461f3577347c11567d0f57f047710e2a35a2fbe1"
 }

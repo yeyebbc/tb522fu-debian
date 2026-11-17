@@ -5,13 +5,13 @@ to storage, power off/reboot, then restore it. The working GNOME backlight-only
 Suspend action is the rollback policy. It does not enter a CPU sleep state.
 No successful hibernation test is claimed yet.
 
-The dedicated partition is now installed and Debian 13.7 boots CI98 with all
+The dedicated partition is now installed and Debian 13.7 boots CI99 with all
 39 supported modules and the retained Adreno/Mesa desktop. The filesystem
 passed full offline checks before and after shrinking; both GPT copies and
 the swap header were verified. Swap is active and the empty-target boot path
 works. Android and the other Linux trial roots were preserved.
 
-The first normal logind reboot-mode hibernation request caused a fresh boot,
+The first normal logind reboot-mode request on CI98 caused a fresh boot,
 not a restored session. The prior boot ID and RAM-only cookie did not return,
 there is no post-restore receipt, and the swap header remains byte-identical
 to its initial empty header. The retained journal stops at hibernation entry;
@@ -26,7 +26,7 @@ and `qdss already unprepared` warnings through `amba_pm_runtime_suspend()`;
 it is not a clean acceptance. Kernel test-mode messages saying an image was
 restored are not proof of a real restore: this path creates no image.
 
-The next candidate imports Rafael Wysocki's
+CI99 imports Rafael Wysocki's
 [maintainer review attachment](https://lore.kernel.org/all/CAJZ5v0g3zU51Q4sQvmTNH-Jtycu1D5Qm9c6r2t_DCp03ePzV-g@mail.gmail.com/)
 for the matching runtime-clock accounting issue. It excludes devices with
 runtime PM callbacks from automatic callback-free smart-suspend eligibility.
@@ -36,8 +36,35 @@ wakeup-IRQ policy change is also not imported. All previous 117 patches remain
 identical; this adds only three PM-core files, with no board/driver/voltage
 changes. The earlier reset remains unexplained until native evidence says more.
 
+CI99's matching all-driver processors test returns in the same boot without
+the AMBA/qdss clock warnings, and fresh Adreno rendering passes. The next,
+`core` diagnostic reaches the CPU/IRQ-off system-device stage and returns,
+but its Wi-Fi PCIe link is inaccessible during restore. MHI initialization
+fails, followed by ath12k/mac80211 restore warnings; this is a failed diagnostic
+despite a clear physical desktop and a later NetworkManager connected state.
+A clean reboot returns Wi-Fi to its baseline. No disk image was created by
+either diagnostic and the GNOME hibernation action stays disabled.
+
+The next candidate adds the upstream
+[Qualcomm PCIe hibernation freeze callback](https://lore.kernel.org/all/179181074907.22199.10556821368232442334@pm.me/)
+and its required [complete PME bus walk](https://lore.kernel.org/all/20261114-shutdown-v9-1-5430c9f242ed@oss.qualcomm.com/)
+and [explicit forced L2 API](https://lore.kernel.org/all/20261114-shutdown-v9-2-5430c9f242ed@oss.qualcomm.com/).
+Hibernation must record a powered-down controller because the restoring kernel
+may not have initialized it. Ordinary suspend and the final poweroff callbacks
+retain their existing D3cold policy. The forced path still collects every
+endpoint's PME capability so it preserves required auxiliary wake power.
+
+Patches0239–0241 retain author attribution. The freeze change has identical
+added/removed lines to v2; only context changes. The force API is adapted to
+this older base, which has no `suspend_poweroff` field or R-Car caller. The
+unrelated shutdown callback and MSI changes are omitted. All previous118 patches
+are unchanged;121 patches pin tree461f3577347c11567d0f57f047710e2a35a2fbe1.
+Six local cases compile the actual bus-walk/DWC functions to check ordinary
+suspend, forced freeze, PME preservation and shutdown errors; the original
+early-exit callback fails the late-PME-device case. CI/native testing is pending.
+
 The user authorizes repartitioning Debian and explicitly chooses **12 GiB swap**.
-The planned split is 244 GiB ext4 plus 12 GiB dedicated Linux swap, inside the
+The applied split is 244 GiB ext4 plus 12 GiB dedicated Linux swap, inside the
 existing 256 GiB Linux allocation. Android partitions must remain byte-identical.
 Root start and PARTUUID are retained. The filesystem must be checked and shrunk
 offline before its GPT end is reduced. Both live GPT copies, CRCs, bounds,
