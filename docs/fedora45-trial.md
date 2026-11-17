@@ -4,9 +4,10 @@ The user selected Fedora 45 after the
 [Ubuntu battery-wake reproduction](checkpoints/2026-11-17-ubuntu-ci90.md),
 replacing the EndeavourOS proposal. The user handles the image download;
 integration, driver compatibility, test logging and recovery are agent work.
-The supplied image is verified and staged separately. First hardware boot
-passed physical desktop and Adreno rendering, but failed the final display-log
-gate. No battery-wake result or installed default is accepted yet.
+The supplied image is verified and staged separately. The completed comparison
+reproduces the unplugged display-wake failure; connected wake passes. Recovery
+and cleanup are complete, and selected Debian CI78 remains unchanged. See the
+[Fedora CI91 checkpoint](checkpoints/2026-11-17-fedora45-ci91.md).
 
 ## Verified image and initial route
 
@@ -188,3 +189,31 @@ before connected DPMS, then physical camera review before any unplugged action.
 Actual system sleep remains masked. The host coordinator runs in a persistent
 user systemd unit; independent kernel return and exact Android restoration
 remain armed. No first-boot failure is cleared or reclassified as a pass.
+
+## Corrected connected baseline
+
+After the separate-var correction, the next signed-in CI91 boot passed the
+settled45-second whole-boot fault check and one connected display cycle. Camera
+frames show clear GNOME, physical screen off, then clear GNOME with an updated
+clock. The final saved display-fault snapshot also remained empty. Its battery
+action window expired without unplug/Space input, so that session is incomplete
+for battery wake; native returncode1 is retained. Android return, fullfsck and
+exact Debian/graphics/host cleanup all passed.
+
+That session's kernel log also identified missing Bluetooth peripheral firmware
+(`brhperifw20.tlv`, first failing with ENOENT). The earlier support-copy subset
+included only two of the five required files. The three absent files were
+restored from this tablet's previously accepted, privately verified bundle;
+existing files must match and no donor firmware or calibration is substituted.
+A later cold boot verifies all five hashes, and standard Bluetooth address setup
+now exits0 with the captured stock address verified. Pairing and radio-toggle
+acceptance are still separate. No private firmware is published.
+
+The user requested a repeat after missing the first action prompt. It retains
+the identical kernel/display recipe and fault gates, extends only the bounded
+manual-action budget to at most360 seconds before620 seconds uptime, and uses
+a persistent local instruction dialog plus notification/chime. Kernel900-second
+and clean720-second return limits remain unchanged. The repeat reproduced the
+physical blank panel with valid offline Space/reconnect ordering. The final
+[checkpoint](checkpoints/2026-11-17-fedora45-ci91.md) records the physical evidence,
+software-state limits and completed recovery. Do not repeat it unchanged.

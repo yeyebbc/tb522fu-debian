@@ -3,6 +3,15 @@
 This repository is public. Keep firmware, identifiers, credentials, backups,
 stock partition images and local environment paths out of tracked files.
 
+Fedora comparison completed: CI91 with native Fedora GNOME51/Mesa26.2.6 passes
+connected physical wake but reproduces blank unplugged Lock/Space wake. Valid
+local power/key ordering and pre-reconnect camera frames establish the failure;
+software display-on and clean fault logs do not override it. Android/CI78/
+graphics/fullfsck/return/host/camera cleanup passed. No promotion or unchanged
+repeat. Read docs/checkpoints/2026-11-17-fedora45-ci91.md; driver work stays paused.
+Earlier preparation/candidate notes below are historical.
+
+
 The Ubuntu trial keeps the CI89 kernel source and DT unchanged. Only an explicit
 bounded disk-test root-environment may select the separate Ubuntu directory;
 installed/default selection stays Debian. Validate staged root identity and
