@@ -3,6 +3,14 @@
 This repository is public. Keep firmware, identifiers, credentials, backups,
 stock partition images and local environment paths out of tracked files.
 
+Active hibernation preparation is documented in docs/hibernation.md. The user
+authorizes repartitioning Debian and explicitly chooses12GiB swap, leaving244GiB
+root within the existing256GiB allocation. No mutation or hibernation acceptance
+is implied by the prepared code. Preserve Android, drivers, user settings and
+the working backlight-only policy. Resume precedes ANY filesystem mount/check;
+pending images require image-aware recovery. Maintenance selection is bounded,
+explicit and read-only at startup. Older kernels reject the smaller geometry.
+
 Latest user steering requests actual disk hibernation after a successful
 backlight-only Suspend implementation. Preserve the working GNOME48 extension
 and CI96/compat as rollback. Connected and short battery menu Suspend/Space

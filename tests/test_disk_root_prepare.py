@@ -13,7 +13,7 @@ SOURCE = (Path(__file__).resolve().parents[1] / 'configs/disk-root-prepare').rea
 UUID = '00000000-1111-2222-3333-444444444444'
 
 
-def exercise(profile='disk-test', fault=None, root_environment=None):
+def exercise(profile='disk-test', fault=None, root_environment=None, swap_layout=False, fulltrace=False):
     with tempfile.TemporaryDirectory(prefix='root-guard-') as tmp:
         root = Path(tmp)
         bins = root / 'mockbin'
@@ -52,6 +52,24 @@ def exercise(profile='disk-test', fault=None, root_environment=None):
                 (part / 'uevent').write_text('PARTNAME=debian\nPARTUUID=' + UUID + '\n')
                 (part / 'start').write_text('454096896')
                 (part / 'size').write_text('536870912')
+                if swap_layout:
+                    (part / 'size').write_text('511705088')
+                    swap = disk / 'sda18'
+                    swap.mkdir()
+                    (swap / 'partition').write_text('18')
+                    (swap / 'uevent').write_text('PARTNAME=debian-swap\nPARTUUID=' + UUID + '\n')
+                    (swap / 'start').write_text('965801984')
+                    (swap / 'size').write_text('25165824')
+                    link('/sys/class/block/sda18', swap)
+                    put('/dev/sda18')
+                    if fault == 'missing-swap':
+                        (swap / 'uevent').write_text('PARTNAME=other\n')
+                    elif fault == 'wrong-swap-size':
+                        (swap / 'size').write_text('50331648')
+                    elif fault == 'wrong-swap-start':
+                        (swap / 'start').write_text('965801976')
+                    elif fault == 'wrong-swap-index':
+                        (swap / 'partition').write_text('19')
                 link('/sys/class/block/sda17', part)
                 put('/dev/sda17')
         # A failed mount leaves only the empty mountpoint created by the script.
@@ -139,8 +157,10 @@ if name == 'blockdev':
         print('0' if state.exists() else '1')
 if name == 'mount' and os.environ.get('FAULT') == 'mount-failure':
     sys.exit(32)
+if name == 'tb522fu-resume' and os.environ.get('FAULT') in ('snapshot-present', 'resume-returned'):
+    sys.exit(3)
 '''
-        for name in ('modprobe', 'mdev', 'blockdev', 'mount', 'umount', 'readlink', 'e2fsck'):
+        for name in ('modprobe', 'mdev', 'blockdev', 'mount', 'umount', 'readlink', 'e2fsck', 'tb522fu-resume'):
             path = bins / name
             path.write_text(wrapper)
             path.chmod(0o755)
@@ -150,6 +170,7 @@ if name == 'mount' and os.environ.get('FAULT') == 'mount-failure':
                         script, flags=re.M)
         script = script.replace('[ -b "$dev" ]', '[ -f "$dev" ]')
         script = script.replace(str(root) + '/sbin/e2fsck', str(bins / 'e2fsck'))
+        script = script.replace(str(root) + '/sbin/tb522fu-resume', str(bins / 'tb522fu-resume'))
         path = root / 'script'
         path.write_text(script)
         result = subprocess.run(['/bin/sh', str(path)], capture_output=True, text=True,
@@ -159,10 +180,55 @@ if name == 'mount' and os.environ.get('FAULT') == 'mount-failure':
         writes = [s for s in calls if s[0] == 'e2fsck' or
                   (s[0] == 'blockdev' and s[1] == '--setrw') or
                   (s[0] == 'mount' and ('rw' in s or 'bind' in s))]
-        return result, writes, (root / 'newroot').exists()
+        return result, calls if fulltrace else writes, (root / 'newroot').exists()
 
 
 class RootGuardTests(unittest.TestCase):
+    def test_swap_inspection_precedes_every_mount_and_filesystem_check(self):
+        result, calls, _ = exercise(swap_layout=True, fulltrace=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        inspected = next(i for i, c in enumerate(calls) if c[0] == 'tb522fu-resume')
+        self.assertEqual(calls[inspected][1], 'inspect')
+        for i, call in enumerate(calls):
+            if call[0] in ('mount', 'e2fsck') or call[:2] == ['blockdev', '--setrw']:
+                self.assertGreater(i, inspected)
+
+    def test_only_installed_profile_can_attempt_restore(self):
+        result, calls, _ = exercise(profile='installed', swap_layout=True, fulltrace=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(next(c for c in calls if c[0] == 'tb522fu-resume')[1], 'resume')
+
+    def test_snapshot_or_failed_restore_stops_before_mount_or_fsck(self):
+        for profile, fault in [('disk-test', 'snapshot-present'), ('installed', 'resume-returned')]:
+            with self.subTest(profile=profile):
+                result, calls, _ = exercise(profile=profile, fault=fault,
+                                             swap_layout=True, fulltrace=True)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertFalse(any(c[0] in ('mount', 'e2fsck') or
+                    c[:2] == ['blockdev', '--setrw'] for c in calls))
+
+    def test_incomplete_swap_layout_fails_before_mount_or_write(self):
+        for fault in ('missing-swap', 'wrong-swap-size', 'wrong-swap-start', 'wrong-swap-index'):
+            with self.subTest(fault=fault):
+                result, calls, _ = exercise(swap_layout=True, fault=fault, fulltrace=True)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertFalse(any(c[0] in ('mount', 'e2fsck', 'tb522fu-resume') or
+                    c[:2] == ['blockdev', '--setrw'] for c in calls))
+
+    def test_explicit_maintenance_never_mounts_even_a_healthy_root(self):
+        for swap_layout in (False, True):
+            with self.subTest(swap=swap_layout):
+                result, calls, _ = exercise(root_environment='maintenance',
+                                             swap_layout=swap_layout, fulltrace=True)
+                self.assertEqual(result.returncode, 2, result.stderr)
+                self.assertFalse(any(c[0] in ('mount', 'e2fsck') or
+                    c[:2] == ['blockdev', '--setrw'] for c in calls))
+
+    def test_installed_cannot_enter_explicit_maintenance(self):
+        result, calls, _ = exercise(profile='installed', root_environment='maintenance', fulltrace=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse(any(c[0] in ('mount', 'e2fsck') for c in calls))
+
     def test_explicit_fedora_mode_mounts_its_separate_directory(self):
         result, writes, _ = exercise(root_environment='fedora45-test')
         self.assertEqual(result.returncode, 0, result.stderr)

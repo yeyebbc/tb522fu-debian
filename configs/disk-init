@@ -16,7 +16,7 @@ fail() {
     [ ! -e /run/disk-root-verified ] || mount -o remount,ro /newroot
     [ ! -e /run/tb522fu-ubuntu-store-mounted ] || mount -o remount,ro /run/tb522fu-ubuntu-store
     [ ! -e /run/tb522fu-fedora45-store-mounted ] || mount -o remount,ro /run/tb522fu-fedora45-store
-    if [ "$profile" = disk-test ]; then
+    if [ "$profile" = disk-test ] && [ ! -e /run/hibernation-guard-pending ]; then
         sleep 10
         reboot -f -n
     else

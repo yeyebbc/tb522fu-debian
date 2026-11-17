@@ -41,16 +41,47 @@ parent=$(dirname "$(readlink -f "$root")")
 case "$(readlink -f "$parent/device")" in */1d84000.ufs/*:0:0:0) ;; *) exit 1;; esac
 [ "$(cat "$parent/queue/logical_block_size")" = 4096 ]
 [ "$(cat "$root/start")" = 454096896 ]
-[ "$(cat "$root/size")" = 536870912 ]
+[ "$(cat "$root/partition")" = 17 ]
+size=$(cat "$root/size")
+# Two explicit layouts only: original 256 GiB, or 244 GiB + 12 GiB swap.
+case "$size" in 536870912|511705088) ;; *) exit 1;; esac
 partuuid=$(sed -n 's/^PARTUUID=//p' "$root/uevent")
 [ "${#partuuid}" = 36 ]
 dev="/dev/${root##*/}"
 disk="/dev/${parent##*/}"
-mkdir -p /newroot
 environment=debian
 if [ -e /etc/root-environment ]; then
     environment=$(cat /etc/root-environment)
 fi
+swap=
+for node in /sys/class/block/sd*; do
+    [ -f "$node/partition" ] || continue
+    grep -qx 'PARTNAME=debian-swap' "$node/uevent" || continue
+    [ -z "$swap" ] || { echo 'Duplicate Debian swap partition'; exit 1; }
+    swap="$node"
+done
+if [ "$size" = 511705088 ]; then
+    [ -n "$swap" ]
+    [ "$(dirname "$(readlink -f "$swap")")" = "$parent" ]
+    [ "$(cat "$swap/start")" = 965801984 ]
+    [ "$(cat "$swap/size")" = 25165824 ]
+    [ "$(cat "$swap/partition")" = 18 ]
+    # No mount or fsck may precede this header inspection / resume attempt.
+    # Bounded test/maintenance kernels never restore an installed-kernel image.
+    resume_mode=inspect
+    [ "$(cat /etc/boot-profile)" != installed ] || resume_mode=resume
+    touch /run/hibernation-guard-pending
+    /sbin/tb522fu-resume "$resume_mode" "/dev/${swap##*/}" "$disk"
+    rm /run/hibernation-guard-pending
+else
+    [ -z "$swap" ]
+fi
+if [ "$environment" = maintenance ]; then
+    [ "$(cat /etc/boot-profile)" = disk-test ]
+    echo 'Explicit read-only maintenance: no root mount or filesystem check'
+    exit 2
+fi
+mkdir -p /newroot
 target=/newroot
 case "$environment" in
     debian) ;;

@@ -16,7 +16,7 @@ on:
       trial_root:
         description: Root for the bounded disk test; installed selection stays Debian
         type: choice
-        options: [debian, ubuntu-test, fedora45-test]
+        options: [debian, ubuntu-test, fedora45-test, maintenance]
         default: debian
 
 permissions:
@@ -27,6 +27,26 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  backlight-sleep:
+    name: GNOME backlight-only rollback package
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check and package the working GNOME action
+        run: |
+          node --check device/gnome-backlight-sleep/extension.js
+          node --experimental-vm-modules tests/test_gnome_backlight_sleep.mjs
+          python3 scripts/build-gnome-backlight-sleep.py
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: gnome-backlight-sleep
+          path: artifacts/backlight-sleep/
+          if-no-files-found: error
+          retention-days: 7
+
   display-power:
     name: ARM64 backlight compatibility overlay
     runs-on: ubuntu-24.04-arm
@@ -67,7 +87,7 @@ jobs:
       - name: Install build tools
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends git ca-certificates build-essential bc bison flex libssl-dev libelf-dev ccache device-tree-compiler busybox-static cpio python3 zstd kmod e2fsprogs
+          apt-get install -y --no-install-recommends git ca-certificates build-essential bc bison flex libssl-dev libelf-dev ccache device-tree-compiler busybox-static cpio python3 zstd kmod e2fsprogs util-linux
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false

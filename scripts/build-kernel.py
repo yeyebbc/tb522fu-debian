@@ -114,7 +114,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--busybox', type=Path, default=Path('/usr/bin/busybox'))
     parser.add_argument('--profile', choices=['ram', 'disk-test', 'installed'], default='ram')
-    parser.add_argument('--root-environment', choices=['debian', 'ubuntu-test', 'fedora45-test'], default='debian')
+    parser.add_argument('--root-environment', choices=['debian', 'ubuntu-test', 'fedora45-test', 'maintenance'], default='debian')
     parser.add_argument('--jobs', type=int, default=os.cpu_count() or 2)
     args = parser.parse_args()
     assert args.root_environment == 'debian' or args.profile == 'disk-test', \
@@ -172,7 +172,7 @@ def main():
     applets = set(capture(launcher + [args.busybox, '--list']).split())
     required = {'grep', 'sed', 'dirname', 'umount', 'sync', 'sh', 'mount', 'mkdir', 'mdev', 'blockdev', 'ip', 'udhcpd', 'telnetd',
                 'setsid', 'sleep', 'seq', 'cat', 'ls', 'ln', 'reboot', 'poweroff', 'dmesg', 'stty',
-                'wget', 'sha256sum', 'tar', 'losetup', 'switch_root', 'cut', 'awk', 'mv', 'killall', 'touch', 'readlink', 'modprobe'}
+                'wget', 'sha256sum', 'tar', 'losetup', 'switch_root', 'cut', 'awk', 'mv', 'killall', 'touch', 'readlink', 'modprobe', 'rm'}
     assert required <= applets, required - applets
     scripts = ['ram-probe-init', 'ram-desktop-prepare', 'ram-storage-probe']
     if disk:
@@ -205,8 +205,14 @@ def main():
                       f'file /bin/disk-root-prepare {ROOT / "configs/disk-root-prepare"} 0755 0 0',
                       'slink /lib/modules /usr/lib/modules 0777 0 0']
         assert not cross, 'Disk profiles require native ARM64 CI for e2fsck libraries'
-        checker = Path(capture(['sh', '-c', 'command -v e2fsck'])).resolve()
-        libraries = re.findall(r'(/[^\s()]+)', capture(['ldd', checker]))
+        resume = work / 'tb522fu-resume'
+        run([compiler, '-std=c11', '-O2', '-Wall', '-Wextra', '-Werror', '-static',
+             ROOT / 'device/hibernate/resume.c', '-o', resume])
+        cpio_spec.append(f'file /sbin/tb522fu-resume {resume} 0755 0 0')
+        tools = ['e2fsck', 'resize2fs', 'mkswap']
+        checkers = [Path(capture(['sh', '-c', 'command -v ' + t])).resolve() for t in tools]
+        libraries = [lib for checker in checkers for lib in
+                     re.findall(r'(/[^\s()]+)', capture(['ldd', checker]))]
         copied_dirs = {'/lib', '/usr', '/usr/lib', '/sbin'}
         for library in sorted(set(libraries)):
             lib = Path(library)
@@ -216,7 +222,8 @@ def main():
                 cpio_spec.append(f'dir {parent} 0755 0 0')
                 copied_dirs.add(str(parent))
             cpio_spec.append(f'file {lib} {lib.resolve()} 0755 0 0')
-        cpio_spec.append(f'file /sbin/e2fsck {checker} 0755 0 0')
+        cpio_spec += [f'file /sbin/{name} {checker} 0755 0 0'
+                      for name, checker in zip(tools, checkers)]
     (work / 'cpio.spec').write_text('\n'.join(cpio_spec) + '\n')
     cpio = work / 'initramfs.cpio'
     with cpio.open('wb') as stream:
@@ -272,6 +279,8 @@ def main():
     for setting in ['CONFIG_Y900_ACM_DIAG_DTB=y', 'CONFIG_INITRAMFS_FORCE=y',
                     'CONFIG_CMDLINE_FORCE=y', 'CONFIG_PANIC_TIMEOUT=5',
                     'CONFIG_PM_DEBUG=y', 'CONFIG_PM_SLEEP_DEBUG=y',
+                    'CONFIG_HIBERNATION=y', 'CONFIG_SWAP=y',
+                    'CONFIG_HIBERNATION_COMP_LZO=y',
                     'CONFIG_DEBUG_INFO_NONE=y', 'CONFIG_CRC32=y', 'CONFIG_USB_CONFIGFS=y',
                     'CONFIG_DRM_SIMPLEDRM=y', 'CONFIG_DRM=y', 'CONFIG_BACKLIGHT_CLASS_DEVICE=y',
                     'CONFIG_FONT_TER16x32=y', 'CONFIG_DEBUG_FS=y',
@@ -516,6 +525,8 @@ def main():
         'configs/ram-probe.fragment', 'configs/udhcpd.conf', 'scripts/build-kernel.py',
         'scripts/camera_checks.py', 'scripts/display_checks.py', 'scripts/gmu_checks.py',
         'scripts/linear_checks.py']
+    if disk:
+        recipe_files += ['device/hibernate/resume.c']
     seconds = 900 if args.profile == 'disk-test' else 600
     manifest = {'profile': args.profile, 'root_environment': args.root_environment,
                 'source': spec, 'compiler': capture([compiler, '--version']).splitlines()[0],
