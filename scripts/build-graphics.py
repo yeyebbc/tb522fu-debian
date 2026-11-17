@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: GPL-2.0-only
 """Build an isolated Mesa prefix and matching sources, without device access."""
 from pathlib import Path
+import argparse
 import hashlib
 import json
 import os
@@ -24,10 +25,13 @@ def sha(path):
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--source-spec', type=Path, default=ROOT / 'configs/graphics/source.json')
+    args = parser.parse_args()
     assert platform.machine() == 'aarch64', 'Native hosted ARM64 build required'
     recipe = subprocess.check_output(['git', '-c', f'safe.directory={ROOT}',
                                       '-C', str(ROOT), 'rev-parse', 'HEAD'], text=True).strip()
-    spec = json.loads((ROOT / 'configs/graphics/source.json').read_text())
+    spec = json.loads(args.source_spec.read_text())
     work = ROOT / 'work/graphics'
     target = ROOT / 'artifacts/graphics'
     work.mkdir(parents=True, exist_ok=True)
@@ -47,9 +51,11 @@ def main():
     table = (source / 'src/freedreno/common/freedreno_devices.py').read_text()
     assert table.count('chip_id=0xffff44050001') == 1
     prefix = spec['prefix']
+    libdir = spec.get('libdir', 'lib/aarch64-linux-gnu')
+    assert libdir in ('lib/aarch64-linux-gnu', 'lib64')
     build = work / 'build'
     options = [
-        '--prefix=' + prefix, '--libdir=lib/aarch64-linux-gnu',
+        '--prefix=' + prefix, '--libdir=' + libdir,
         '--buildtype=debugoptimized', '--wrap-mode=nofallback',
         '-Db_ndebug=false', '-Doptimization=2', '-Dplatforms=x11,wayland',
         '-Dgallium-drivers=freedreno,llvmpipe,softpipe', '-Dvulkan-drivers=freedreno',
@@ -67,7 +73,7 @@ def main():
     binary.parent.mkdir(parents=True, exist_ok=True)
     flags = subprocess.check_output(['pkg-config', '--cflags', '--libs', 'egl', 'glesv2'], text=True).split()
     run(['cc', '-O2', '-Wall', '-Wextra', '-Werror', ROOT / 'configs/graphics/gpu-check.c', '-o', binary, *flags])
-    library = stage / prefix.lstrip('/') / 'lib/aarch64-linux-gnu'
+    library = stage / prefix.lstrip('/') / libdir
     env = dict(os.environ, LD_LIBRARY_PATH=str(library),
                LIBGL_DRIVERS_PATH=str(library / 'dri'), LIBGL_ALWAYS_SOFTWARE='1',
                GALLIUM_DRIVER='llvmpipe')
@@ -80,11 +86,12 @@ def main():
             files[str(p.relative_to(stage))] = {'sha256': sha(p), 'bytes': p.stat().st_size}
     run(['tar', '--zstd', '-cf', target / 'graphics-rootfs.tar.zst', '-C', stage, '.'])
     run(['tar', '--zstd', '-cf', target / 'mesa-source.tar.zst', '-C', source, '.'])
-    shutil.copy2(ROOT / 'configs/graphics/source.json', target / 'source.json')
+    shutil.copy2(args.source_spec, target / 'source.json')
     shutil.copy2(patch, target / patch.name)
     shutil.copy2(build / 'meson-info/intro-buildoptions.json', target / 'buildoptions.json')
     shutil.copy2(build / 'meson-logs/meson-log.txt', target / 'meson-log.txt')
     manifest = dict(recipe_commit=recipe, source=spec, patch_sha256=sha(patch),
+                    build_os_release=Path('/etc/os-release').read_text(),
                     meson_options=options, runtime_files=files,
                     hardware_tested=False,
                     artifacts={p.name: dict(sha256=sha(p), bytes=p.stat().st_size)

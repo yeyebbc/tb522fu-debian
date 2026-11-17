@@ -1,0 +1,12 @@
+{
+  "version": "26.2.6",
+  "archive": "https://archive.mesa3d.org/mesa-26.2.6.tar.xz",
+  "sha256": "b9436b3e1a8be76fbd4823dc884f90596ab7c6ac5e1867a305e66ffccfb31a92",
+  "prefix": "/opt/tb522fu/mesa-26.2.6-a830-fedora45",
+  "libdir": "lib64",
+  "patch": "configs/graphics/0001-a830-mainline-chip-id.patch",
+  "patch_reference": "https://chromium.googlesource.com/external/gitlab.freedesktop.org/mesa/mesa/+/f1ec46beaa6739fb15de953e6f4dc679b4e8c07f/src/freedreno/common/freedreno_devices.py",
+  "patch_description": "One upstream A830v1 wildcard-speed-bin device-table entry; preserve all existing GPU properties. Native Fedora45 build and dependencies; no hardware support claim before physical rendering and wake tests.",
+  "license": "Mesa original licenses and authorship retained in matching source archive",
+  "exit_condition": "Use native Fedora Mesa once it recognizes the mainline A830v1 chip ID and passes the same hardware checks."
+}

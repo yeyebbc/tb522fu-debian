@@ -30,6 +30,14 @@ effective config, while trying Fedora's native GNOME and Mesa. This is a
 userspace/graphics comparison; it does not test Fedora's stock kernel or prove
 a kernel-only cause. A Fedora-derived kernel needs separate board integration.
 
+The supplied Mesa26.2.3 and upstream26.2.6 table both lack the mainline
+wildcard-speed-bin entry for this A830 revision. A separate native Fedora45
+Mesa26.2.6 build is therefore prepared with the existing one-line upstream ID
+backport and unchanged GPU properties. It uses Fedora's own dependencies and
+an isolated prefix; Debian/Ubuntu shared libraries are not imported. This is a
+newer graphics-stack comparison, not unmodified Fedora Mesa acceptance.
+Compilation and a software-renderer negative control precede hardware testing.
+
 The explicit `fedora45-test` root is pinned to this image SHA and
 `var/lib/tb522fu-dualboot/fedora45-test/root`. Source identity, board, partition,
 OS/version, canonical path and matching modules must pass before writes.
