@@ -62,6 +62,15 @@ workaround with an explicit rollback, not proper suspend or kernel-wake
 acceptance. Remove it after normal unplugged display-power restoration passes
 repeated physical fresh-frame tests and its power behavior is measured.
 
+The board-scoped overlay is implemented in device/display-power. Its29
+donor-derived checks pass, covering seat authorization, ambiguous backlights,
+foreign boards/files, manual blanking ownership and mode switching. The ARM64
+adapter loads against the extracted Fedora45 libc and overrides a dynamically
+imported setter; its no-adapter negative control exits99. A separate ARM64
+socket transport check delivers AUTO3/AUTO0. These are software/interface
+checks, not physical acceptance. The actual Fedora51 gsd-power has an undefined
+dynamic import of the setter and libgsd exports it. No distro library is copied.
+
 ## Acceptance
 
 Test normal and compat paths separately against explicit source/image and

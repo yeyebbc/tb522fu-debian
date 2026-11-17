@@ -76,3 +76,12 @@ The optional CPU-label package carries Andreas Glinserer and Marco Trevisan's
 libgtop model-name discovery patch unchanged from Ubuntu's source package.
 It is GPL-2.0-or-later, as is the affected libgtop source. Exact Debian and
 Ubuntu inputs and the upstream merge request are in configs/cpu-label/source.json.
+
+The optional display-power compatibility overlay and its donor-derived tests
+adapt yzddmr6/onepluspad-2pro-mainline at
+a82cd442c5e4c1e460bfc65483d4344698ced62a under GPL-2.0-only. Original SPDX
+headers are retained. device/display-power/source.json records the imported
+paths and Lenovo board/backlight/path adaptations. This overlay does not change
+GNOME authentication or implement system suspend; its retained scanout has a
+power cost. DSI patches0235–0236 retain slwyts' author/date and original
+coauthors; patch0237 is the local manager-facing API adaptation.

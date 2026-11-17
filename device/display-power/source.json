@@ -1,0 +1,19 @@
+{
+  "repository": "https://github.com/yzddmr6/onepluspad-2pro-mainline",
+  "commit": "a82cd442c5e4c1e460bfc65483d4344698ced62a",
+  "license": "GPL-2.0-only; original SPDX headers retained",
+  "original_paths": [
+    "packaging/erhai-display-power/gsd-backlight-compat.c",
+    "packaging/erhai-display-power/tree/usr/sbin/erhai-display-power",
+    "packaging/erhai-display-power/tree/usr/sbin/erhai-display-power-mode",
+    "packaging/erhai-display-power/tree/usr/lib/systemd/system/erhai-display-power.service",
+    "packaging/erhai-display-power/tree/usr/lib/systemd/system/erhai-display-power.socket",
+    "packaging/erhai-display-power/tree/usr/lib/systemd/user/org.gnome.SettingsDaemon.Power.service.d/80-erhai-backlight.conf",
+    "packaging/erhai-device-support/tree/usr/lib/udev/rules.d/81-erhai-display-power.rules",
+    "tests/test_display_power.py",
+    "tests/test_display_power_mode.py"
+  ],
+  "adaptation": "Lenovo Y900 board identity, one primary paired KTZ8869 backlight, renamed socket/units/paths, cross-distribution private library directory. Preserve GSD generated setter and seat authorization. No power-key policy change.",
+  "exit_condition": "Remove after normal unplugged physical display restoration and power behavior are accepted.",
+  "hardware_tested": false
+}

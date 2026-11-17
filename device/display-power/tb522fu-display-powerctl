@@ -1,0 +1,18 @@
+#!/usr/bin/python3
+# SPDX-License-Identifier: GPL-2.0-only
+"""Request backlight power; GNOME retains screen-lock authentication."""
+import argparse
+import socket
+
+p = argparse.ArgumentParser(description=__doc__)
+p.add_argument('command', choices=('get', 'on', 'off'))
+a = p.parse_args()
+request = {'get': 'GET', 'on': 'AUTO 0', 'off': 'AUTO 3'}[a.command]
+with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
+    connection.settimeout(3)
+    connection.connect('/run/tb522fu-display-power/control')
+    connection.sendall((request + '\n').encode('ascii'))
+    reply = connection.recv(64).decode('ascii').strip()
+    if not reply.startswith('OK '):
+        raise SystemExit('Display power request failed: ' + reply)
+    print(reply[3:])

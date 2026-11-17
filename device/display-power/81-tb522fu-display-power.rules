@@ -1,0 +1,3 @@
+# SPDX-License-Identifier: GPL-2.0-only
+# Compat-only workaround: retain MDSS while blanking LEDs; costs standby power.
+ACTION=="add|change", SUBSYSTEM=="platform", KERNEL=="ae00000.display-subsystem", ATTR{power/control}="on"
