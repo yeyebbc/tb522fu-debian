@@ -35,6 +35,7 @@ def main():
     subprocess.run([a.cc, '-shared', '-fPIC', '-O2', '-Wall', '-Wextra', '-Werror',
                     '-Wl,-z,relro,-z,now,-z,noexecstack',
                     '-o', str(library), str(SOURCE / 'gsd-backlight-compat.c')], check=True)
+    library.chmod(0o755)
     elf = subprocess.check_output(['readelf', '-h', str(library)], text=True)
     assert 'AArch64' in elf and 'DYN (Shared object file)' in elf
     symbols = subprocess.check_output(['readelf', '--dyn-syms', '--wide', str(library)], text=True)
@@ -65,6 +66,8 @@ def main():
         info.uid = info.gid = 0
         info.uname = info.gname = ''
         info.mtime = epoch
+        if info.isdir():
+            info.mode = 0o755
         return info
     with tarfile.open(out / 'display-power.tar', 'w') as archive:
         for child in sorted(tree.iterdir()):
