@@ -4,7 +4,37 @@ The user selected Fedora 45 after the
 [Ubuntu battery-wake reproduction](checkpoints/2026-11-17-ubuntu-ci90.md),
 replacing the EndeavourOS proposal. The user handles the image download;
 integration, driver compatibility, test logging and recovery are agent work.
-No Fedora root or kernel is installed or accepted yet.
+The supplied image is verified and host preparation is active. No Fedora
+hardware boot or installed default is accepted yet.
+
+## Verified image and initial route
+
+| Input | Observed value |
+| --- | --- |
+| Image | `Fedora-Workstation-Disk-45-1.4.aarch64.raw.xz` |
+| Compressed bytes | `3222363420` |
+| SHA-256 | `07ab3377cee9d4bbc15e7203214594f8cfdb58a9a57e195aa0ff183cf81ea0a8` |
+| Native image kernel | `7.2.11-300.fc45.aarch64` |
+| GNOME / Mutter | `51.0-1.fc45` |
+| Mesa | `26.2.3-1.fc45` |
+
+The full image hash matches its Fedora-signed checksum; the signing fingerprint
+matches [Fedora's published key](https://fedoraproject.org/security/).
+XZ integrity and a read-only Btrfs-root/ext4-boot inspection passed. ARM64 ELF
+identity and native package versions were checked in the supplied root.
+
+The image has SM8750 reference-board DTs, but no DT for this Lenovo tablet.
+Its module tree lacks our custom panel, touch and keyboard drivers. The initial
+bounded Fedora boot therefore retains the CI90 tablet kernel source, DT and
+effective config, while trying Fedora's native GNOME and Mesa. This is a
+userspace/graphics comparison; it does not test Fedora's stock kernel or prove
+a kernel-only cause. A Fedora-derived kernel needs separate board integration.
+
+The explicit `fedora45-test` root is pinned to this image SHA and
+`var/lib/tb522fu-dualboot/fedora45-test/root`. Source identity, board, partition,
+OS/version, canonical path and matching modules must pass before writes.
+Workflow `trial_root=fedora45-test` affects disk-test only; installed and RAM
+cannot select it. The independent 900-second kernel return remains required.
 
 ## Image and root preparation
 

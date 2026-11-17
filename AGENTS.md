@@ -19,6 +19,17 @@ modules before staging; our existing custom kernel is already 7.3. Follow
 docs/fedora45-trial.md. The EndeavourOS plan is retained as superseded history.
 Keep kernel/display work paused during this distro comparison.
 
+Fedora image admission passed: official Workstation45 aarch64 raw image, signed
+checksum verified, native ARM64 ELF and read-only root/kernel inspection passed.
+The image contains kernel7.2.11, GNOME51 and Mesa26.2.3. Its boot DT set lacks
+this Lenovo board and its module tree lacks the custom panel/touch/keyboard
+drivers. The first Fedora candidate therefore keeps the CI90 tablet kernel
+source/DT/config and compares native Fedora userspace/Mesa. This is not a test
+of Fedora's stock kernel. Do not claim kernel attribution from that comparison.
+`trial_root=fedora45-test` is bounded disk-test only, pinned to the verified
+source-image SHA and a separate root identity; installed selection stays Debian.
+Preserve explicit Ubuntu mode and all before-write root/geometry/module guards.
+
 For unplugged tests, the UDC can retain `configured` after cable removal.
 Use the verified USB power-supply `online` reading for power presence; retain
 UDC state as a separate diagnostic. Missing/unknown power state must not be

@@ -82,6 +82,32 @@ def exercise(profile='disk-test', fault=None, root_environment=None):
                     location = root / trial.lstrip('/')
                     location.rename(location.with_name('elsewhere'))
                     location.symlink_to('elsewhere', target_is_directory=True)
+            if root_environment == 'fedora45-test':
+                trial = '/newroot/var/lib/tb522fu-dualboot/fedora45-test/root'
+                put(trial + '/etc/tb522fu/board', 'lenovo-tb522fu')
+                put(trial + '/etc/tb522fu/root-partuuid', UUID)
+                put(trial + '/etc/tb522fu/root-environment', 'fedora45-test')
+                put(trial + '/etc/tb522fu/fedora45-trial-image-sha256',
+                    '07ab3377cee9d4bbc15e7203214594f8cfdb58a9a57e195aa0ff183cf81ea0a8')
+                put(trial + '/etc/os-release', 'ID=fedora\nVERSION_ID=45\n')
+                put(trial + '/sbin/init').chmod(0o755)
+                put(trial + '/usr/lib/modules/' + release + '/modules.dep', 'fixture')
+                if fault == 'fedora-wrong-source':
+                    put(trial + '/etc/tb522fu/fedora45-trial-image-sha256', 'wrong')
+                elif fault == 'fedora-wrong-uuid':
+                    put(trial + '/etc/tb522fu/root-partuuid', 'wrong')
+                elif fault == 'fedora-wrong-environment':
+                    put(trial + '/etc/tb522fu/root-environment', 'ubuntu-test')
+                elif fault == 'fedora-wrong-version':
+                    put(trial + '/etc/os-release', 'ID=fedora\nVERSION_ID=44\n')
+                elif fault == 'fedora-wrong-distro':
+                    put(trial + '/etc/os-release', 'ID=debian\nVERSION_ID="13"\n')
+                elif fault == 'fedora-missing-modules':
+                    shutil.rmtree(root / trial.lstrip('/') / 'usr/lib/modules')
+                elif fault == 'fedora-symlink':
+                    location = root / trial.lstrip('/')
+                    location.rename(location.with_name('elsewhere'))
+                    location.symlink_to('elsewhere', target_is_directory=True)
         if fault == 'wrong-board':
             put('/newroot/etc/tb522fu/board', 'another-board')
         elif fault == 'wrong-uuid':
@@ -137,6 +163,36 @@ if name == 'mount' and os.environ.get('FAULT') == 'mount-failure':
 
 
 class RootGuardTests(unittest.TestCase):
+    def test_explicit_fedora_mode_mounts_its_separate_directory(self):
+        result, writes, _ = exercise(root_environment='fedora45-test')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(writes[-2][1:5], ['-t', 'ext4', '-o', 'rw'])
+        self.assertEqual(writes[-1][1:3], ['-o', 'bind'])
+        self.assertTrue(writes[-1][-2].endswith(
+            '/run/tb522fu-fedora45-store/var/lib/tb522fu-dualboot/fedora45-test/root'))
+
+    def test_fedora_must_match_source_root_distro_and_modules_before_writes(self):
+        for fault in ('fedora-wrong-source', 'fedora-wrong-uuid',
+                      'fedora-wrong-environment', 'fedora-wrong-version',
+                      'fedora-wrong-distro', 'fedora-missing-modules', 'fedora-symlink',
+                      'wrong-board', 'wrong-uuid', 'wrong-size', 'wrong-start'):
+            with self.subTest(fault=fault):
+                result, writes, _ = exercise(root_environment='fedora45-test', fault=fault)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(writes, [])
+
+    def test_fedora_is_not_an_installed_or_ram_root(self):
+        for profile in ('installed', 'ram'):
+            with self.subTest(profile=profile):
+                result, writes, _ = exercise(profile=profile, root_environment='fedora45-test')
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(writes, [])
+                built = subprocess.run(['python3', str(Path(__file__).resolve().parents[1] /
+                    'scripts/build-kernel.py'), '--profile', profile,
+                    '--root-environment', 'fedora45-test'], text=True, capture_output=True)
+                self.assertNotEqual(built.returncode, 0)
+                self.assertIn('bounded test profile', built.stderr)
+
     def test_explicit_ubuntu_mode_mounts_separate_directory(self):
         result, writes, _ = exercise(root_environment='ubuntu-test')
         self.assertEqual(result.returncode, 0, result.stderr)

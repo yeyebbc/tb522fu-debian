@@ -22,9 +22,10 @@ isolate the kernel from Mesa or firmware. See the
 
 Ubuntu occupies a separate directory inside the existing Linux filesystem.
 Android, selected Debian CI78 and partition boundaries are preserved, and
-recovery/cleanup is complete. `workflow_dispatch` with `ubuntu_trial=true`
-embeds the Ubuntu selector only in the bounded disk-test artifact; installed
-selection remains Debian. This repository is not a general installer.
+recovery/cleanup is complete. `workflow_dispatch` accepts `trial_root=ubuntu-test`
+or `trial_root=fedora45-test` only for the bounded disk-test artifact; installed
+selection remains Debian. Fedora's separate root selector is prepared; no
+Fedora hardware result is accepted yet. This repository is not a general installer.
 
 **Display wake and unrestricted suspend remain unreliable.** CI78 is selected
 for the user's experimental offline testing; CI74 and CI44 remain rollback

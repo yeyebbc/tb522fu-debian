@@ -114,11 +114,11 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--busybox', type=Path, default=Path('/usr/bin/busybox'))
     parser.add_argument('--profile', choices=['ram', 'disk-test', 'installed'], default='ram')
-    parser.add_argument('--root-environment', choices=['debian', 'ubuntu-test'], default='debian')
+    parser.add_argument('--root-environment', choices=['debian', 'ubuntu-test', 'fedora45-test'], default='debian')
     parser.add_argument('--jobs', type=int, default=os.cpu_count() or 2)
     args = parser.parse_args()
     assert args.root_environment == 'debian' or args.profile == 'disk-test', \
-        'Ubuntu directory selection is limited to the bounded test profile'
+        'Trial directory selection is limited to the bounded test profile'
     disk = args.profile != 'ram'
     # Actions containers can mount the checkout with a different owner. Trust
     # only this explicitly selected recipe checkout, and validate before build.
