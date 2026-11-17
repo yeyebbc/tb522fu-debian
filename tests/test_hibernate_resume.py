@@ -21,6 +21,15 @@ class ResumeHeaderTests(unittest.TestCase):
 int main(int argc, char **argv) {
     unsigned char page[4096];
     if (argc != 3) return 9;
+    if (!strcmp(argv[1], "--extended-partition")) {
+        struct stat swap = {.st_mode = 0060000, .st_rdev = makedev(259, 1)};
+        struct stat parent = {.st_mode = 0060000, .st_rdev = makedev(8, 0)};
+        if (!block_pair_valid(&swap, &parent)) return 7;
+        swap.st_rdev = parent.st_rdev;
+        if (block_pair_valid(&swap, &parent)) return 8;
+        swap.st_rdev = makedev(259, 1); swap.st_mode = 0100000;
+        return block_pair_valid(&swap, &parent) ? 6 : 0;
+    }
     FILE *f = fopen(argv[1], "rb");
     if (!f) return 9;
     size_t n = fread(page, 1, sizeof(page), f);
@@ -55,6 +64,10 @@ int main(int argc, char **argv) {
 
     def test_normal_swap_permits_ordinary_boot(self):
         self.assertEqual(self.check(self.header()), 0)
+
+    def test_extended_partition_major_uses_validated_parent_not_major_equality(self):
+        result = subprocess.run([str(self.binary), '--extended-partition', 'unused'])
+        self.assertEqual(result.returncode, 0)
 
     def test_image_requires_early_restore(self):
         page = self.header()

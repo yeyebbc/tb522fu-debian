@@ -25,6 +25,16 @@
 #define HAS_IMAGE 3
 #define BAD_HEADER 1
 
+static int block_pair_valid(const struct stat *swap, const struct stat *parent)
+{
+    /* SCSI partitions beyond the disk's reserved minor range use major 259.
+     * The caller validates their actual sysfs parent; major equality is not
+     * a parent relationship and would reject the real sda18 on this tablet.
+     */
+    return S_ISBLK(swap->st_mode) && S_ISBLK(parent->st_mode) &&
+           swap->st_rdev != parent->st_rdev;
+}
+
 static uint32_t little32(const unsigned char *p)
 {
     return (uint32_t)p[0] | (uint32_t)p[1] << 8 |
@@ -80,9 +90,7 @@ int main(int argc, char **argv)
     fd = open(argv[2], O_RDONLY | O_CLOEXEC | O_NOFOLLOW);
     diskfd = open(argv[3], O_RDONLY | O_CLOEXEC | O_NOFOLLOW);
     if (fd < 0 || diskfd < 0 || fstat(fd, &swap) || fstat(diskfd, &parent) ||
-        !S_ISBLK(swap.st_mode) || !S_ISBLK(parent.st_mode) ||
-        major(swap.st_rdev) != major(parent.st_rdev) ||
-        swap.st_rdev == parent.st_rdev ||
+        !block_pair_valid(&swap, &parent) ||
         ioctl(fd, BLKGETSIZE64, &bytes) ||
         pread(fd, page, sizeof(page), 0) != sizeof(page))
         fatal("cannot read validated swap block device");
