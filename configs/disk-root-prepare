@@ -47,6 +47,20 @@ partuuid=$(sed -n 's/^PARTUUID=//p' "$root/uevent")
 dev="/dev/${root##*/}"
 disk="/dev/${parent##*/}"
 mkdir -p /newroot
+environment=debian
+if [ -e /etc/root-environment ]; then
+    environment=$(cat /etc/root-environment)
+fi
+target=/newroot
+case "$environment" in
+    debian) ;;
+    ubuntu-test)
+        [ "$(cat /etc/boot-profile)" = disk-test ]
+        relative=var/lib/tb522fu-dualboot/ubuntu-26.04.1-test/root
+        target=/newroot/$relative
+        ;;
+    *) exit 1;;
+esac
 # noload prevents even journal replay before identity checks complete.
 if ! mount -t ext4 -o ro,noload "$dev" /newroot; then
     rmdir /newroot
@@ -61,8 +75,19 @@ if ! mount -t ext4 -o ro,noload "$dev" /newroot; then
 fi
 [ "$(cat /newroot/etc/tb522fu/board)" = lenovo-tb522fu ]
 [ "$(cat /newroot/etc/tb522fu/root-partuuid)" = "$partuuid" ]
-[ -x /newroot/sbin/init ]
-[ -s "/newroot/usr/lib/modules/$(uname -r)/modules.dep" ]
+if [ "$environment" = ubuntu-test ]; then
+    # Only an explicitly staged Ubuntu root may be selected. No path or mode
+    # comes from a writable marker, boot argument or automatic discovery.
+    [ "$(readlink -f "$target")" = "$target" ]
+    [ "$(cat "$target/etc/tb522fu/board")" = lenovo-tb522fu ]
+    [ "$(cat "$target/etc/tb522fu/root-partuuid")" = "$partuuid" ]
+    [ "$(cat "$target/etc/tb522fu/root-environment")" = ubuntu-test ]
+    [ "$(cat "$target/etc/tb522fu/ubuntu-trial-iso-sha256")" = c54d196489d3c867975fb3bbb72ca52ec2e137456e305481f81096304e4d2517 ]
+    grep -qx 'ID=ubuntu' "$target/etc/os-release"
+    grep -qx 'VERSION_ID="26.04"' "$target/etc/os-release"
+fi
+[ -x "$target/sbin/init" ]
+[ -s "$target/usr/lib/modules/$(uname -r)/modules.dep" ]
 umount /newroot
 blockdev --setrw "$disk"
 blockdev --setrw "$dev"
@@ -71,6 +96,15 @@ status=0
 /sbin/e2fsck -p "$dev" || status=$?
 # e2fsck: 0=clean, 1=corrected. Any other result requires intervention.
 [ "$status" -le 1 ]
-mount -t ext4 -o rw "$dev" /newroot
+if [ "$environment" = ubuntu-test ]; then
+    # /run is moved into the new root by disk-init. Keep the backing mount
+    # there so switch_root cannot delete it along with the old initramfs.
+    mkdir /run/tb522fu-ubuntu-store
+    mount -t ext4 -o rw "$dev" /run/tb522fu-ubuntu-store
+    touch /run/tb522fu-ubuntu-store-mounted
+    mount -o bind "/run/tb522fu-ubuntu-store/$relative" /newroot
+else
+    mount -t ext4 -o rw "$dev" /newroot
+fi
 printf '%s\n' "$partuuid" >/run/disk-root-verified
-echo 'TB522FU_DISK_ROOT_READY: checked ext4 root, other partitions read-only'
+echo "TB522FU_DISK_ROOT_READY: checked $environment ext4 root, other partitions read-only"

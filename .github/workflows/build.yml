@@ -13,6 +13,10 @@ on:
         description: Rebuild the audio topology explicitly
         type: boolean
         default: false
+      ubuntu_trial:
+        description: Select the separately staged Ubuntu root in the bounded disk test only
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -49,7 +53,9 @@ jobs:
       - name: Check root selection and maintenance guards
         run: python3 -m unittest discover -s tests -v
       - name: Build the pinned kernel and initramfs
-        run: python3 scripts/build-kernel.py --profile '${{ matrix.profile }}'
+        env:
+          ROOT_ENVIRONMENT: ${{ inputs.ubuntu_trial && matrix.profile == 'disk-test' && 'ubuntu-test' || 'debian' }}
+        run: python3 scripts/build-kernel.py --profile '${{ matrix.profile }}' --root-environment "$ROOT_ENVIRONMENT"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: kernel-${{ matrix.profile }}

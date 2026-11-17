@@ -13,7 +13,7 @@ SOURCE = (Path(__file__).resolve().parents[1] / 'configs/disk-root-prepare').rea
 UUID = '00000000-1111-2222-3333-444444444444'
 
 
-def exercise(profile='disk-test', fault=None):
+def exercise(profile='disk-test', fault=None, root_environment=None):
     with tempfile.TemporaryDirectory(prefix='root-guard-') as tmp:
         root = Path(tmp)
         bins = root / 'mockbin'
@@ -31,6 +31,8 @@ def exercise(profile='disk-test', fault=None):
         release = subprocess.check_output(['uname', '-r'], text=True).strip()
         put('/lib/modules/' + release + '/modules.dep', 'fixture')
         put('/etc/boot-profile', profile)
+        if root_environment is not None:
+            put('/etc/root-environment', root_environment)
         put('/run/placeholder')
         put('/proc/1/exe')
         for n in range(6):
@@ -58,6 +60,28 @@ def exercise(profile='disk-test', fault=None):
             put('/newroot/etc/tb522fu/root-partuuid', UUID)
             put('/newroot/usr/lib/modules/' + release + '/modules.dep', 'fixture')
             put('/newroot/sbin/init').chmod(0o755)
+            if root_environment == 'ubuntu-test':
+                trial = '/newroot/var/lib/tb522fu-dualboot/ubuntu-26.04.1-test/root'
+                put(trial + '/etc/tb522fu/board', 'lenovo-tb522fu')
+                put(trial + '/etc/tb522fu/root-partuuid', UUID)
+                put(trial + '/etc/tb522fu/root-environment', 'ubuntu-test')
+                put(trial + '/etc/tb522fu/ubuntu-trial-iso-sha256',
+                    'c54d196489d3c867975fb3bbb72ca52ec2e137456e305481f81096304e4d2517')
+                put(trial + '/etc/os-release', 'ID=ubuntu\nVERSION_ID="26.04"\n')
+                put(trial + '/sbin/init').chmod(0o755)
+                put(trial + '/usr/lib/modules/' + release + '/modules.dep', 'fixture')
+                if fault == 'ubuntu-wrong-source':
+                    put(trial + '/etc/tb522fu/ubuntu-trial-iso-sha256', 'wrong')
+                elif fault == 'ubuntu-wrong-uuid':
+                    put(trial + '/etc/tb522fu/root-partuuid', 'wrong')
+                elif fault == 'ubuntu-wrong-distro':
+                    put(trial + '/etc/os-release', 'ID=debian\nVERSION_ID="13"\n')
+                elif fault == 'ubuntu-missing-modules':
+                    shutil.rmtree(root / trial.lstrip('/') / 'usr/lib/modules')
+                elif fault == 'ubuntu-symlink':
+                    location = root / trial.lstrip('/')
+                    location.rename(location.with_name('elsewhere'))
+                    location.symlink_to('elsewhere', target_is_directory=True)
         if fault == 'wrong-board':
             put('/newroot/etc/tb522fu/board', 'another-board')
         elif fault == 'wrong-uuid':
@@ -107,11 +131,35 @@ if name == 'mount' and os.environ.get('FAULT') == 'mount-failure':
                                      'FAULT': fault or ''}, timeout=15)
         calls = [json.loads(s) for s in trace.read_text().splitlines()] if trace.exists() else []
         writes = [s for s in calls if s[0] == 'e2fsck' or
-                  (s[0] == 'blockdev' and s[1] == '--setrw') or (s[0] == 'mount' and 'rw' in s)]
+                  (s[0] == 'blockdev' and s[1] == '--setrw') or
+                  (s[0] == 'mount' and ('rw' in s or 'bind' in s))]
         return result, writes, (root / 'newroot').exists()
 
 
 class RootGuardTests(unittest.TestCase):
+    def test_explicit_ubuntu_mode_mounts_separate_directory(self):
+        result, writes, _ = exercise(root_environment='ubuntu-test')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(writes[-2][1:5], ['-t', 'ext4', '-o', 'rw'])
+        self.assertEqual(writes[-1][1:3], ['-o', 'bind'])
+        self.assertTrue(writes[-1][-2].endswith(
+            '/run/tb522fu-ubuntu-store/var/lib/tb522fu-dualboot/ubuntu-26.04.1-test/root'))
+
+    def test_ubuntu_requires_exact_staged_identity_before_writes(self):
+        for fault in ('ubuntu-wrong-source', 'ubuntu-wrong-uuid',
+                      'ubuntu-wrong-distro', 'ubuntu-missing-modules', 'ubuntu-symlink'):
+            with self.subTest(fault=fault):
+                result, writes, _ = exercise(root_environment='ubuntu-test', fault=fault)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(writes, [])
+
+    def test_installed_or_unknown_mode_cannot_select_ubuntu(self):
+        for profile, mode in (('installed', 'ubuntu-test'), ('disk-test', 'unknown')):
+            with self.subTest(profile=profile, mode=mode):
+                result, writes, _ = exercise(profile=profile, root_environment=mode)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(writes, [])
+
     def test_valid_root_can_be_checked_and_mounted(self):
         result, writes, _ = exercise()
         self.assertEqual(result.returncode, 0, result.stderr)

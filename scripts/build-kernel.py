@@ -114,8 +114,11 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--busybox', type=Path, default=Path('/usr/bin/busybox'))
     parser.add_argument('--profile', choices=['ram', 'disk-test', 'installed'], default='ram')
+    parser.add_argument('--root-environment', choices=['debian', 'ubuntu-test'], default='debian')
     parser.add_argument('--jobs', type=int, default=os.cpu_count() or 2)
     args = parser.parse_args()
+    assert args.root_environment == 'debian' or args.profile == 'disk-test', \
+        'Ubuntu directory selection is limited to the bounded test profile'
     disk = args.profile != 'ram'
     # Actions containers can mount the checkout with a different owner. Trust
     # only this explicitly selected recipe checkout, and validate before build.
@@ -194,8 +197,11 @@ def main():
     if disk:
         profile_file = work / 'boot-profile'
         profile_file.write_text(args.profile + '\n')
+        environment_file = work / 'root-environment'
+        environment_file.write_text(args.root_environment + '\n')
         cpio_spec += [f'dir /{d} 0755 0 0' for d in ['lib', 'usr', 'usr/lib']]
         cpio_spec += [f'file /etc/boot-profile {profile_file} 0644 0 0',
+                      f'file /etc/root-environment {environment_file} 0644 0 0',
                       f'file /bin/disk-root-prepare {ROOT / "configs/disk-root-prepare"} 0755 0 0',
                       'slink /lib/modules /usr/lib/modules 0777 0 0']
         assert not cross, 'Disk profiles require native ARM64 CI for e2fsck libraries'
@@ -511,7 +517,8 @@ def main():
         'scripts/camera_checks.py', 'scripts/display_checks.py', 'scripts/gmu_checks.py',
         'scripts/linear_checks.py']
     seconds = 900 if args.profile == 'disk-test' else 600
-    manifest = {'profile': args.profile, 'source': spec, 'compiler': capture([compiler, '--version']).splitlines()[0],
+    manifest = {'profile': args.profile, 'root_environment': args.root_environment,
+                'source': spec, 'compiler': capture([compiler, '--version']).splitlines()[0],
                 'recipe_commit': recipe_commit,
                 'recipe_sha256': {p: sha(ROOT / p) for p in recipe_files},
                 'source_date_epoch': int(epoch), 'gadget_serial': identity.read_text().strip(),

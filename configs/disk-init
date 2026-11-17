@@ -14,6 +14,7 @@ fail() {
     echo "TB522FU_DISK_FAIL: $*" >/dev/kmsg
     sync
     [ ! -e /run/disk-root-verified ] || mount -o remount,ro /newroot
+    [ ! -e /run/tb522fu-ubuntu-store-mounted ] || mount -o remount,ro /run/tb522fu-ubuntu-store
     if [ "$profile" = disk-test ]; then
         sleep 10
         reboot -f -n

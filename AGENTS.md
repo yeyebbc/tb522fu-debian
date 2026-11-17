@@ -3,6 +3,12 @@
 This repository is public. Keep firmware, identifiers, credentials, backups,
 stock partition images and local environment paths out of tracked files.
 
+The Ubuntu trial keeps the CI89 kernel source and DT unchanged. Only an explicit
+bounded disk-test root-environment may select the separate Ubuntu directory;
+installed/default selection stays Debian. Validate staged root identity and
+matching modules before enabling writes. Preserve all existing root geometry,
+independent return and accepted-driver checks. No Ubuntu or wake acceptance yet.
+
 - Kernel source and imported drivers must retain pinned origins and licenses.
 - Build artifacts do not establish hardware support. State only observed results.
 - CI must never flash a device, deploy images, use a self-hosted runner, or need

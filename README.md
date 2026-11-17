@@ -6,6 +6,13 @@ Experimental native Linux port for the Lenovo Legion Y900 13 / TB522FU
 directions. This remains a development port with substantial peripheral work
 outstanding.
 
+An optional Ubuntu 26.04.1 userspace comparison is being prepared. It uses the
+same custom kernel/DT/drivers and a separate directory inside the existing
+Linux filesystem. It does not replace the selected Debian system or repartition
+storage. `workflow_dispatch` with `ubuntu_trial=true` embeds the explicit Ubuntu
+selector only in the bounded disk-test artifact; installed remains Debian.
+This is not an installer and does not establish Ubuntu hardware or wake support.
+
 **Display wake and unrestricted suspend remain unreliable.** CI78 is selected
 for the user's experimental offline testing; CI74 and CI44 remain rollback
 options. CI78 passed a full-driver platform callback test, then reset during
