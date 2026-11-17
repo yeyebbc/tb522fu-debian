@@ -6,6 +6,26 @@ Debian CI78 remains selected on the existing256GiB filesystem; both comparison
 roots and rollback kernels are preserved. No new kernel is installed by the
 display overlay or this plan.
 
+Read-only preparation has verified the installed Debian13.7 root, selectedCI78,
+approved geometry, unchanged graphics and sleep masks. Debian's GNOME48
+gsd-power dynamically imports the expected setter and its own libgsd defines
+it. All nine overlay destinations are absent. No Debian files were changed.
+
+The CI96 display-power-aarch64 artifact is built from
+`c6941972289c88e6122ad2dca1062c40adcc97b3`. Its source inputs and ARM64 adapter
+bytes match the successful Fedora trial. It requires GLIBC_2.17. The verified
+overlay archive SHA256 is
+`8dbdc78aec00a26b3c196babf5a2bc27a0bb927dfa0d08b41db5485f5d41ef04`.
+Exact install/removal payloads are prepared with Debian OS/GSD hashes and
+selectedCI78/graphics guards. They have not been applied or boot-tested.
+
+[CI96](https://github.com/yeyebbc/tb522fu-debian/actions/runs/44095613555)
+publishes this overlay and builds the two Debian-root kernel profiles. CI94/95
+caught missing Git and container-checkout ownership handling in packaging;
+both are corrected, and the ownership failure has a local reproduction check.
+The overlay build and29 checks pass in CI96. Kernel build status remains
+separate from tablet acceptance.
+
 The Build ARM64 artifacts workflow produces installed and bounded Debian-root
 kernel images when dispatched with trial_root=debian. It also publishes
 display-power-aarch64: the board-scoped overlay, source/file manifest and
