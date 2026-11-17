@@ -48,5 +48,28 @@ testing power-off hibernation. The 12 GiB target needs a free-space check before
 each request; RAM size alone does not guarantee a sufficiently free swap area.
 Actual kernel freeze/thaw and restore callbacks remain unverified.
 
+The dedicated244+12GiB split is now applied. Both GPT copies and the swap header
+were read back, Android re-enumerated both partitions, and the244GiB filesystem
+passed an offline full check. The original early helper incorrectly required
+equal disk/partition major numbers; native Android uses8:0 for the disk and
+259:2 for swap. Source136b04b removes that false condition while preserving the
+validated sysfs parent relationship. CI97 was retired before any Linux boot;
+CI98 rebuilds the same driver/kernel tree with the corrected embedded helper.
+
+The runtime preflight checks the private selected image, kernel, partition and
+swap identities, empty header, active swap, resume device and free-space budget.
+Its setup mode configures only an EMPTY target; it must never attempt a late
+restore after root is mounted. The prepared systemd drop-ins prohibit RAM,
+hybrid and suspend-then-hibernate modes. Reboot is the initial test mode; change
+to shutdown only after a verified restore. Startup return protection must be
+retired before creating a snapshot.
+
+`hibernate-sleep@tb522fu.local` is a separately selectable GNOME48 action and is
+staged disabled. It requires a root-owned acceptance marker and uses logind's
+normal Hibernate authorization/PrepareForSleep/inhibitor protocol. It never
+falls back to RAM suspend. Keep the tested backlight extension installed and
+enable only one of the two actions. An actual power-off hibernation normally
+needs the Power button to boot and restore; Space wake is not promised.
+
 Upstream references: [software suspend and early resume](https://docs.kernel.org/power/swsusp.html),
 [hibernation debugging and reboot mode](https://docs.kernel.org/power/basic-pm-debugging.html).

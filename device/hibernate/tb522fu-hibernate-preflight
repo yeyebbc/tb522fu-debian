@@ -1,0 +1,92 @@
+#!/usr/bin/python3
+# SPDX-License-Identifier: GPL-2.0-only
+"""Guard the configured native hibernation target; never create a snapshot."""
+from pathlib import Path
+import fcntl
+import hashlib
+import json
+import os
+import stat
+import struct
+import sys
+import uuid
+
+
+def check_header(page, expected_uuid):
+    if len(page) != 4096 or page[-10:] != b'SWAPSPACE2':
+        raise RuntimeError('Swap has a pending or invalid image; refusing late resume')
+    if struct.unpack_from('<III', page, 1024) != (1, 3145727, 0):
+        raise RuntimeError('Unexpected 12 GiB swap header')
+    if uuid.UUID(bytes=bytes(page[1036:1052])) != uuid.UUID(expected_uuid):
+        raise RuntimeError('Swap UUID differs from the configured target')
+
+
+def required_space(image_size):
+    if not 0 < image_size <= 6 * 1024**3:
+        raise RuntimeError('Unexpected hibernation image budget')
+    return image_size + image_size // 4 + 256 * 1024**2
+
+
+def main():
+    assert os.geteuid() == 0
+    assert sys.argv[1:] in ([], ['--setup'])
+    setup = bool(sys.argv[1:])
+    config = Path('/etc/tb522fu/hibernate.json')
+    st = config.lstat()
+    assert stat.S_ISREG(st.st_mode) and st.st_uid == 0 and stat.S_IMODE(st.st_mode) == 0o600
+    m = json.loads(config.read_text())
+    assert Path('/etc/tb522fu/board').read_text().strip() == 'lenovo-tb522fu'
+    assert os.uname().release == m['kernel_release']
+    assert Path('/sys/module/qcom_scm/parameters/probe_edl_return').read_text().strip() == 'N'
+    assert not Path('/etc/tb522fu/installed-test-return').exists(), 'Retire startup return before hibernation'
+    candidates = []
+    for node in Path('/sys/class/block').glob('sd*'):
+        if (node / 'partition').is_file() and 'PARTNAME=debian-swap' in (node / 'uevent').read_text().splitlines():
+            candidates.append(node)
+    assert len(candidates) == 1
+    node = candidates[0]
+    event = dict(line.split('=', 1) for line in (node / 'uevent').read_text().splitlines())
+    assert event['PARTUUID'] == m['swap_partuuid']
+    assert (node / 'start').read_text().strip() == '965801984'
+    assert (node / 'size').read_text().strip() == '25165824'
+    assert (node / 'partition').read_text().strip() == '18'
+    parent = node.resolve().parent
+    root = parent / (parent.name + '17')
+    assert (root / 'start').read_text().strip() == '454096896'
+    assert (root / 'size').read_text().strip() == '511705088'
+    assert '1d84000.ufs/' in str((parent / 'device').resolve())
+    assert str((parent / 'device').resolve()).endswith(':0:0:0')
+    assert (parent / 'queue/logical_block_size').read_text().strip() == '4096'
+    device = Path('/dev') / node.name
+    fd = os.open(device, os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+        assert stat.S_ISBLK(os.fstat(fd).st_mode)
+        size = struct.unpack('Q', fcntl.ioctl(fd, 0x80081272, bytes(8)))[0]
+        assert size == 12 * 1024**3
+        check_header(os.pread(fd, 4096, 0), m['swap_uuid'])
+    finally:
+        os.close(fd)
+    entries = [line.split() for line in Path('/proc/swaps').read_text().splitlines()[1:]]
+    entries = [entry for entry in entries if Path(entry[0]).resolve() == device.resolve()]
+    assert len(entries) == 1, 'Configured swap partition is not active'
+    free = (int(entries[0][2]) - int(entries[0][3])) * 1024
+    image = int(Path('/sys/power/image_size').read_text())
+    assert free >= required_space(image), 'Insufficient free swap for the hibernation budget'
+    image_path = Path('/var/lib/tb522fu-dualboot/linux.img')
+    with image_path.open('rb') as stream:
+        assert hashlib.file_digest(stream, 'sha256').hexdigest() == m['boot_sha256']
+    expected = (node / 'dev').read_text().strip()
+    if setup:
+        # The header was checked EMPTY above. A late restore of a real image
+        # would be unsafe after mounting root, and is explicitly refused.
+        Path('/sys/power/resume_offset').write_text('0\n')
+        Path('/sys/power/resume').write_text(expected + '\n')
+    assert Path('/sys/power/resume').read_text().strip() == expected
+    assert Path('/sys/power/resume_offset').read_text().strip() == '0'
+    print(json.dumps(dict(passed=True,setup=setup,kernel=os.uname().release,
+        boot_id=Path('/proc/sys/kernel/random/boot_id').read_text().strip(),
+        swap_free_bytes=free,image_budget_bytes=image,resume=expected), sort_keys=True))
+
+
+if __name__ == '__main__':
+    main()

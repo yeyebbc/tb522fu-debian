@@ -1,0 +1,7 @@
+{
+  "uuid": "hibernate-sleep@tb522fu.local",
+  "name": "TB522FU Hibernate Suspend",
+  "description": "Use verified disk hibernation for the GNOME Suspend action.",
+  "shell-version": ["48"],
+  "version": 1
+}
