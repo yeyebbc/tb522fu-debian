@@ -3,6 +3,17 @@
 This repository is public. Keep firmware, identifiers, credentials, backups,
 stock partition images and local environment paths out of tracked files.
 
+Current: Debian13.7 CI98 is installed on the checked244GiB root +12GiB swap.
+No-image startup, all39 modules and native Adreno desktop pass. The first real
+hibernation request rebooted without restoring; the swap header remains empty.
+Normal backlight-only Suspend remains selected; real-sleep masks are restored.
+Image-free freezer/devices tests returned; processors returned with AMBA/qdss
+clock imbalance warnings. Patch0238 imports the PM maintainer's alternative
+runtime-callback eligibility correction, not the rejected noirq exception.
+Its body is unchanged from the linked review attachment;118 patches pin tree
+aad87dd3c8bb2027292255daea8c867cbabe1434. Hardware acceptance is pending. Do not
+claim the warning proves the original reset cause. Read docs/hibernation.md.
+
 Active hibernation preparation is documented in docs/hibernation.md. The user
 authorizes repartitioning Debian and explicitly chooses12GiB swap, leaving244GiB
 root within the existing256GiB allocation. No mutation or hibernation acceptance

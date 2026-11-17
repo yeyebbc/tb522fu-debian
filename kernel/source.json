@@ -120,7 +120,8 @@
     "patches/0234-dpu-opt-in-linear-scanout.patch",
     "patches/0235-dsi-sm8750-post-link-phy-resync.patch",
     "patches/0236-dsi-sm8750-post-resync-controller-reset.patch",
-    "patches/0237-dsi-expose-post-link-phy-api.patch"
+    "patches/0237-dsi-expose-post-link-phy-api.patch",
+    "patches/0238-pm-runtime-callback-smart-suspend.patch"
   ],
-  "patched_tree": "a6fa3410d3f9e3b61d5788505b9215ccff2bc570"
+  "patched_tree": "aad87dd3c8bb2027292255daea8c867cbabe1434"
 }

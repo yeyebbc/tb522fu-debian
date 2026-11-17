@@ -1162,5 +1162,14 @@
     "scope": "Move declarations to the manager-facing dsi.h on this older base; no hardware-operation change",
     "hardware_tested": false,
     "promotion_allowed": false
+  },
+  "0238-pm-runtime-callback-smart-suspend.patch": {
+    "source": "Maintainer review attachment by Rafael J. Wysocki; original attachment body retained byte-for-byte",
+    "reference": "https://lore.kernel.org/all/CAJZ5v0g3zU51Q4sQvmTNH-Jtycu1D5Qm9c6r2t_DCp03ePzV-g@mail.gmail.com/",
+    "attachment_sha256": "d10f2d96ef2e9584fcfea4563249e3218afcad157a043339a36e70d6440d7779",
+    "sha256": "5ec3f1056de510525bc8d45d9bc0f40e8c72d50e8805fbc95b45ba4cd391ed20",
+    "license": "Original kernel GPL-2.0 source file licenses retained",
+    "hardware_tested": false,
+    "scope": "Correct runtime callback eligibility only; no wake IRQ policy or board changes"
   }
 }

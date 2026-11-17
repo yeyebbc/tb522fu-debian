@@ -5,6 +5,37 @@ to storage, power off/reboot, then restore it. The working GNOME backlight-only
 Suspend action is the rollback policy. It does not enter a CPU sleep state.
 No successful hibernation test is claimed yet.
 
+The dedicated partition is now installed and Debian 13.7 boots CI98 with all
+39 supported modules and the retained Adreno/Mesa desktop. The filesystem
+passed full offline checks before and after shrinking; both GPT copies and
+the swap header were verified. Swap is active and the empty-target boot path
+works. Android and the other Linux trial roots were preserved.
+
+The first normal logind reboot-mode hibernation request caused a fresh boot,
+not a restored session. The prior boot ID and RAM-only cookie did not return,
+there is no post-restore receipt, and the swap header remains byte-identical
+to its initial empty header. The retained journal stops at hibernation entry;
+this does not identify the resetting component. No real snapshot restore or
+shutdown-mode test has passed. The normal menu remains backlight-only and
+sleep/hibernate/suspend targets are masked again.
+
+Incremental, image-free kernel diagnostics then returned in the same boot:
+`freezer`, `devices`, and `processors`. The first two also passed fresh Adreno
+rendering checks. The processors test returned with `qdss already disabled`
+and `qdss already unprepared` warnings through `amba_pm_runtime_suspend()`;
+it is not a clean acceptance. Kernel test-mode messages saying an image was
+restored are not proof of a real restore: this path creates no image.
+
+The next candidate imports Rafael Wysocki's
+[maintainer review attachment](https://lore.kernel.org/all/CAJZ5v0g3zU51Q4sQvmTNH-Jtycu1D5Qm9c6r2t_DCp03ePzV-g@mail.gmail.com/)
+for the matching runtime-clock accounting issue. It excludes devices with
+runtime PM callbacks from automatic callback-free smart-suspend eligibility.
+The initial proposed `device_resume_noirq()` exception was not imported because
+the maintainer identified an unsafe parent/child case. The separate proposed
+wakeup-IRQ policy change is also not imported. All previous 117 patches remain
+identical; this adds only three PM-core files, with no board/driver/voltage
+changes. The earlier reset remains unexplained until native evidence says more.
+
 The user authorizes repartitioning Debian and explicitly chooses **12 GiB swap**.
 The planned split is 244 GiB ext4 plus 12 GiB dedicated Linux swap, inside the
 existing 256 GiB Linux allocation. Android partitions must remain byte-identical.

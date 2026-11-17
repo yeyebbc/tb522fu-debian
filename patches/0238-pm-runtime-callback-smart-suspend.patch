@@ -1,0 +1,73 @@
+From: Rafael J. Wysocki (Intel) <rafael@kernel.org>
+Date: Fri, 6 Nov 2026 21:05:21 +0100
+Subject: [PATCH] PM: sleep: Include runtime callbacks in smart-suspend eligibility
+
+Import the maintainer-proposed attachment from the hibernation PM review.
+A device with runtime callbacks is not callback-free just because it lacks
+system-wide PM callbacks. Its runtime resources must not be reported active
+without the corresponding resume path.
+
+This is the review attachment, not the initially proposed no_pm_callbacks
+exception in device_resume_noirq(), which the maintainer identified as
+unsafe for runtime-suspended parents of active children. No unrelated wake
+IRQ policy changes are included. Native hibernation is not accepted yet.
+
+Link: https://lore.kernel.org/all/CAJZ5v0g3zU51Q4sQvmTNH-Jtycu1D5Qm9c6r2t_DCp03ePzV-g@mail.gmail.com/
+---
+ drivers/base/power/main.c    |    5 +++--
+ drivers/base/power/power.h   |    4 ++++
+ drivers/base/power/runtime.c |    6 ++++++
+ 3 files changed, 13 insertions(+), 2 deletions(-)
+
+--- a/drivers/base/power/main.c
++++ b/drivers/base/power/main.c
+@@ -2179,13 +2179,14 @@ static bool device_prepare_smart_suspend
+ 
+ 	/*
+ 	 * The "smart suspend" feature is enabled for devices whose drivers ask
+-	 * for it and for devices without PM callbacks.
++	 * for it and for devices without any PM callbacks (including runtime PM
++	 * callbacks).
+ 	 *
+ 	 * However, if "smart suspend" is not enabled for the device's parent
+ 	 * or any of its suppliers that take runtime PM into account, it cannot
+ 	 * be enabled for the device either.
+ 	 */
+-	if (!dev->power.no_pm_callbacks &&
++	if ((!dev->power.no_pm_callbacks || pm_runtime_callbacks_exist(dev)) &&
+ 	    !dev_pm_test_driver_flags(dev, DPM_FLAG_SMART_SUSPEND))
+ 		return false;
+ 
+--- a/drivers/base/power/power.h
++++ b/drivers/base/power/power.h
+@@ -131,6 +131,8 @@ extern void wakeup_source_sysfs_remove(s
+ 
+ extern int pm_wakeup_source_sysfs_add(struct device *parent);
+ 
++extern bool pm_runtime_callbacks_exist(struct device *dev);
++
+ #else /* !CONFIG_PM_SLEEP */
+ 
+ static inline void device_pm_sleep_init(struct device *dev) {}
+@@ -160,6 +162,8 @@ static inline int pm_wakeup_source_sysfs
+ 	return 0;
+ }
+ 
++static inline bool pm_runtime_callbacks_exist(struct device *dev) { return false; }
++
+ #endif /* !CONFIG_PM_SLEEP */
+ 
+ static inline void device_pm_init(struct device *dev)
+--- a/drivers/base/power/runtime.c
++++ b/drivers/base/power/runtime.c
+@@ -2136,4 +2136,10 @@ bool pm_runtime_need_not_resume(struct d
+ 		 dev->power.ignore_children);
+ }
+ 
++bool pm_runtime_callbacks_exist(struct device *dev)
++{
++	return !dev->power.no_callbacks && (GET_CALLBACK(dev, runtime_resume) ||
++		GET_CALLBACK(dev, runtime_suspend));
++}
++
+ #endif /* CONFIG_PM_SLEEP */
