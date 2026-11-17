@@ -3,6 +3,13 @@
 This repository is public. Keep firmware, identifiers, credentials, backups,
 stock partition images and local environment paths out of tracked files.
 
+The OnePlus source audit is checkpointed before implementation. The user has
+authorized adapting its backlight-only display method next. Follow
+docs/checkpoints/2026-11-17-oneplus-display-audit.md and the pinned source audit.
+This scoped route supersedes the pause for that adaptation only. Preserve the
+failed battery result, system-sleep masks, installed Debian CI78 and independent
+recovery. No unrelated kernel imports, version upgrade or default promotion.
+
 Fedora comparison completed: CI91 with native Fedora GNOME51/Mesa26.2.6 passes
 connected physical wake but reproduces blank unplugged Lock/Space wake. Valid
 local power/key ordering and pre-reconnect camera frames establish the failure;

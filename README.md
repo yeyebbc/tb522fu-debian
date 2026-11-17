@@ -6,6 +6,15 @@ Experimental native Linux port for the Lenovo Legion Y900 13 / TB522FU
 directions. This remains a development port with substantial peripheral work
 outstanding.
 
+**Fedora 45 also reproduces the battery display-wake failure.** Native Fedora
+GNOME51/Mesa26.2.6 with our unchanged CI91 tablet kernel passes connected wake
+but leaves the physical panel blank after unplugged Lock/Space. Recovery and
+cleanup are complete. See the [Fedora checkpoint](docs/checkpoints/2026-11-17-fedora45-ci91.md).
+The [same-SoC source audit](docs/onepluspad-2pro-display-audit.md) identifies
+additional lifecycle changes and the donor's backlight-only workaround. Its
+[implementation checkpoint](docs/checkpoints/2026-11-17-oneplus-display-audit.md)
+preserves the failed baseline before adapting that workaround.
+
 **Ubuntu 26.04.1 reproduces the battery display-wake failure.** CI90 cold-boots
 to a physically visible, hardware-accelerated GNOME desktop and passes a
 connected display off/on cycle. After unplugging USB, locking and pressing
@@ -24,8 +33,8 @@ Ubuntu occupies a separate directory inside the existing Linux filesystem.
 Android, selected Debian CI78 and partition boundaries are preserved, and
 recovery/cleanup is complete. `workflow_dispatch` accepts `trial_root=ubuntu-test`
 or `trial_root=fedora45-test` only for the bounded disk-test artifact; installed
-selection remains Debian. Fedora's separate root selector is prepared; no
-Fedora hardware result is accepted yet. This repository is not a general installer.
+selection remains Debian. Fedora's separate root selector and comparison are
+complete; its physical battery wake is rejected. This repository is not a general installer.
 
 **Display wake and unrestricted suspend remain unreliable.** CI78 is selected
 for the user's experimental offline testing; CI74 and CI44 remain rollback
