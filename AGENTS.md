@@ -3,18 +3,18 @@
 This repository is public. Keep firmware, identifiers, credentials, backups,
 stock partition images and local environment paths out of tracked files.
 
-Current: Debian13.7 CI99 is installed on the checked244GiB root +12GiB swap.
-All39 modules, native Adreno and image-free processors diagnostic pass without
-the CI98 AMBA/qdss clock warnings. The deeper core test returned but failed
-Wi-Fi PCIe recovery; clean reboot restores Wi-Fi. This is not S4 acceptance.
-The earlier CI98 real request reset before any image was written. Normal menu
-still uses accepted backlight-only Suspend; all real-sleep targets stay masked.
-Next candidate adds upstream PCIe hibernation freeze plus its force/PME API
-prerequisites as0239–0241;121-patch tree461f3577347c11567d0f57f047710e2a35a2fbe1.
-The old base lacks suspend_poweroff and the newer R-Car caller, so0240 adapts
-only those API differences. No shutdown/MSI policy or unrelated fix imported.
-Native core, actual image restore and power-off acceptance remain required.
-Do not attribute the original reset to either issue yet. Read docs/hibernation.md.
+Current tablet build: Debian 13.7 CI100 on the verified 244 GiB root and
+12 GiB swap. Its PCIe freeze changes (0239–0241) pass the image-free core
+test, native Adreno rendering and Wi-Fi traffic. An actual image diagnostic
+hit a dedicated PCIe wake interrupt and aborted restore. A test with only
+the root port's wake setting disabled wrote and consumed an image, then
+started a fresh boot. The point of reset remains unknown.
+The next build carries Abel Vesa's proposed PM wake IRQ fix (0242). It
+preserves wake IRQs for real sleep and skips arming them during image freeze
+and restore quiesce. Upstream review is open. Use direct swap header reads
+and issue each sysfs power action once. Preserve the working backlight menu
+and real-sleep masks until hibernation restores the saved session reliably.
+Read docs/hibernation.md before testing.
 
 Active hibernation preparation is documented in docs/hibernation.md. The user
 authorizes repartitioning Debian and explicitly chooses12GiB swap, leaving244GiB

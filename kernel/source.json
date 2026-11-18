@@ -124,7 +124,8 @@
     "patches/0238-pm-runtime-callback-smart-suspend.patch",
     "patches/0239-pci-d3cold-complete-bus-walk.patch",
     "patches/0240-pci-dwc-explicit-force-l2.patch",
-    "patches/0241-pci-qcom-hibernation-controller-freeze.patch"
+    "patches/0241-pci-qcom-hibernation-controller-freeze.patch",
+    "patches/0242-pm-hibernation-freeze-wake-irqs.patch"
   ],
-  "patched_tree": "461f3577347c11567d0f57f047710e2a35a2fbe1"
+  "patched_tree": "ef6037d576ab249740f644ba5eb18e78078ebda1"
 }

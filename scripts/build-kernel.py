@@ -148,6 +148,7 @@ def main():
     check_linear_scanout(source)
     run(['python3', ROOT / 'tests/check_ath12k_reg_ranges.py', source])
     run(['python3', ROOT / 'tests/check_pci_hibernation.py', source])
+    run(['python3', ROOT / 'tests/check_hibernate_wake_irqs.py', source])
     epoch = capture(['git', '-C', source, 'show', '-s', '--format=%ct', 'HEAD'])
     os.environ.update(SOURCE_DATE_EPOCH=epoch, KBUILD_BUILD_TIMESTAMP='@' + epoch,
                       KBUILD_BUILD_USER='builder', KBUILD_BUILD_HOST='tb522fu-ci',
