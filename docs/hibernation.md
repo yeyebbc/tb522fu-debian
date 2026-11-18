@@ -1,11 +1,11 @@
 # Disk hibernation
 
-CI102 restores the saved Linux session across a firmware reboot. UFS link
-startup, PCIe Wi-Fi and display recovery fail in the restored session. A timed
-reboot returns to a working cold boot. Use the GNOME backlight-only Suspend
-action during driver work and keep the real sleep targets masked.
+CI103 restores the saved Linux session across a firmware reboot. UFS link
+startup, PCIe Wi-Fi and display recovery still fail in the restored session.
+Use the GNOME backlight-only Suspend action during driver work and keep the
+real sleep targets masked.
 
-The dedicated partition is installed and Debian 13.7 boots CI102 with all
+The dedicated partition is installed and Debian 13.7 boots CI103 with all
 39 supported modules and the retained Adreno/Mesa desktop. The filesystem
 passed full offline checks before and after shrinking; both GPT copies and
 the swap header were verified. Swap is active and the empty-target boot path
@@ -30,16 +30,29 @@ works. Android and the other Linux trial roots were preserved.
   swap header, a synced write to the root filesystem passed, and both boot
   images matched their expected hashes.
 
-## CI103 interrupt controller candidate
+## CI103 interrupt controller restore
 
-Patch 0244 imports Zhu Ling's [GICv3 SPI context
-patch](https://lore.kernel.org/all/20261024144720.113165-2-zhuling2709@phytium.com.cn/)
-without functional changes. It saves SPI and ESPI enable, trigger, priority
-and routing attributes in the hibernation image and restores them before
-device callbacks. Several CI102 timeouts are consistent with lost interrupt
-configuration. The PCIe link failure may also need independent attention.
-The upstream author reports real S4 testing on Phytium E2000Q. Validation on
-the Lenovo requires a protected firmware cycle and clean storage reads.
+Patch 0244 imports Zhu Ling's proposed GICv3 SPI context patch without
+functional changes. It saves SPI and ESPI enable, trigger, priority and
+routing attributes in the hibernation image and restores them before device
+callbacks. The upstream author reports real S4 testing on Phytium E2000Q.
+[GICv3 patch v2](https://lore.kernel.org/all/20261024144720.113165-2-zhuling2709@phytium.com.cn/)
+
+Both CI103 kernel profiles built in workflow 44250011415. The installed
+kernel passed a cold boot and image-free control with the original
+configuration and device tree. The firmware restart restored the original
+boot ID and ran the GIC restore callback. The CPU SCMI timeout from CI102
+was absent. UFS again logged 20 UIC command timeouts across five failed
+host reinitialization attempts. The Wi-Fi endpoint and DSI DMA failed as
+before. The diagnostic left the root mount and block device read-only.
+
+## CI104 UFS diagnostics
+
+Patch 0245 reads the host status, interrupt status, command result and IRQ
+controller state on an SM8750 UIC link-startup timeout during a UFS power
+transition. These samples can distinguish a missing hardware command
+completion from a completion that did not reach the handler. The patch
+keeps the existing timeout, error handling, power policy and retry sequence.
 
 ## CI101 restore results
 

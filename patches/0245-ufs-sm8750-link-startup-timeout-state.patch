@@ -1,0 +1,59 @@
+From: Yeye B.B.C. <19569343+yeyebbc@users.noreply.github.com>
+Subject: [PATCH] scsi: ufs: sample SM8750 link startup timeout state
+
+The restored TB522FU kernel repeatedly times out waiting for UIC link
+startup after firmware reboot. An image-free control runs the same
+link-off restore and rebuilds the queues. Sample the controller and IRQ
+state at the existing error site to tell a missing command completion
+from a completion that did not reach the handler.
+
+Limit this diagnostic to SM8750 link startup during a UFS power
+transition. Read only the standard status and result registers. Keep
+the command wait time, error path and all hardware programming intact.
+
+---
+ drivers/ufs/core/ufshcd.c | 24 ++++++++++++++++++++++++
+ 1 file changed, 24 insertions(+)
+
+diff --git a/drivers/ufs/core/ufshcd.c b/drivers/ufs/core/ufshcd.c
+index ca8329052cbc..74647e7dfdce 100644
+--- a/drivers/ufs/core/ufshcd.c
++++ b/drivers/ufs/core/ufshcd.c
+@@ -2605,6 +2605,25 @@ ufshcd_dispatch_uic_cmd(struct ufs_hba *hba, struct uic_command *uic_cmd)
+ 		      REG_UIC_COMMAND);
+ }
+ 
++static void ufshcd_log_link_startup_timeout(struct ufs_hba *hba)
++{
++	u32 intr_status = ufshcd_readl(hba, REG_INTERRUPT_STATUS);
++	u32 intr_enable = ufshcd_readl(hba, REG_INTERRUPT_ENABLE);
++	u32 host_status = ufshcd_readl(hba, REG_CONTROLLER_STATUS);
++	u32 host_enable = ufshcd_readl(hba, REG_CONTROLLER_ENABLE);
++	u32 result = ufshcd_readl(hba, REG_UIC_COMMAND_ARG_2) & MASK_UIC_COMMAND_RESULT;
++	bool masked = false, pending = false;
++	int mask_rc, pending_rc;
++
++	mask_rc = irq_get_irqchip_state(hba->irq, IRQCHIP_STATE_MASKED, &masked);
++	pending_rc = irq_get_irqchip_state(hba->irq, IRQCHIP_STATE_PENDING, &pending);
++
++	dev_err(hba->dev,
++		"link startup state: IS=%#x IE=%#x HCS=%#x HCE=%#x UIC-result=%#x irq=%d enabled=%d masked=%d pending=%d\n",
++		intr_status, intr_enable, host_status, host_enable, result,
++		hba->irq, hba->is_irq_enabled, mask_rc ?: masked, pending_rc ?: pending);
++}
++
+ /**
+  * ufshcd_wait_for_uic_cmd - Wait for completion of an UIC command
+  * @hba: per adapter instance
+@@ -2629,6 +2648,11 @@ ufshcd_wait_for_uic_cmd(struct ufs_hba *hba, struct uic_command *uic_cmd)
+ 			"uic cmd 0x%x with arg3 0x%x completion timeout\n",
+ 			uic_cmd->command, uic_cmd->argument3);
+ 
++		if (uic_cmd->command == UIC_CMD_DME_LINK_STARTUP &&
++		    hba->pm_op_in_progress &&
++		    of_device_is_compatible(hba->dev->of_node, "qcom,sm8750-ufshc"))
++			ufshcd_log_link_startup_timeout(hba);
++
+ 		if (!uic_cmd->cmd_active) {
+ 			dev_err(hba->dev, "%s: UIC cmd has been completed, return the result\n",
+ 				__func__);
