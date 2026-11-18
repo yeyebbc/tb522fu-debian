@@ -1,0 +1,37 @@
+From: Yeye B.B.C. <19569343+yeyebbc@users.noreply.github.com>
+Subject: [PATCH] ufs: ufs-qcom: Balance repeated lane clock enables
+
+The Hibern8 setup-clocks callback and the UFS device resume callback
+both request the Qualcomm lane clocks. Each call increments the clock
+framework's prepare and enable counts, while suspend disables the
+clocks once using the shared is_lane_clks_enabled flag.
+
+On SM8750 the three symbol clock branch enable counts each increased
+from 55 to 60 across six consecutive runtime-suspended samples. Each
+sample followed a direct storage read and a return to runtime suspend.
+The outstanding references keep the symbol muxes from parking at XO.
+
+Use the existing flag to make the enable operation idempotent, as the
+disable operation already is. The first enable and its error handling
+retain the existing clock sequence.
+
+Link: https://lore.kernel.org/linux-scsi/20250909055149.2068737-1-quic_pkambar@quicinc.com/
+Signed-off-by: Yeye B.B.C. <19569343+yeyebbc@users.noreply.github.com>
+---
+ drivers/ufs/host/ufs-qcom.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/drivers/ufs/host/ufs-qcom.c b/drivers/ufs/host/ufs-qcom.c
+index c0d452dc4aebfc691948af456d575d89802acedd..1c74c2639699ea3ee1795fcd8998de0ba484ac90 100644
+--- a/drivers/ufs/host/ufs-qcom.c
++++ b/drivers/ufs/host/ufs-qcom.c
+@@ -356,6 +356,9 @@ static int ufs_qcom_enable_lane_clks(struct ufs_qcom_host *host)
+ {
+ 	int err;
+ 
++	if (host->is_lane_clks_enabled)
++		return 0;
++
+ 	err = clk_bulk_prepare_enable(host->num_clks, host->clks);
+ 	if (err)
+ 		return err;

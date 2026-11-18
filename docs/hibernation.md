@@ -194,7 +194,7 @@ the PCIe PHY. The next comparison checks the rail votes and read-only storage
 before attempting another firmware restore.
 [Downstream Qualcomm UFS PHY source](https://github.com/lenovo-basements/android_kernel_lenovo_sm8750/blob/210981a0ad749c30080b853d31bc009d9db0592d/drivers/phy/qualcomm/phy-qcom-ufs.c)
 
-## CI109 PHY supplies and CI110 symbol clocks
+## CI109 PHY supplies and CI111 symbol clocks
 
 Both [CI109 profiles](https://github.com/yeyebbc/tb522fu-debian/actions/runs/44278125002)
 built successfully. The maintenance boot confirmed active QREF and REFGEN
@@ -211,12 +211,21 @@ write, an empty swap header and both boot image hashes on a fresh CI109
 boot. The extra PHY supply votes alone were insufficient for firmware resume.
 
 The shipped driver selects the XO reference for RX0, RX1 and TX0 when
-entering Hibern8. It selects the PHY again on exit. Patch 0253 adapts the
-Qualcomm clock helper used for the same purpose on Glymur. In CI110 the
-SM8750 clock controller selects the PHY when the lane clocks are enabled
-and parks the muxes at XO when they are disabled. Verify both states and
-repeated direct reads in maintenance before a protected firmware test.
+entering Hibern8 and selects the PHY again on exit. Patch 0253 applies
+Qualcomm's proposed Glymur clock sequence to the existing SM8750 muxes.
+The clock controller selects the PHY when the lane clocks are enabled
+and parks the muxes at XO when they are disabled.
 [Qualcomm Glymur clock patch](https://lore.kernel.org/linux-clk/20260915-glymur-ufs-clk-changes-v2-2-d0aa1c60c269@oss.qualcomm.com/)
+
+Read-only CI109 samples uncovered a second issue. All three branch clock
+enable counts increased from 55 to 60 across six runtime-suspended samples.
+The Hibern8 prepare callback and device-resume callback both enable the
+same clocks, while suspend releases one reference. Patch 0254 uses the
+existing driver flag to skip a duplicate enable. CI110 built both profiles
+with the mux change. The clock reference evidence made CI111 with both
+patches the next hardware test. Check the muxes and branch enable counts
+alongside repeated direct reads in maintenance before firmware restore.
+[CI110 build](https://github.com/yeyebbc/tb522fu-debian/actions/runs/44282410275)
 
 ## CI101 restore results
 

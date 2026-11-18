@@ -1269,5 +1269,13 @@
     "license": "Original kernel file license retained",
     "scope": "Select the PHY when the three SM8750 UFS symbol clocks are enabled and park at XO when disabled. Keep the existing clock IDs, branch gates and DT inputs.",
     "hardware_tested": false
+  },
+  "0254-ufs-qcom-balance-lane-clock-enables.patch": {
+    "source": "TB522FU runtime CCF samples and the mainline Qualcomm UFS Hibern8 gates",
+    "reference": "https://lore.kernel.org/linux-scsi/20250909055149.2068737-1-quic_pkambar@quicinc.com/",
+    "sha256": "aab0f43904529e9192235136dccb8429bf84ed35f00dc6e581e9d8d35282c79a",
+    "license": "Original kernel file license retained",
+    "scope": "Keep the lane clock bulk enable idempotent using the same state checked on suspend.",
+    "hardware_tested": false
   }
 }

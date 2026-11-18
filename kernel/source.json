@@ -135,7 +135,8 @@
     "patches/0250-dt-bindings-sm8750-ufs-reference-supplies.patch",
     "patches/0251-sm8750-ufs-phy-reference-supplies.patch",
     "patches/0252-tb522fu-ufs-qmp-reference-supplies.patch",
-    "patches/0253-sm8750-ufs-symbol-clock-parking.patch"
+    "patches/0253-sm8750-ufs-symbol-clock-parking.patch",
+    "patches/0254-ufs-qcom-balance-lane-clock-enables.patch"
   ],
-  "patched_tree": "20ac6a346e071d8cfaed5d14ca7ab311319eda24"
+  "patched_tree": "a039aa333b4eea60f1e4c6066a57d5af7e45b38f"
 }
