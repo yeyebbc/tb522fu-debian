@@ -1,22 +1,53 @@
 # Disk hibernation
 
-CI101 restores the saved Linux session across a firmware reboot. The restored
-session is unusable because UFS reads fail and the display stays black. Use the
-working GNOME backlight-only Suspend action during driver work. Keep the real
-sleep targets masked and the hibernation action disabled.
+CI102 restores the saved Linux session across a firmware reboot. UFS link
+startup, PCIe Wi-Fi and display recovery fail in the restored session. A timed
+reboot returns to a working cold boot. Use the GNOME backlight-only Suspend
+action during driver work and keep the real sleep targets masked.
 
-The dedicated partition is now installed and Debian 13.7 boots CI101 with all
+The dedicated partition is installed and Debian 13.7 boots CI102 with all
 39 supported modules and the retained Adreno/Mesa desktop. The filesystem
 passed full offline checks before and after shrinking; both GPT copies and
 the swap header were verified. Swap is active and the empty-target boot path
 works. Android and the other Linux trial roots were preserved.
+
+## CI102 protected firmware restore
+
+- Review of the CI101 in-place restore logs found 57 abnormal UFS completion
+  queue entries and a UFS DMA translation fault. Temporarily selecting system
+  PM level 5 on CI101 eliminated those errors in a read-only in-place resume.
+  Direct I/O confirmed the root superblock and consumed swap signature.
+- CI102 makes the link-off policy reproducible and enlarges the kernel log to
+  4 MiB. Both kernel profiles built in workflow 44245979484. The installed
+  build passed the cold-boot checks and the image-free `core` test.
+- A firmware reboot returned the original boot ID and completed the saved
+  hibernation syscall. A RAM-based logger exported the kernel log over USB.
+  The first recorded post-restore timeout was a CPU SCMI reply. The PCIe host
+  then failed to find the Wi-Fi endpoint. UFS retried UIC link startup and
+  returned `-ETIMEDOUT`. DSI command DMA, GPI and Bluetooth also timed out.
+  The filesystem and its block device were read-only throughout the trial.
+- The timed recovery booted CI102 again. A direct read confirmed the empty
+  swap header, a synced write to the root filesystem passed, and both boot
+  images matched their expected hashes.
+
+## CI103 interrupt controller candidate
+
+Patch 0244 imports Zhu Ling's [GICv3 SPI context
+patch](https://lore.kernel.org/all/20261024144720.113165-2-zhuling2709@phytium.com.cn/)
+without functional changes. It saves SPI and ESPI enable, trigger, priority
+and routing attributes in the hibernation image and restores them before
+device callbacks. Several CI102 timeouts are consistent with lost interrupt
+configuration. The PCIe link failure may also need independent attention.
+The upstream author reports real S4 testing on Phytium E2000Q. Validation on
+the Lenovo requires a protected firmware cycle and clean storage reads.
 
 ## CI101 restore results
 
 - An actual `test_resume` image returned the original boot ID and RAM-only
   marker. Its swap header acquired image metadata and returned to its empty
   signature. With all 39 supported modules and PCIe wake enabled, the restored
-  session rendered fresh Adreno frames and passed Wi-Fi gateway traffic.
+  session rendered fresh Adreno frames and passed Wi-Fi gateway traffic. The
+  later UFS log review found hardware errors during that same cycle.
 - A separate `disk=reboot` test showed the firmware bootloader and returned
   the same boot ID and RAM marker over USB. The root filesystem went into
   ext4 emergency read-only mode after UFS I/O errors. Direct swap reads returned

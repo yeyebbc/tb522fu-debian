@@ -1210,5 +1210,15 @@
     "adaptation": "No functional changes. Native PCIe dedicated wake IRQ abort observed; maintainer requested further placement review, so this remains an experimental candidate, not upstream acceptance.",
     "sha256": "88cbce52bb051d1b3f8530d31f0482877f257d66f1019f13669fb52d513821b0",
     "hardware_tested": false
+  },
+  "patches/0244-gic-v3-hibernation-spi-context.patch": {
+    "source": "Zhu Ling upstream GICv3 hibernation review v2",
+    "reference": "https://lore.kernel.org/all/20261024144720.113165-2-zhuling2709@phytium.com.cn/",
+    "original_email_sha256": "88686ef2597d4094e5c5edb90850c09be43ddf819ea83f670979ec25d9e6f46b",
+    "sha256": "652478b705b25d8193611a2cf153ec8c1cca3d99cb04ef6f6b86e93e8f77c104",
+    "license": "Original kernel GPL-2.0 source file license and author sign-off retained",
+    "adaptation": "Functional diff unchanged. The upstream submission reports physical S4 on Phytium E2000Q. TB522FU remains unverified.",
+    "hardware_tested": false,
+    "scope": "Restore GICv3 SPI and ESPI masks, priority, routing and trigger configuration from the image."
   }
 }
