@@ -1220,5 +1220,14 @@
     "adaptation": "Functional diff unchanged. The upstream submission reports physical S4 on Phytium E2000Q. TB522FU remains unverified.",
     "hardware_tested": false,
     "scope": "Restore GICv3 SPI and ESPI masks, priority, routing and trigger configuration from the image."
+  },
+  "patches/0246-sm8750-pinctrl-hibernation-state.patch": {
+    "source": "Birk Skyum upstream Qualcomm TLMM hibernation v4",
+    "reference": "https://lore.kernel.org/all/20261021210425.57066-1-birk.skyum@pm.me/",
+    "original_email_sha256": "8fed7de4ec076fb19cb0b6989be5eda389dd093851bc131bd8ecfbf757f6862b",
+    "sha256": "81b873e45e2ae3a756177ed3bf4215a59796725308b4deedb8325943f1f25e95",
+    "license": "Original kernel file licenses and author sign-off retained",
+    "adaptation": "Retain the save and restore bodies. Select hibernation-only operations for SM8750. Omit the original X1E80100 driver enablement.",
+    "hardware_tested": false
   }
 }

@@ -128,7 +128,8 @@
     "patches/0242-pm-hibernation-freeze-wake-irqs.patch",
     "patches/0243-ufs-qcom-sm8750-test-link-off.patch",
     "patches/0244-gic-v3-hibernation-spi-context.patch",
-    "patches/0245-ufs-sm8750-link-startup-timeout-state.patch"
+    "patches/0245-ufs-sm8750-link-startup-timeout-state.patch",
+    "patches/0246-sm8750-pinctrl-hibernation-state.patch"
   ],
-  "patched_tree": "2a3882ba3953074b78d68b0f4190f00ed8073e47"
+  "patched_tree": "134ef3c835dd5de41b49256248d4f2d3c5f346b7"
 }

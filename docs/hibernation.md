@@ -1,11 +1,11 @@
 # Disk hibernation
 
-CI103 restores the saved Linux session across a firmware reboot. UFS link
+CI104 restores the saved Linux session across a firmware reboot. UFS link
 startup, PCIe Wi-Fi and display recovery still fail in the restored session.
 Use the GNOME backlight-only Suspend action during driver work and keep the
 real sleep targets masked.
 
-The dedicated partition is installed and Debian 13.7 boots CI103 with all
+The dedicated partition is installed and Debian 13.7 boots CI104 with all
 39 supported modules and the retained Adreno/Mesa desktop. The filesystem
 passed full offline checks before and after shrinking; both GPT copies and
 the swap header were verified. Swap is active and the empty-target boot path
@@ -53,6 +53,27 @@ controller state on an SM8750 UIC link-startup timeout during a UFS power
 transition. These samples can distinguish a missing hardware command
 completion from a completion that did not reach the handler. The patch
 keeps the existing timeout, error handling, power policy and retry sequence.
+Both profiles built in workflow 44252518751. The image-free control completed
+without a link or queue failure.
+
+In the protected firmware restore, all 20 timeouts had interrupt status
+`0x4` (UIC error) and lacked the `0x400` command-completion bit. Host
+control remained enabled and host status read zero. The IRQ was unmasked
+and pending. The controller reported a link error before reporting
+command completion. The sample did not identify which link component failed.
+Wi-Fi and DSI still failed. The logger delivered the report before the
+early recovery reboot. The fresh boot passed direct swap reads and a
+synced root write.
+
+## CI105 pin controller restore
+
+Patch 0246 adapts Birk Skyum's pin controller context save and restore.
+The firmware restart can leave GPIOs in a different configuration from
+what the restored drivers expect. The diagnostics have a UFS link error
+and missing PCIe endpoint, so restore the SM8750 pin settings that Linux
+owns, including the UFS reset pad and the pin mux for PCIe. The board
+opts into hibernation callbacks. This candidate has yet to pass a
+protected firmware restore. [Qualcomm pin controller patch v4](https://lists.openwall.net/linux-kernel/2026/10/21/2649)
 
 ## CI101 restore results
 
