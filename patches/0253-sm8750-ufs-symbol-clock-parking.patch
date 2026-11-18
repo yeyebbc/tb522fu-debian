@@ -1,0 +1,128 @@
+From: Yeye B.B.C. <19569343+yeyebbc@users.noreply.github.com>
+Subject: [PATCH] clk: qcom: gcc-sm8750: Park the UFS symbol clocks at XO
+
+The factory TB522FU UFS driver switches the RX0, RX1 and TX0 symbol
+clock muxes to the crystal reference in Hibern8. It selects the PHY
+outputs again when exiting Hibern8. The SM8750 GCC describes the same
+three muxes with the same PHY and reference selector values. Its
+ordinary mux operations leave the selection unchanged at gate time.
+
+Use the existing Qualcomm PHY mux operations to select the PHY when a
+symbol clock is enabled and park it at XO when it is disabled. This
+follows the pattern Jagadeesh Kona proposed for Glymur. Keep the same
+clock IDs, branch gates, and device tree inputs.
+
+Link: https://lore.kernel.org/linux-clk/20260915-glymur-ufs-clk-changes-v2-2-d0aa1c60c269@oss.qualcomm.com/
+Link: https://github.com/lenovo-basements/android_kernel_lenovo_sm8750/blob/210981a0ad749c30080b853d31bc009d9db0592d/drivers/phy/qualcomm/phy-qcom-ufs.c
+Signed-off-by: Yeye B.B.C. <19569343+yeyebbc@users.noreply.github.com>
+---
+ drivers/clk/qcom/gcc-sm8750.c | 69 +++++++++++--------------------------------
+ 1 file changed, 18 insertions(+), 51 deletions(-)
+
+diff --git a/drivers/clk/qcom/gcc-sm8750.c b/drivers/clk/qcom/gcc-sm8750.c
+index 6cfe90122268a8dea1f9b4db49f2ef03a0af37fc..7db704ff966b2017fb0e7e664da5d5648ce877fd 100644
+--- a/drivers/clk/qcom/gcc-sm8750.c
++++ b/drivers/clk/qcom/gcc-sm8750.c
+@@ -260,36 +260,6 @@ static const struct clk_parent_data gcc_parent_data_8[] = {
+ 	{ .hw = &gcc_gpll0_out_even.clkr.hw },
+ };
+ 
+-static const struct parent_map gcc_parent_map_9[] = {
+-	{ P_UFS_PHY_RX_SYMBOL_0_CLK, 0 },
+-	{ P_BI_TCXO, 2 },
+-};
+-
+-static const struct clk_parent_data gcc_parent_data_9[] = {
+-	{ .index = DT_UFS_PHY_RX_SYMBOL_0_CLK },
+-	{ .index = DT_BI_TCXO },
+-};
+-
+-static const struct parent_map gcc_parent_map_10[] = {
+-	{ P_UFS_PHY_RX_SYMBOL_1_CLK, 0 },
+-	{ P_BI_TCXO, 2 },
+-};
+-
+-static const struct clk_parent_data gcc_parent_data_10[] = {
+-	{ .index = DT_UFS_PHY_RX_SYMBOL_1_CLK },
+-	{ .index = DT_BI_TCXO },
+-};
+-
+-static const struct parent_map gcc_parent_map_11[] = {
+-	{ P_UFS_PHY_TX_SYMBOL_0_CLK, 0 },
+-	{ P_BI_TCXO, 2 },
+-};
+-
+-static const struct clk_parent_data gcc_parent_data_11[] = {
+-	{ .index = DT_UFS_PHY_TX_SYMBOL_0_CLK },
+-	{ .index = DT_BI_TCXO },
+-};
+-
+ static const struct parent_map gcc_parent_map_12[] = {
+ 	{ P_USB3_PHY_WRAPPER_GCC_USB30_PIPE_CLK, 0 },
+ 	{ P_BI_TCXO, 2 },
+@@ -314,47 +284,44 @@ static struct clk_regmap_phy_mux gcc_pcie_0_pipe_clk_src = {
+ 	},
+ };
+ 
+-static struct clk_regmap_mux gcc_ufs_phy_rx_symbol_0_clk_src = {
++static struct clk_regmap_phy_mux gcc_ufs_phy_rx_symbol_0_clk_src = {
+ 	.reg = 0x77068,
+-	.shift = 0,
+-	.width = 2,
+-	.parent_map = gcc_parent_map_9,
+ 	.clkr = {
+ 		.hw.init = &(const struct clk_init_data) {
+ 			.name = "gcc_ufs_phy_rx_symbol_0_clk_src",
+-			.parent_data = gcc_parent_data_9,
+-			.num_parents = ARRAY_SIZE(gcc_parent_data_9),
+-			.ops = &clk_regmap_mux_closest_ops,
++			.parent_data = &(const struct clk_parent_data){
++				.index = DT_UFS_PHY_RX_SYMBOL_0_CLK,
++			},
++			.num_parents = 1,
++			.ops = &clk_regmap_phy_mux_ops,
+ 		},
+ 	},
+ };
+ 
+-static struct clk_regmap_mux gcc_ufs_phy_rx_symbol_1_clk_src = {
++static struct clk_regmap_phy_mux gcc_ufs_phy_rx_symbol_1_clk_src = {
+ 	.reg = 0x770ec,
+-	.shift = 0,
+-	.width = 2,
+-	.parent_map = gcc_parent_map_10,
+ 	.clkr = {
+ 		.hw.init = &(const struct clk_init_data) {
+ 			.name = "gcc_ufs_phy_rx_symbol_1_clk_src",
+-			.parent_data = gcc_parent_data_10,
+-			.num_parents = ARRAY_SIZE(gcc_parent_data_10),
+-			.ops = &clk_regmap_mux_closest_ops,
++			.parent_data = &(const struct clk_parent_data){
++				.index = DT_UFS_PHY_RX_SYMBOL_1_CLK,
++			},
++			.num_parents = 1,
++			.ops = &clk_regmap_phy_mux_ops,
+ 		},
+ 	},
+ };
+ 
+-static struct clk_regmap_mux gcc_ufs_phy_tx_symbol_0_clk_src = {
++static struct clk_regmap_phy_mux gcc_ufs_phy_tx_symbol_0_clk_src = {
+ 	.reg = 0x77058,
+-	.shift = 0,
+-	.width = 2,
+-	.parent_map = gcc_parent_map_11,
+ 	.clkr = {
+ 		.hw.init = &(const struct clk_init_data) {
+ 			.name = "gcc_ufs_phy_tx_symbol_0_clk_src",
+-			.parent_data = gcc_parent_data_11,
+-			.num_parents = ARRAY_SIZE(gcc_parent_data_11),
+-			.ops = &clk_regmap_mux_closest_ops,
++			.parent_data = &(const struct clk_parent_data){
++				.index = DT_UFS_PHY_TX_SYMBOL_0_CLK,
++			},
++			.num_parents = 1,
++			.ops = &clk_regmap_phy_mux_ops,
+ 		},
+ 	},
+ };

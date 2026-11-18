@@ -1261,5 +1261,13 @@
     "license": "Existing GPL and BSD-licensed source and bindings",
     "scope": "Connect the existing regulators to the TB522FU UFS PHY",
     "hardware_tested": false
+  },
+  "0253-sm8750-ufs-symbol-clock-parking.patch": {
+    "source": "SM8750 adaptation of the Qualcomm PHY mux pattern proposed by Jagadeesh Kona for Glymur, with TB522FU factory driver comparison",
+    "reference": "https://lore.kernel.org/linux-clk/20260915-glymur-ufs-clk-changes-v2-2-d0aa1c60c269@oss.qualcomm.com/",
+    "sha256": "54d59cb0c834f0d312c123a7ec3788a31e8b9d8b32dc23a21eb968330394ee04",
+    "license": "Original kernel file license retained",
+    "scope": "Select the PHY when the three SM8750 UFS symbol clocks are enabled and park at XO when disabled. Keep the existing clock IDs, branch gates and DT inputs.",
+    "hardware_tested": false
   }
 }

@@ -97,12 +97,12 @@ booted with one UFS hardware queue, all 39 supported modules, native Adreno
 rendering and Bluetooth. The protected image-free test passed direct reads
 of the root and swap. The firmware restore returned the original boot and
 logged no link-startup timeout or abnormal MCQ completions. A later UIC
-Hibern8 entry timed out, and the restored system did not serve an SSH
+Hibern8 exit timed out, and the restored system did not serve an SSH
 banner. The timed recovery returned to a healthy cold boot.
 
 A separate protected test held only the UFS host and device WLUN active
 for runtime PM. It also restored the original memory. The UIC Hibern8
-entry and subsequent link startup failed, and the RAM logger recorded
+exit and subsequent link startup failed, and the RAM logger recorded
 `EIO` from direct reads of both root and swap. The report arrived before
 automatic recovery. A fresh boot verified the original runtime settings,
 an empty swap header, a synced root write and both boot image hashes.
@@ -193,6 +193,30 @@ voltage ranges. LDO3 is shared with the display PHYs, and LDO1 is shared with
 the PCIe PHY. The next comparison checks the rail votes and read-only storage
 before attempting another firmware restore.
 [Downstream Qualcomm UFS PHY source](https://github.com/lenovo-basements/android_kernel_lenovo_sm8750/blob/210981a0ad749c30080b853d31bc009d9db0592d/drivers/phy/qualcomm/phy-qcom-ufs.c)
+
+## CI109 PHY supplies and CI110 symbol clocks
+
+Both [CI109 profiles](https://github.com/yeyebbc/tb522fu-debian/actions/runs/44278125002)
+built successfully. The maintenance boot confirmed active QREF and REFGEN
+consumers and matched six direct-read pairs after UFS runtime suspend.
+The normal installation booted the graphical desktop with all 39 supported
+modules, native Adreno rendering and Bluetooth. An image-free control
+returned all eight CPUs and matched both direct reads.
+
+The protected firmware reboot restored the original boot ID. UIC Hibern8
+exit and four link-start attempts timed out. Both direct reads returned
+`EIO`. PCIe Wi-Fi and DSI DMA also failed. USB serial and Ethernet each
+retained the full report. The automatic recovery verified a synced root
+write, an empty swap header and both boot image hashes on a fresh CI109
+boot. The extra PHY supply votes alone were insufficient for firmware resume.
+
+The shipped driver selects the XO reference for RX0, RX1 and TX0 when
+entering Hibern8. It selects the PHY again on exit. Patch 0253 adapts the
+Qualcomm clock helper used for the same purpose on Glymur. In CI110 the
+SM8750 clock controller selects the PHY when the lane clocks are enabled
+and parks the muxes at XO when they are disabled. Verify both states and
+repeated direct reads in maintenance before a protected firmware test.
+[Qualcomm Glymur clock patch](https://lore.kernel.org/linux-clk/20260915-glymur-ufs-clk-changes-v2-2-d0aa1c60c269@oss.qualcomm.com/)
 
 ## CI101 restore results
 

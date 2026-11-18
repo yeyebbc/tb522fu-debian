@@ -3,12 +3,12 @@
 This repository is public. Keep firmware, identifiers, credentials, backups,
 stock partition images and local environment paths out of tracked files.
 
-CI108 cold-boots Debian 13.7 with the verified factory UFS pad supply vote.
-A protected firmware reboot restored the saved kernel and logged another
-Hibern8 exit timeout, link-start failures and EIO from direct reads of both
-partitions. Its automatic recovery passed. CI109 adds the stock QREF and
-REFGEN PHY supply votes through the existing QMP regulator lifecycle.
-Confirm the actual consumer votes, then check read-only firmware restore.
+CI109 boots Debian 13.7 normally with the verified factory UFS reference
+supply votes. Its protected firmware reboot restored the saved kernel,
+then recorded a Hibern8 exit timeout, four link-start timeouts and EIO
+from both direct reads. The automatic recovery passed. CI110 adapts the
+Qualcomm PHY mux operations for the three SM8750 UFS symbol clocks.
+Verify parking and direct reads in maintenance before firmware restore.
 Keep the backlight menu and real-sleep masks. Issue each power action once.
 Read docs/hibernation.md before testing.
 
