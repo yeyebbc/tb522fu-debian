@@ -1,0 +1,40 @@
+From: Yeye B.B.C. <19569343+yeyebbc@users.noreply.github.com>
+Subject: [PATCH] scsi: ufs: Test single doorbell hibernation on TB522FU
+
+The Lenovo tablet sees stale MCQ completions after hibernation with
+the link in Hibern8. With the link off, UIC link startup instead fails
+after firmware restart. The controller capability register indicates
+that it also supports single doorbell mode.
+
+Use the legacy queue on this board only when the controller advertises
+both modes. Keep Hibern8 as the system sleep link state for that test.
+The standard restore callback already restores the legacy request-list
+DMA bases. Select the mode before allocating queues in both the saved
+and loading kernels. Leave runtime PM and other boards on their
+existing settings.
+
+Signed-off-by: Yeye B.B.C. <19569343+yeyebbc@users.noreply.github.com>
+---
+ drivers/ufs/core/ufshcd.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/drivers/ufs/core/ufshcd.c b/drivers/ufs/core/ufshcd.c
+index 74647e7dfdce6459b9ba66c26d92fe540217dcf8..c4668ba95d2aeb88c792ea5851b1317851a943e0 100644
+--- a/drivers/ufs/core/ufshcd.c
++++ b/drivers/ufs/core/ufshcd.c
+@@ -11226,6 +11226,15 @@ int ufshcd_init(struct ufs_hba *hba, void __iomem *mmio_base, unsigned int irq)
+ 	if (err)
+ 		goto out_disable;
+ 
++	/* Test retained Hibern8 using only the legacy DMA lists. */
++	if (hba->mcq_sup && hba->lsdb_sup &&
++	    of_machine_is_compatible("lenovo,y900") &&
++	    of_device_is_compatible(hba->dev->of_node, "qcom,sm8750-ufshc")) {
++		hba->mcq_sup = false;
++		hba->spm_lvl = UFS_PM_LVL_3;
++		dev_info(hba->dev, "hibernation test: using SDB at system PM level 3\n");
++	}
++
+ 	/* Get UFS version supported by the controller */
+ 	hba->ufs_version = ufshcd_get_ufs_version(hba);
+ 

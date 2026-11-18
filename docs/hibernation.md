@@ -1,11 +1,11 @@
 # Disk hibernation
 
-CI104 restores the saved Linux session across a firmware reboot. UFS link
+CI105 restores the saved Linux session across a firmware reboot. UFS link
 startup, PCIe Wi-Fi and display recovery still fail in the restored session.
 Use the GNOME backlight-only Suspend action during driver work and keep the
 real sleep targets masked.
 
-The dedicated partition is installed and Debian 13.7 boots CI104 with all
+The dedicated partition is installed and Debian 13.7 boots CI105 with all
 39 supported modules and the retained Adreno/Mesa desktop. The filesystem
 passed full offline checks before and after shrinking; both GPT copies and
 the swap header were verified. Swap is active and the empty-target boot path
@@ -72,8 +72,26 @@ The firmware restart can leave GPIOs in a different configuration from
 what the restored drivers expect. The diagnostics have a UFS link error
 and missing PCIe endpoint, so restore the SM8750 pin settings that Linux
 owns, including the UFS reset pad and the pin mux for PCIe. The board
-opts into hibernation callbacks. This candidate has yet to pass a
-protected firmware restore. [Qualcomm pin controller patch v4](https://lists.openwall.net/linux-kernel/2026/10/21/2649)
+opts into hibernation callbacks. [Qualcomm pin controller patch v4](https://lists.openwall.net/linux-kernel/2026/10/21/2649)
+
+Both CI105 profiles built in workflow 44254725551. The cold boot and
+read-only image-free control passed. Its protected firmware test restored
+the original memory and again reported 20 link-startup timeouts with UIC
+error and no completion. The PCIe Wi-Fi endpoint and DSI DMA also failed.
+The USB logger saved the report before automatic recovery. The next boot
+passed a synced root write, a direct read of the empty swap header and
+verification of both boot image hashes.
+
+## CI106 UFS queue comparison
+
+The earlier CI101 host dump showed capability register `0xd5c7033f`.
+It advertises MCQ, and the legacy single-doorbell removal bit is clear.
+Patch 0247 selects single doorbell and Hibern8 system sleep when both
+modes are supported on this board. The queue mode is chosen before DMA
+allocation and applies to the saved and loading kernels. The standard
+restore callback programs the saved legacy request-list addresses. Verify
+the queue selection and clean direct storage reads before using a writable
+root. Other restored drivers still require hardware verification.
 
 ## CI101 restore results
 

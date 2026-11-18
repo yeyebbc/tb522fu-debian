@@ -129,7 +129,8 @@
     "patches/0243-ufs-qcom-sm8750-test-link-off.patch",
     "patches/0244-gic-v3-hibernation-spi-context.patch",
     "patches/0245-ufs-sm8750-link-startup-timeout-state.patch",
-    "patches/0246-sm8750-pinctrl-hibernation-state.patch"
+    "patches/0246-sm8750-pinctrl-hibernation-state.patch",
+    "patches/0247-tb522fu-ufs-hibern8-single-doorbell-test.patch"
   ],
-  "patched_tree": "134ef3c835dd5de41b49256248d4f2d3c5f346b7"
+  "patched_tree": "a90f7d61c7b9ab88266547a2c39b40dcf6ce92ae"
 }

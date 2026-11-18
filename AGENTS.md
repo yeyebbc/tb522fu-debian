@@ -3,16 +3,14 @@
 This repository is public. Keep firmware, identifiers, credentials, backups,
 stock partition images and local environment paths out of tracked files.
 
-Current tablet build: Debian 13.7 CI101 on the verified 244 GiB root and
-12 GiB swap. Both firmware-reboot and in-place hibernation tests returned
-the original boot ID and RAM-only marker with PCIe wake enabled. The
-in-place test recovered Adreno rendering and Wi-Fi. The firmware-reboot
-test failed UFS I/O and GPU rendering, leaving ext4 emergency read-only.
-A fresh boot verified an empty swap header and a writable root. Both CI101
-kernel profiles built. Preserve the working backlight menu and real-sleep
-masks until native storage, display and input work after a firmware restore.
-Capture the next failing restore with a read-only root and volatile logs.
-Use direct swap header reads and issue each sysfs power action once.
+Debian 13.7 recovered automatically on CI105 after the protected firmware
+restore again failed UFS, Wi-Fi and display recovery. A fresh boot verified
+an empty swap header and a synced write to the 244 GiB root. CI106 compares
+the retained Hibern8 link with a legacy UFS queue. It selects that combination
+only on the Lenovo board and only when the controller supports it. Verify the
+actual queue mode, image-free control and read-only firmware restore. Keep the
+working backlight menu and real-sleep masks while testing. Use direct swap
+header reads and issue each sysfs power action once.
 Read docs/hibernation.md before testing.
 
 Active hibernation preparation is documented in docs/hibernation.md. The user
