@@ -250,6 +250,10 @@ def main():
     # event is selected at boot; a bounded private probe owns activation.
     run([source / 'scripts/config', '--file', out / '.config',
          '--enable' if args.profile == 'disk-test' else '--disable', 'FTRACE'])
+    # ttyGS0 remains the data port. A diagnostic can explicitly create ttyGS1
+    # after boot and register it as a kernel console on the direct USB cable.
+    run([source / 'scripts/config', '--file', out / '.config',
+         '--enable' if disk else '--disable', 'U_SERIAL_CONSOLE'])
     if args.profile == 'disk-test':
         run([source / 'scripts/config', '--file', out / '.config',
              '--enable', 'FUNCTION_TRACER', '--enable', 'FUNCTION_GRAPH_TRACER',
@@ -257,6 +261,7 @@ def main():
     if disk:
         fragment = (ROOT / 'configs/ram-probe.fragment').read_text()
         cmdline = json.loads(re.search(r'^CONFIG_CMDLINE=(.*)$', fragment, re.M)[1])
+        cmdline = cmdline.replace(' console=tty0', ' console=ttyGS1 console=tty0', 1)
         if args.profile == 'disk-test':
             cmdline = cmdline.replace('probe_seconds=600', 'probe_seconds=900')
             cmdline += ' msm.dpu_linear_scanout=1'
@@ -342,6 +347,11 @@ def main():
     cmdline = json.loads(next(s.split('=', 1)[1] for s in config
                              if s.startswith('CONFIG_CMDLINE=')))
     assert 'dyndbg=' not in cmdline
+    serial_console = ('CONFIG_U_SERIAL_CONSOLE=y' if disk
+                      else '# CONFIG_U_SERIAL_CONSOLE is not set')
+    assert serial_console in config
+    assert [arg for arg in cmdline.split() if arg.startswith('console=')] == (
+        ['console=ttyGS1', 'console=tty0'] if disk else ['console=tty0'])
     assert ('msm.dpu_linear_scanout=1' in cmdline.split()) == (args.profile == 'disk-test')
     assert ('log_buf_len=4M' in cmdline.split()) == (args.profile == 'installed')
     assert 'clk_ignore_unused' in cmdline.split(), 'Retain the verified boot clock policy'

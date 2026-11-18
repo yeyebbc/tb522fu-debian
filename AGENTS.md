@@ -3,13 +3,12 @@
 This repository is public. Keep firmware, identifiers, credentials, backups,
 stock partition images and local environment paths out of tracked files.
 
-CI109 boots Debian 13.7 normally with the verified factory UFS reference
-supply votes. Its protected firmware reboot restored the saved kernel,
-then recorded a Hibern8 exit timeout, four link-start timeouts and EIO
-from both direct reads. The automatic recovery passed. CI111 adapts the
-Qualcomm PHY mux operations and balances duplicate lane-clock enables.
-CI109 read-only sampling confirmed an extra branch reference per runtime
-cycle. Verify parking and direct reads in maintenance before firmware restore.
+CI111 boots Debian 13.7 normally and verified balanced UFS lane clocks
+in six read-only runtime suspend cycles. Its protected firmware reboot
+stopped reporting before confirming memory restore. A manual restart
+returned a writable root and empty swap. CI112 keeps the same drivers
+and adds an opt-in USB kernel console on a separate ACM function. Verify
+kernel output and both existing logging paths before another firmware trial.
 Keep the backlight menu and real-sleep masks. Issue each power action once.
 Read docs/hibernation.md before testing.
 

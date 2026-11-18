@@ -10,6 +10,24 @@ offline checks before and after shrinking. Both GPT copies and the 12 GiB
 swap header were verified. Swap is active and the empty-target boot path
 works. Android and the other Linux trial roots were preserved.
 
+## CI111 firmware reboot and CI112 diagnostics
+
+CI111 verified that all three UFS symbol muxes park at XO in each of six
+runtime suspend cycles. Both direct block reads matched after every cycle.
+The installed build passed physical login, native Adreno, Bluetooth and the
+image-free core test. Its protected firmware reboot disconnected the USB
+reporters before they could confirm that Linux restored the saved image.
+A manual restart recovered the same layout, empty swap, a writable root
+and the backlight-only menu action. The persistent store had no records
+after that restart.
+
+CI112 keeps the CI111 kernel source and device tree. The disk profiles
+can register a second, explicitly created USB ACM function as a printk
+console. The original ACM data port stays separate and tty0 stays the
+preferred console. Verify fresh kernel messages over the direct USB
+cable, then run the image-free comparison with the serial and Ethernet
+loggers enabled before attempting another snapshot.
+
 ## CI102 protected firmware restore
 
 - Review of the CI101 in-place restore logs found 57 abnormal UFS completion
