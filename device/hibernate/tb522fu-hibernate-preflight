@@ -5,11 +5,32 @@ from pathlib import Path
 import fcntl
 import hashlib
 import json
+import mmap
 import os
 import stat
 import struct
 import sys
 import uuid
+
+
+def read_page_direct(fd):
+    # Swap I/O bypasses the block-device page cache. A buffered read can still
+    # return the EMPTY header cached before an image was written.
+    assert fcntl.fcntl(fd, fcntl.F_GETFL) & os.O_DIRECT
+    with mmap.mmap(-1, 4096) as page:
+        if os.preadv(fd, [page], 0) != 4096:
+            raise RuntimeError('Incomplete direct swap-header read')
+        return bytes(page)
+
+
+def write_once(path, value):
+    # A buffered close may retry a failed sysfs action. Never retry resume.
+    fd = os.open(path, os.O_WRONLY | os.O_CLOEXEC)
+    try:
+        if os.write(fd, value) != len(value):
+            raise RuntimeError('Incomplete sysfs action; refusing to retry')
+    finally:
+        os.close(fd)
 
 
 def check_header(page, expected_uuid):
@@ -58,12 +79,12 @@ def main():
     assert str((parent / 'device').resolve()).endswith(':0:0:0')
     assert (parent / 'queue/logical_block_size').read_text().strip() == '4096'
     device = Path('/dev') / node.name
-    fd = os.open(device, os.O_RDONLY | os.O_NOFOLLOW)
+    fd = os.open(device, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC | os.O_DIRECT)
     try:
         assert stat.S_ISBLK(os.fstat(fd).st_mode)
         size = struct.unpack('Q', fcntl.ioctl(fd, 0x80081272, bytes(8)))[0]
         assert size == 12 * 1024**3
-        check_header(os.pread(fd, 4096, 0), m['swap_uuid'])
+        check_header(read_page_direct(fd), m['swap_uuid'])
     finally:
         os.close(fd)
     entries = [line.split() for line in Path('/proc/swaps').read_text().splitlines()[1:]]
@@ -79,8 +100,8 @@ def main():
     if setup:
         # The header was checked EMPTY above. A late restore of a real image
         # would be unsafe after mounting root, and is explicitly refused.
-        Path('/sys/power/resume_offset').write_text('0\n')
-        Path('/sys/power/resume').write_text(expected + '\n')
+        write_once('/sys/power/resume_offset', b'0\n')
+        write_once('/sys/power/resume', (expected + '\n').encode())
     assert Path('/sys/power/resume').read_text().strip() == expected
     assert Path('/sys/power/resume_offset').read_text().strip() == '0'
     print(json.dumps(dict(passed=True,setup=setup,kernel=os.uname().release,
