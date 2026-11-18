@@ -3,14 +3,14 @@
 This repository is public. Keep firmware, identifiers, credentials, backups,
 stock partition images and local environment paths out of tracked files.
 
-Debian 13.7 recovered automatically on CI105 after the protected firmware
-restore again failed UFS, Wi-Fi and display recovery. A fresh boot verified
-an empty swap header and a synced write to the 244 GiB root. CI106 compares
-the retained Hibern8 link with a legacy UFS queue. It selects that combination
-only on the Lenovo board and only when the controller supports it. Verify the
-actual queue mode, image-free control and read-only firmware restore. Keep the
-working backlight menu and real-sleep masks while testing. Use direct swap
-header reads and issue each sysfs power action once.
+CI106 boots Debian 13.7 with a single UFS queue. Firmware restores with the
+retained Hibern8 link still had UFS power command timeouts. Direct reads on
+the runtime-active comparison returned EIO after the memory image resumed.
+Recovery verified the original runtime settings and empty 12 GiB swap.
+CI107 compares the existing level 0 policy with the same legacy queue and
+the automatic Hibern8 timer at zero. Verify the actual queue, timer, image-free
+control and read-only firmware restore. Keep the backlight menu and real-sleep
+masks while testing. Issue each power action once.
 Read docs/hibernation.md before testing.
 
 Active hibernation preparation is documented in docs/hibernation.md. The user

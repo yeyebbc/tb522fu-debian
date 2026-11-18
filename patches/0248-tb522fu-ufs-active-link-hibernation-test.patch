@@ -1,0 +1,55 @@
+From: Yeye B.B.C. <19569343+yeyebbc@users.noreply.github.com>
+Subject: [PATCH] scsi: ufs: Keep the link active during the TB522FU test
+
+The single-doorbell Hibern8 comparison still hits a UIC power command
+timeout on a firmware restore. For the next comparison, retain the
+active link state using the standard level zero policy and leave the
+automatic Hibern8 timer at zero. The saved and loading kernels choose
+the same state before allocating the UFS queues. This is a temporary
+comparison of the link transition with the legacy queue held fixed.
+
+Signed-off-by: Yeye B.B.C. <19569343+yeyebbc@users.noreply.github.com>
+---
+ drivers/ufs/core/ufshcd.c | 11 +++++++----
+ 1 file changed, 7 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/ufs/core/ufshcd.c b/drivers/ufs/core/ufshcd.c
+index c4668ba95d2aeb88c792ea5851b1317851a943e0..7f5885ad22c8950035609ec5938180a032c62a3b 100644
+--- a/drivers/ufs/core/ufshcd.c
++++ b/drivers/ufs/core/ufshcd.c
+@@ -11165,6 +11165,7 @@ static int ufshcd_add_scsi_host(struct ufs_hba *hba)
+ int ufshcd_init(struct ufs_hba *hba, void __iomem *mmio_base, unsigned int irq)
+ {
+ 	int err;
++	bool test_active_link = false;
+ 	struct Scsi_Host *host = hba->host;
+ 	struct device *dev = hba->dev;
+ 
+@@ -11226,13 +11227,15 @@ int ufshcd_init(struct ufs_hba *hba, void __iomem *mmio_base, unsigned int irq)
+ 	if (err)
+ 		goto out_disable;
+ 
+-	/* Test retained Hibern8 using only the legacy DMA lists. */
++	/* Test an active link using only the legacy DMA lists. */
+ 	if (hba->mcq_sup && hba->lsdb_sup &&
+ 	    of_machine_is_compatible("lenovo,y900") &&
+ 	    of_device_is_compatible(hba->dev->of_node, "qcom,sm8750-ufshc")) {
+ 		hba->mcq_sup = false;
+-		hba->spm_lvl = UFS_PM_LVL_3;
+-		dev_info(hba->dev, "hibernation test: using SDB at system PM level 3\n");
++		hba->spm_lvl = UFS_PM_LVL_0;
++		hba->rpm_lvl = UFS_PM_LVL_0;
++		test_active_link = true;
++		dev_info(hba->dev, "hibernation test: SDB, PM level 0 and auto-Hibern8 off\n");
+ 	}
+ 
+ 	/* Get UFS version supported by the controller */
+@@ -11351,7 +11354,7 @@ int ufshcd_init(struct ufs_hba *hba, void __iomem *mmio_base, unsigned int irq)
+ 	INIT_DELAYED_WORK(&hba->ufs_rtc_update_work, ufshcd_rtc_work);
+ 
+ 	/* Set the default auto-hiberate idle timer value to 150 ms */
+-	if (ufshcd_is_auto_hibern8_supported(hba) && !hba->ahit) {
++	if (!test_active_link && ufshcd_is_auto_hibern8_supported(hba) && !hba->ahit) {
+ 		hba->ahit = FIELD_PREP(UFSHCI_AHIBERN8_TIMER_MASK, 150) |
+ 			    FIELD_PREP(UFSHCI_AHIBERN8_SCALE_MASK, 3);
+ 	}

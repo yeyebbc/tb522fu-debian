@@ -93,6 +93,31 @@ restore callback programs the saved legacy request-list addresses. Verify
 the queue selection and clean direct storage reads before using a writable
 root. Other restored drivers still require hardware verification.
 
+CI106 built both profiles in workflow 44258332289. The installed image
+booted with one UFS hardware queue, all 39 supported modules, native Adreno
+rendering and Bluetooth. The protected image-free test passed direct reads
+of the root and swap. The firmware restore returned the original boot and
+logged no link-startup timeout or abnormal MCQ completions. A later UIC
+Hibern8 entry timed out, and the restored system did not serve an SSH
+banner. The timed recovery returned to a healthy cold boot.
+
+A separate protected test held only the UFS host and device WLUN active
+for runtime PM. It also restored the original memory. The UIC Hibern8
+entry and subsequent link startup failed, and the RAM logger recorded
+`EIO` from direct reads of both root and swap. The report arrived before
+automatic recovery. A fresh boot verified the original runtime settings,
+an empty swap header, a synced root write and both boot image hashes.
+
+## CI107 active UFS link comparison
+
+Patch 0248 keeps the legacy queue selected by patch 0247. It chooses UFS
+level 0 for both runtime and system PM and leaves the automatic Hibern8
+timer at zero for the matching Lenovo controller. This uses the existing
+clock-gating path with the device and link active. It tests whether the
+explicit or automatic Hibern8 transition accounts for the timeout. Verify
+the reported policy and hardware timer before testing. Treat its idle
+power behaviour as experimental and keep the working backlight action.
+
 ## CI101 restore results
 
 - An actual `test_resume` image returned the original boot ID and RAM-only

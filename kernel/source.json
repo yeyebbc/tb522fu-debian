@@ -130,7 +130,8 @@
     "patches/0244-gic-v3-hibernation-spi-context.patch",
     "patches/0245-ufs-sm8750-link-startup-timeout-state.patch",
     "patches/0246-sm8750-pinctrl-hibernation-state.patch",
-    "patches/0247-tb522fu-ufs-hibern8-single-doorbell-test.patch"
+    "patches/0247-tb522fu-ufs-hibern8-single-doorbell-test.patch",
+    "patches/0248-tb522fu-ufs-active-link-hibernation-test.patch"
   ],
-  "patched_tree": "a90f7d61c7b9ab88266547a2c39b40dcf6ce92ae"
+  "patched_tree": "893d610287ee16a3c5cd5eda3a49c702bfdf0d5b"
 }
