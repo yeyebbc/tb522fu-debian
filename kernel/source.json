@@ -131,7 +131,7 @@
     "patches/0245-ufs-sm8750-link-startup-timeout-state.patch",
     "patches/0246-sm8750-pinctrl-hibernation-state.patch",
     "patches/0247-tb522fu-ufs-hibern8-single-doorbell-test.patch",
-    "patches/0248-tb522fu-ufs-active-link-hibernation-test.patch"
+    "patches/0249-tb522fu-ufs-refclk-supply-test.patch"
   ],
-  "patched_tree": "893d610287ee16a3c5cd5eda3a49c702bfdf0d5b"
+  "patched_tree": "479497b813b1e3d538f2d14bb17d3cfaf4b6b33c"
 }

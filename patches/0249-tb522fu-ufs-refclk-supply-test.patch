@@ -1,0 +1,36 @@
+From: Yeye B.B.C. <19569343+yeyebbc@users.noreply.github.com>
+Subject: [PATCH] arm64: dts: qcom: Vote the TB522FU UFS ref-clock supply
+
+The factory board tree connects the UFS device reference-clock pad to
+PMIC i LDO2 at 1.2 V. The stock UFS host enables this supply at probe
+and retains it through Hibern8. The mainline board has no LDO2 node.
+
+Use an RPMh always-on constraint to make the vote available in the boot
+kernel before it loads the hibernation image. Keep the existing SDB
+and Hibern8 settings for the comparison. The extra vote is a diagnostic
+until protected firmware restore establishes its effect.
+
+Signed-off-by: Yeye B.B.C. <19569343+yeyebbc@users.noreply.github.com>
+---
+ arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+index 6f87a5328ad2da31d5cca97c77e538e9559c1453..88c3720483d8d21562ae171d5c5a61338959e1c1 100644
+--- a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
++++ b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+@@ -88,6 +88,14 @@ regulators-i {
+   compatible = "qcom,pm8550ve-rpmh-regulators"; qcom,pmic-id = "i";
+   vdd-s7-supply = <&vph_pwr>;
+   vreg_s7i: smps7 { regulator-name = "vreg_s7i"; regulator-min-microvolt = <1224000>; regulator-max-microvolt = <1340000>; regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>; };
++		/* Stock UFS device reference-clock pad supply. */
++		ldo2 {
++			regulator-name = "vreg_l2i_ufs_refclk";
++			regulator-min-microvolt = <1200000>;
++			regulator-max-microvolt = <1200000>;
++			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
++			regulator-always-on;
++		};
+   vreg_l3i: ldo3 { regulator-name = "vreg_l3i_dsi"; regulator-min-microvolt = <880000>; regulator-max-microvolt = <912000>; regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>; };
+  };
+  regulators-j {

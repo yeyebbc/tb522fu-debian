@@ -1,14 +1,13 @@
 # Disk hibernation
 
-CI105 restores the saved Linux session across a firmware reboot. UFS link
-startup, PCIe Wi-Fi and display recovery still fail in the restored session.
-Use the GNOME backlight-only Suspend action during driver work and keep the
-real sleep targets masked.
+Protected firmware reboot trials have restored the saved Linux memory image.
+UFS I/O, Wi-Fi and display recovery remain unreliable after the old kernel
+returns. Use the GNOME backlight-only Suspend action during driver work and
+keep the actual sleep targets masked.
 
-The dedicated partition is installed and Debian 13.7 boots CI105 with all
-39 supported modules and the retained Adreno/Mesa desktop. The filesystem
-passed full offline checks before and after shrinking; both GPT copies and
-the swap header were verified. Swap is active and the empty-target boot path
+The dedicated partition is installed. The 244 GiB Debian root passed full
+offline checks before and after shrinking. Both GPT copies and the 12 GiB
+swap header were verified. Swap is active and the empty-target boot path
 works. Android and the other Linux trial roots were preserved.
 
 ## CI102 protected firmware restore
@@ -117,6 +116,52 @@ clock-gating path with the device and link active. It tests whether the
 explicit or automatic Hibern8 transition accounts for the timeout. Verify
 the reported policy and hardware timer before testing. Treat its idle
 power behaviour as experimental and keep the working backlight action.
+
+
+CI107 built in [workflow 44264599202](https://github.com/yeyebbc/tb522fu-debian/actions/runs/44264599202).
+The cold boot showed a Debian greeter and answered USB pings. Selecting the
+account did not open its password field. The operator switched to a text
+console and observed `I/O error, dev sda`. USB SSH also closed before
+authentication. This comparison ended at cold boot before any snapshot.
+
+The last CI106 repeat with default runtime PM restored its USB connection
+after firmware startup. Both the RAM logger and timed recovery stopped
+without reporting, and the operator restarted the tablet. A subsequent
+check confirmed a writable root, empty swap and both expected boot hashes.
+That run did not establish whether the old kernel completed restore.
+
+## Factory UFS power sequencing
+
+The TB522FU factory Linux 6.6.102 image enables `CONFIG_HIBERNATION`. Its
+vendor boot ramdisk contains the Qualcomm UFS host and Sun QMP PHY modules.
+The stock host delegates the freeze and restore calls to the UFS core. The
+[published downstream UFS core](https://github.com/lenovo-basements/android_kernel_lenovo_sm8750/blob/210981a0ad749c30080b853d31bc009d9db0592d/drivers/ufs/core/ufshcd.c)
+and our mainline core both rewrite the legacy transfer and task DMA list
+addresses after host resume. The kernel configuration establishes capability
+only. Android's use of disk hibernation remains unverified.
+
+The factory device tree binds the UFS device reference-clock pad supply to
+PMIC i LDO2 at 1.2 V. Its UFS host module has regulator operations before
+lane-clock enable. The code enables that rail at probe and leaves it on
+through Hibern8. The factory `vccq-parent` vote is PMIC i SMPS7. Mainline
+already describes SMPS7 as the parent of the VCCQ regulator, and it was
+active in the CI106 regulator summary. Mainline's QMP PLL and analog PHY
+regulators are on different rails from the LDO2 pad supply. The factory tree
+also sets `qcom,bypass-pbl-rst-wa` for this host.
+[Downstream UFS host source](https://github.com/lenovo-basements/android_kernel_lenovo_sm8750/blob/210981a0ad749c30080b853d31bc009d9db0592d/drivers/ufs/host/ufs-qcom.c)
+
+Patch 0249 resumes testing from the CI106 storage policy and adds just the
+LDO2 vote to the board device tree. The loading kernel applies the nominal
+1.2 V constraint before reading a snapshot. Verify the regulator state,
+cold storage, the image-free control, and a protected reboot-mode restore
+before changing the normal boot or sleep policy. Save the hibernation return
+log before issuing the post-restore direct reads.
+
+The missing UFS rail is a specific storage lead. PCIe and DSI also lose
+hardware state after firmware restart. A recent Qualcomm clock RFC explains
+how cached rates can diverge from hardware after hibernation. It tests a
+Glymur display controller and does not establish the SM8750 failure cause.
+[Qualcomm clock restore RFC](https://lists.openwall.net/linux-kernel/2026/10/28/880)
 
 ## CI101 restore results
 
