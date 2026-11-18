@@ -1,0 +1,75 @@
+From: HOYOUNG SEO <hy50.seo@samsung.com>
+Date: Wed, 11 Nov 2026 17:18:33 +0900
+Subject: [PATCH v10 3/4] scsi: ufs: core: Make ufshcd_wl_poweroff() behave like ufshcd_wl_suspend()
+
+ufshcd_wl_poweroff(), the hibernation poweroff callback, calls
+__ufshcd_wl_suspend(hba, UFS_SHUTDOWN_PM) directly and ignores the
+result. Unlike ufshcd_wl_suspend() it:
+
+ - does not take hba->host_sem. An error handler that runs in the
+   meantime can reset the link concurrently with __ufshcd_wl_suspend().
+   It also leaves host_sem unbalanced: if hibernation is aborted after
+   ufshcd_wl_poweroff() has been called, ufshcd_wl_resume() is called as
+   the .restore callback and releases host_sem, which was not acquired;
+ - does not check pm_runtime_suspended(dev). __ufshcd_suspend_prepare()
+   leaves the WLUN runtime suspended if ufshcd_rpm_ok_for_spm() is true,
+   which is the case if rpm_lvl and spm_lvl are equal. Then
+   __ufshcd_wl_suspend() triggers error recovery and returns -EBUSY;
+ - does not set hba->is_sys_suspended, so ufshcd_err_handling_prepare()
+   does not restore the clocks and regulators if the .restore callback
+   fails;
+ - ignores errors.
+
+Call ufshcd_wl_system_suspend() with UFS_SHUTDOWN_PM from
+ufshcd_wl_poweroff() to fix all of these, as suggested by Bart Van
+Assche. host_sem is held until ufshcd_wl_resume() releases it if
+hibernation is aborted, and released if the suspend fails. For
+UFS_SHUTDOWN_PM, __ufshcd_wl_suspend() does not convert failures into
+-EBUSY, so a positive SCSI or UIC status can be returned. A dev_pm_ops
+callback has to return a negative error code, so convert it.
+
+This changes the behavior of ufshcd_wl_poweroff(): an error is now
+returned from the .poweroff callback, which aborts hibernation, instead
+of being ignored, and a runtime suspended WLUN is left as it is like in
+ufshcd_wl_suspend().
+
+Do not use hba->shutting_down to stop the error handler: it makes
+ufs_mtk_system_suspend(), which is also the .poweroff callback of the
+MediaTek host controller, fail with -EBUSY, and nothing clears it when
+hibernation is aborted.
+
+Fixes: b294ff3e3449 ("scsi: ufs: core: Enable power management for wlun")
+Suggested-by: Bart Van Assche <bvanassche@acm.org>
+Signed-off-by: HOYOUNG SEO <hy50.seo@samsung.com>
+Link: https://lore.kernel.org/r/603443293.161794387787869.JavaMail.epsvc@epcpadp2new
+---
+ drivers/ufs/core/ufshcd.c | 9 ++++-----
+ 1 file changed, 4 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/ufs/core/ufshcd.c b/drivers/ufs/core/ufshcd.c
+index 717412ec2642c48442def3501a4392ad1e2fba96..8d1f1ccdd25435dfc987f8348a9ad02bbeced828 100644
+--- a/drivers/ufs/core/ufshcd.c
++++ b/drivers/ufs/core/ufshcd.c
+@@ -10668,6 +10668,9 @@ static int ufshcd_wl_system_suspend(struct device *dev, enum ufs_pm_op pm_op)
+ 	if (ret) {
+ 		dev_err(&sdev->sdev_gendev, "%s failed: %d\n", __func__,  ret);
+ 		up(&hba->host_sem);
++		/* UFS_SHUTDOWN_PM can return a positive status. */
++		if (ret > 0)
++			ret = -EBUSY;
+ 	}
+ 
+ out:
+@@ -11522,11 +11525,7 @@ EXPORT_SYMBOL_GPL(ufshcd_suspend_prepare);
+ #ifdef CONFIG_PM_SLEEP
+ static int ufshcd_wl_poweroff(struct device *dev)
+ {
+-	struct scsi_device *sdev = to_scsi_device(dev);
+-	struct ufs_hba *hba = shost_priv(sdev->host);
+-
+-	__ufshcd_wl_suspend(hba, UFS_SHUTDOWN_PM);
+-	return 0;
++	return ufshcd_wl_system_suspend(dev, UFS_SHUTDOWN_PM);
+ }
+ #endif
+ 

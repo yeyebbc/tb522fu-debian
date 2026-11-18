@@ -1,0 +1,53 @@
+From: HOYOUNG SEO <hy50.seo@samsung.com>
+Date: Wed, 11 Nov 2026 17:18:32 +0900
+Subject: [PATCH v10 2/4] scsi: ufs: core: Add a helper for the system suspend callbacks
+
+Move the body of ufshcd_wl_suspend() into ufshcd_wl_system_suspend(),
+which takes the PM operation as a parameter, so that it can be shared
+with ufshcd_wl_poweroff() in the next patch. ufshcd_wl_suspend() calls it
+with UFS_SYSTEM_PM.
+
+No functional change, except that the error message printed when the
+suspend fails now contains the name of the new function.
+
+Suggested-by: Bart Van Assche <bvanassche@acm.org>
+Signed-off-by: HOYOUNG SEO <hy50.seo@samsung.com>
+Link: https://lore.kernel.org/r/331418503.141794387787744.JavaMail.epsvc@epcpadp2new
+---
+ drivers/ufs/core/ufshcd.c | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/ufs/core/ufshcd.c b/drivers/ufs/core/ufshcd.c
+index 17151690beaa47464105b01e461c5709f4cbf57e..717412ec2642c48442def3501a4392ad1e2fba96 100644
+--- a/drivers/ufs/core/ufshcd.c
++++ b/drivers/ufs/core/ufshcd.c
+@@ -10651,7 +10651,7 @@ static int ufshcd_wl_runtime_resume(struct device *dev)
+ #endif
+ 
+ #ifdef CONFIG_PM_SLEEP
+-static int ufshcd_wl_suspend(struct device *dev)
++static int ufshcd_wl_system_suspend(struct device *dev, enum ufs_pm_op pm_op)
+ {
+ 	struct scsi_device *sdev = to_scsi_device(dev);
+ 	struct ufs_hba *hba;
+@@ -10664,7 +10664,7 @@ static int ufshcd_wl_suspend(struct device *dev)
+ 	if (pm_runtime_suspended(dev))
+ 		goto out;
+ 
+-	ret = __ufshcd_wl_suspend(hba, UFS_SYSTEM_PM);
++	ret = __ufshcd_wl_suspend(hba, pm_op);
+ 	if (ret) {
+ 		dev_err(&sdev->sdev_gendev, "%s failed: %d\n", __func__,  ret);
+ 		up(&hba->host_sem);
+@@ -10680,6 +10680,11 @@ static int ufshcd_wl_suspend(struct device *dev)
+ 	return ret;
+ }
+ 
++static int ufshcd_wl_suspend(struct device *dev)
++{
++	return ufshcd_wl_system_suspend(dev, UFS_SYSTEM_PM);
++}
++
+ static int ufshcd_wl_resume(struct device *dev)
+ {
+ 	struct scsi_device *sdev = to_scsi_device(dev);

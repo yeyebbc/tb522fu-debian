@@ -3,13 +3,14 @@
 This repository is public. Keep firmware, identifiers, credentials, backups,
 stock partition images and local environment paths out of tracked files.
 
-CI111 boots Debian 13.7 normally and verified balanced UFS lane clocks
-in six read-only runtime suspend cycles. Its protected firmware reboot
-stopped reporting before confirming memory restore. A manual restart
-returned a writable root and empty swap. CI112 keeps the same drivers
-and adds an opt-in USB kernel console on a separate ACM function. Verify
-kernel output and both existing logging paths before another firmware trial.
-Keep the backlight menu and real-sleep masks. Issue each power action once.
+CI112 passed the cold boot and image-free core test. During firmware
+resume, the USB kernel console confirmed image restoration and captured
+a UFS device reset while the resume callback was still waiting for
+Hibern8 exit. Manual restart recovered a writable root and empty swap.
+Patches 0255 through 0258 backport the proposed UFS PM serialization
+series. Verify normal UFS wake and direct reads in read-only maintenance
+before repeating a protected firmware test with all loggers. Keep the
+backlight menu and real-sleep masks. Issue each power action once.
 Read docs/hibernation.md before testing.
 
 Active hibernation preparation is documented in docs/hibernation.md. The user

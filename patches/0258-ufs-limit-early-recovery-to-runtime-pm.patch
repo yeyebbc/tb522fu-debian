@@ -1,0 +1,137 @@
+From: HOYOUNG SEO <hy50.seo@samsung.com>
+Date: Wed, 11 Nov 2026 17:18:34 +0900
+Subject: [PATCH v10 4/4] scsi: ufs: core: Limit early link recovery in the error handler to runtime PM
+
+ufshcd_err_handler() recovers the link without taking hba->host_sem
+whenever hba->pm_op_in_progress is set. That early path was added by
+commit f966e02ae521 ("scsi: ufs: core: Fix runtime suspend error
+deadlock") because the regular error handling would wait for a runtime
+PM operation that cannot complete while the error handler is waiting.
+
+pm_op_in_progress is also set during system suspend, system resume,
+shutdown and poweroff, where the early path is not needed and runs
+concurrently with the PM path itself. For example, if a LINERESET is
+reported and the hibern8 exit fails in __ufshcd_wl_resume() during
+system resume, both ufshcd_err_handler() and __ufshcd_wl_resume() call
+ufshcd_link_recovery(), and the host and the device may be reset at the
+same time.
+
+Only take the early path while pm_op_in_progress is set and a runtime
+suspend or resume of the WLUN is in progress. The runtime PM core sets
+the runtime status of the WLUN to RPM_SUSPENDING or RPM_RESUMING while
+ufshcd_wl_runtime_suspend() or ufshcd_wl_runtime_resume() runs, and it
+is RPM_ACTIVE or RPM_SUSPENDED during system PM. The runtime status
+alone is not enough: it also covers the block layer steps before and
+after the driver callbacks, where the early link recovery must not run.
+pm_op_in_progress is only set while __ufshcd_wl_suspend() or
+__ufshcd_wl_resume() run, which is inside that window.
+
+Both checks are done in the new function ufshcd_in_wl_rpm_callback().
+The runtime status is only available with CONFIG_PM, so the function
+returns false without it. Both values are read without locking, so use
+READ_ONCE() for them and WRITE_ONCE() when pm_op_in_progress is
+updated. As the window of pm_op_in_progress is contained in the runtime
+PM window, a stale value of either one can only make the error handler
+take the regular path, like an error handler that starts just before or
+after the PM operation.
+
+For the other PM operations the regular error handling is safe:
+
+  - the system PM callbacks hold host_sem from ufshcd_wl_suspend() until
+    ufshcd_wl_resume() returns, and ufshcd_wl_poweroff() holds it as
+    well, so the error handler waits for them;
+  - during shutdown, hba->shutting_down makes the error handler stop.
+
+This changes the behavior during shutdown: errors that occur while the
+final START STOP UNIT command is being processed are no longer handled
+by the error handler. Recovery then only happens through
+ufshcd_eh_timed_out().
+
+Fixes: e23ef4f22db3 ("scsi: ufs: core: Fix error handler host_sem issue")
+Signed-off-by: HOYOUNG SEO <hy50.seo@samsung.com>
+Reviewed-by: Peter Wang <peter.wang@mediatek.com>
+Link: https://lore.kernel.org/r/282821294.121794387787588.JavaMail.epsvc@epcpadp2new
+---
+ drivers/ufs/core/ufshcd.c | 32 +++++++++++++++++++++++++++-----
+ 1 file changed, 27 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/ufs/core/ufshcd.c b/drivers/ufs/core/ufshcd.c
+index 8d1f1ccdd25435dfc987f8348a9ad02bbeced828..7d0d3818e71240b1f2185b2027e814949510e76c 100644
+--- a/drivers/ufs/core/ufshcd.c
++++ b/drivers/ufs/core/ufshcd.c
+@@ -6992,6 +6992,23 @@ static bool ufshcd_abort_all(struct ufs_hba *hba)
+ 	return ret != 0;
+ }
+ 
++/*
++ * Whether a runtime PM callback of the WLUN runs __ufshcd_wl_suspend() or
++ * __ufshcd_wl_resume().
++ */
++static bool ufshcd_in_wl_rpm_callback(struct ufs_hba *hba)
++{
++#ifdef CONFIG_PM
++	enum rpm_status status =
++		READ_ONCE(hba->ufs_device_wlun->sdev_gendev.power.runtime_status);
++
++	return READ_ONCE(hba->pm_op_in_progress) &&
++	       (status == RPM_SUSPENDING || status == RPM_RESUMING);
++#else
++	return false;
++#endif
++}
++
+ /**
+  * ufshcd_err_handler - handle UFS errors that require s/w attention
+  * @work: pointer to work structure
+@@ -7021,9 +7038,14 @@ static void ufshcd_err_handler(struct work_struct *work)
+ 		 * runtime resume. This avoids potential deadlocks that could
+ 		 * happen if we tried to resume the device while a PM operation
+ 		 * is already in progress.
++		 *
++		 * Do this only while the PM callbacks run for a runtime PM
++		 * operation. The system PM and poweroff callbacks hold
++		 * host_sem, and shutting_down makes the regular path below
++		 * stop, so it does not reset the link concurrently with them.
+ 		 */
+ 		ufshcd_rpm_get_noresume(hba);
+-		if (hba->pm_op_in_progress) {
++		if (ufshcd_in_wl_rpm_callback(hba)) {
+ 			ufshcd_link_recovery(hba);
+ 			ufshcd_rpm_put(hba);
+ 			return;
+@@ -10331,7 +10353,7 @@ static int __ufshcd_wl_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op)
+ 	enum ufs_dev_pwr_mode req_dev_pwr_mode;
+ 	enum uic_link_state req_link_state;
+ 
+-	hba->pm_op_in_progress = true;
++	WRITE_ONCE(hba->pm_op_in_progress, true);
+ 	if (pm_op != UFS_SHUTDOWN_PM) {
+ 		pm_lvl = pm_op == UFS_RUNTIME_PM ?
+ 			 hba->rpm_lvl : hba->spm_lvl;
+@@ -10504,7 +10526,7 @@ static int __ufshcd_wl_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op)
+ 		hba->clk_gating.is_suspended = false;
+ 		ufshcd_release(hba);
+ 	}
+-	hba->pm_op_in_progress = false;
++	WRITE_ONCE(hba->pm_op_in_progress, false);
+ 	return ret;
+ }
+ 
+@@ -10514,7 +10536,7 @@ static int __ufshcd_wl_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
+ 	int ret;
+ 	enum uic_link_state old_link_state = hba->uic_link_state;
+ 
+-	hba->pm_op_in_progress = true;
++	WRITE_ONCE(hba->pm_op_in_progress, true);
+ 
+ 	/*
+ 	 * Call vendor specific resume callback. As these callbacks may access
+@@ -10605,7 +10627,7 @@ static int __ufshcd_wl_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
+ 		ufshcd_update_evt_hist(hba, UFS_EVT_WL_RES_ERR, (u32)ret);
+ 	hba->clk_gating.is_suspended = false;
+ 	ufshcd_release(hba);
+-	hba->pm_op_in_progress = false;
++	WRITE_ONCE(hba->pm_op_in_progress, false);
+ 	return ret;
+ }
+ 

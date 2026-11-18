@@ -24,9 +24,36 @@ after that restart.
 CI112 keeps the CI111 kernel source and device tree. The disk profiles
 can register a second, explicitly created USB ACM function as a printk
 console. The original ACM data port stays separate and tty0 stays the
-preferred console. Verify fresh kernel messages over the direct USB
-cable, then run the image-free comparison with the serial and Ethernet
-loggers enabled before attempting another snapshot.
+preferred console. Both ACM functions delivered fresh messages after USB
+rebind, and the image-free core comparison passed with clean direct
+reads of the read-only root and swap block devices.
+
+The firmware test recorded a UFS error handler device reset before the
+resume callback timed out waiting for Hibern8 exit. Link startup then
+failed, and later reads of the UFS block device returned I/O errors. The
+kernel reported successful image restore and restarted tasks. The helper
+never delivered its post-resume block checks or completed the automated
+recovery. Wi-Fi PCIe and DSI DMA also reported timeouts. After a manual
+restart, CI112 returned to the login screen. The recovery check verified
+both boot hashes, writable root with a synced write, the original layout
+and an empty swap header.
+
+## Serialize UFS recovery during system PM
+
+Patches 0255 through 0258 import Hoyoung Seo's proposed v10 series into
+the pinned kernel. The system resume and hibernation poweroff callbacks
+share the host semaphore with the error handler, and the early recovery
+path remains available inside runtime PM callbacks. Link recovery
+clears saved errors and puts them back on failure. The backport uses the
+pinned kernel's SCSI host lock API. The board tree and UFS power levels
+are identical to CI112. [UFS v10 series](https://lists.openwall.net/linux-kernel/2026/11/11/1219)
+
+Verify ordinary runtime suspend, direct reads and the return to the
+installed image in read-only maintenance. Require a fresh image-free
+core control and a working USB console before attempting firmware
+resume. Use the ordered kernel events to check that recovery waits for
+the PM callback and verify storage reads and physical display output
+after restoration.
 
 ## CI102 protected firmware restore
 

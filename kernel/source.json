@@ -136,7 +136,11 @@
     "patches/0251-sm8750-ufs-phy-reference-supplies.patch",
     "patches/0252-tb522fu-ufs-qmp-reference-supplies.patch",
     "patches/0253-sm8750-ufs-symbol-clock-parking.patch",
-    "patches/0254-ufs-qcom-balance-lane-clock-enables.patch"
+    "patches/0254-ufs-qcom-balance-lane-clock-enables.patch",
+    "patches/0255-ufs-clear-saved-link-errors.patch",
+    "patches/0256-ufs-factor-wlun-system-suspend.patch",
+    "patches/0257-ufs-lock-hibernation-poweroff.patch",
+    "patches/0258-ufs-limit-early-recovery-to-runtime-pm.patch"
   ],
-  "patched_tree": "a039aa333b4eea60f1e4c6066a57d5af7e45b38f"
+  "patched_tree": "9708501a32211df0372323e82d187dfe14c347e3"
 }
