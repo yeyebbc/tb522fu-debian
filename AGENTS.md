@@ -3,13 +3,12 @@
 This repository is public. Keep firmware, identifiers, credentials, backups,
 stock partition images and local environment paths out of tracked files.
 
-CI106 boots Debian 13.7 with a single UFS queue. Firmware restores with the
-retained Hibern8 link still had UFS power command timeouts. Direct reads on
-the runtime-active comparison returned EIO after memory restore. CI107 kept
-the link active and hit disk I/O errors at the cold greeter. CI108 returns to
-the CI106 storage policy and votes the factory device reference-clock pad
-supply at PMIC i LDO2, fixed 1.2 V. Confirm cold storage and the actual rail,
-then use read-only firmware tests with separate return and direct-I/O logs.
+CI108 cold-boots Debian 13.7 with the verified factory UFS pad supply vote.
+A protected firmware reboot restored the saved kernel and logged another
+Hibern8 exit timeout, link-start failures and EIO from direct reads of both
+partitions. Its automatic recovery passed. CI109 adds the stock QREF and
+REFGEN PHY supply votes through the existing QMP regulator lifecycle.
+Confirm the actual consumer votes, then check read-only firmware restore.
 Keep the backlight menu and real-sleep masks. Issue each power action once.
 Read docs/hibernation.md before testing.
 

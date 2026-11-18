@@ -1,0 +1,105 @@
+From: Yeye B.B.C. <19569343+yeyebbc@users.noreply.github.com>
+Subject: [PATCH 2/3] phy: qcom: Supply the SM8750 UFS QMP reference circuits
+
+The factory TB522FU tree supplies the UFS PHY reference-clock circuit
+from PMIC i LDO3 and its reference generator from PMIC f LDO1. The
+factory PHY driver votes both rails before enabling the link clocks.
+The mainline board describes the regulators for other consumers, so the
+UFS-only hibernation loading kernel has no vote of its own.
+
+Acquire the two supplies when specified by an SM8750 board and include
+them in the existing regulator operations before enabling any PHY clocks.
+The existing power-off and failure cleanup release the extra votes.
+The load requests match the factory DT. The Lenovo board points to its
+existing regulators with existing voltage ranges.
+
+Signed-off-by: Yeye B.B.C. <19569343+yeyebbc@users.noreply.github.com>
+---
+ drivers/phy/qualcomm/phy-qcom-qmp-ufs.c | 39 ++++++++++++++++++++++++++++-----
+ 1 file changed, 33 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/phy/qualcomm/phy-qcom-qmp-ufs.c b/drivers/phy/qualcomm/phy-qcom-qmp-ufs.c
+index d4aca22c181e4314736a532c17ae69da521bad1b..901b1661c00d1fb2a6300050b70d47db6d428c43 100644
+--- a/drivers/phy/qualcomm/phy-qcom-qmp-ufs.c
++++ b/drivers/phy/qualcomm/phy-qcom-qmp-ufs.c
+@@ -1204,6 +1204,7 @@ struct qmp_ufs {
+ 	struct clk_bulk_data *clks;
+ 	int num_clks;
+ 	struct regulator_bulk_data *vregs;
++	int num_vregs;
+ 	struct reset_control *ufs_reset;
+ 
+ 	struct phy *phy;
+@@ -2065,7 +2066,7 @@ static int qmp_ufs_power_on(struct phy *phy)
+ 	void __iomem *pcs = qmp->pcs;
+ 	int ret;
+ 
+-	ret = regulator_bulk_enable(cfg->num_vregs, qmp->vregs);
++	ret = regulator_bulk_enable(qmp->num_vregs, qmp->vregs);
+ 	if (ret) {
+ 		dev_err(qmp->dev, "failed to enable regulators, err=%d\n", ret);
+ 		return ret;
+@@ -2079,7 +2080,7 @@ static int qmp_ufs_power_on(struct phy *phy)
+ 	return 0;
+ 
+ err_disable_regulators:
+-	regulator_bulk_disable(cfg->num_vregs, qmp->vregs);
++	regulator_bulk_disable(qmp->num_vregs, qmp->vregs);
+ 	return ret;
+ }
+ 
+@@ -2131,7 +2132,7 @@ static int qmp_ufs_power_off(struct phy *phy)
+ 
+ 	clk_bulk_disable_unprepare(qmp->num_clks, qmp->clks);
+ 
+-	regulator_bulk_disable(cfg->num_vregs, qmp->vregs);
++	regulator_bulk_disable(qmp->num_vregs, qmp->vregs);
+ 
+ 	return 0;
+ }
+@@ -2330,6 +2331,34 @@ static int qmp_ufs_parse_dt(struct qmp_ufs *qmp)
+ 	return 0;
+ }
+ 
++static int qmp_ufs_get_regulators(struct qmp_ufs *qmp)
++{
++	const struct qmp_phy_cfg *cfg = qmp->cfg;
++	const struct regulator_bulk_data *vregs = cfg->vreg_list;
++	struct regulator_bulk_data supplies[ARRAY_SIZE(sm8750_ufsphy_vreg_l) + 2];
++	struct device *dev = qmp->dev;
++
++	qmp->num_vregs = cfg->num_vregs;
++	if (cfg == &sm8750_ufsphy_cfg) {
++		memcpy(supplies, sm8750_ufsphy_vreg_l,
++		       sizeof(sm8750_ufsphy_vreg_l));
++		if (of_property_present(dev->of_node, "vdda-qref-supply"))
++			supplies[qmp->num_vregs++] = (struct regulator_bulk_data) {
++				.supply = "vdda-qref",
++				.init_load_uA = 64500,
++			};
++		if (of_property_present(dev->of_node, "vdda-refgen-supply"))
++			supplies[qmp->num_vregs++] = (struct regulator_bulk_data) {
++				.supply = "vdda-refgen",
++				.init_load_uA = 206000,
++			};
++		vregs = supplies;
++	}
++
++	return devm_regulator_bulk_get_const(dev, qmp->num_vregs, vregs,
++					    &qmp->vregs);
++}
++
+ static int qmp_ufs_probe(struct platform_device *pdev)
+ {
+ 	struct device *dev = &pdev->dev;
+@@ -2352,9 +2381,7 @@ static int qmp_ufs_probe(struct platform_device *pdev)
+ 	if (ret)
+ 		return ret;
+ 
+-	ret = devm_regulator_bulk_get_const(dev, qmp->cfg->num_vregs,
+-					    qmp->cfg->vreg_list,
+-					    &qmp->vregs);
++	ret = qmp_ufs_get_regulators(qmp);
+ 	if (ret)
+ 		return ret;
+ 

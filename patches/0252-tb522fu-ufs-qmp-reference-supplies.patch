@@ -1,0 +1,29 @@
+From: Yeye B.B.C. <19569343+yeyebbc@users.noreply.github.com>
+Subject: [PATCH 3/3] arm64: dts: qcom: Wire the TB522FU UFS reference supplies
+
+Use the existing PMIC i LDO3 and PMIC f LDO1 regulators for the QMP
+reference clock and its reference generator, matching the factory tree.
+
+Signed-off-by: Yeye B.B.C. <19569343+yeyebbc@users.noreply.github.com>
+---
+ arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+index 88c3720483d8d21562ae171d5c5a61338959e1c1..251b7f02b0bc0fbaccbb549cec181625e8209c56 100644
+--- a/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
++++ b/arch/arm64/boot/dts/qcom/sm8750-lenovo-y900-acm.dts
+@@ -158,7 +158,12 @@ &ramoops_mem {
+ &uart7 { status = "disabled"; };
+ &usb { qcom,select-utmi-as-pipe-clk; };
+ 
+-&ufs_mem_phy { vdda-phy-supply = <&vreg_l1j_0p91>; vdda-pll-supply = <&vreg_l3g>; };
++&ufs_mem_phy {
++	vdda-phy-supply = <&vreg_l1j_0p91>;
++	vdda-pll-supply = <&vreg_l3g>;
++	vdda-qref-supply = <&vreg_l3i>;
++	vdda-refgen-supply = <&vreg_l1f>;
++};
+ &ufs_mem_hc { msi-parent = <&gic_its 0x60>; };
+ &ufs_mem_hc { reset-gpios = <&tlmm 215 GPIO_ACTIVE_LOW>; };
+ &ufs_mem_hc { reg = <0x0 0x01d84000 0x0 0x3000>, <0x0 0x01da0000 0x0 0x15000>; reg-names = "std", "mcq"; };

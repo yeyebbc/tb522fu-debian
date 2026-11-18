@@ -163,6 +163,37 @@ how cached rates can diverge from hardware after hibernation. It tests a
 Glymur display controller and does not establish the SM8750 failure cause.
 [Qualcomm clock restore RFC](https://lists.openwall.net/linux-kernel/2026/10/28/880)
 
+
+## CI108 read-only firmware result
+
+Both [CI108 builds](https://github.com/yeyebbc/tb522fu-debian/actions/runs/44271797556)
+passed archive verification and the independently replayed DTB comparison.
+The maintenance profile reported LDO2 enabled at 1.2 V and completed six
+identical direct reads of both partitions after UFS runtime suspend. All
+storage stayed read-only and the maintenance return booted CI106 again.
+CI108 then cold-booted normal Debian with all 39 supported modules, native
+Adreno rendering, Bluetooth and successful graphical login.
+
+The first protected firmware cycle produced no post-restore packet. Its
+fresh boot passed both boot-image checks, empty swap and a synced root write.
+The second test added USB serial capture and recorded the old boot ID,
+a successful hibernation syscall return and the kernel's image-restore
+confirmation. UIC command `0x18` (`DME_HIBER_EXIT`) timed out, followed by
+four link-start timeouts. Direct reads from both Linux partitions returned
+`EIO`. PCIe Wi-Fi and DSI command DMA also failed. The monitor received both
+complete reports, and automatic recovery returned to a verified fresh CI108
+boot. This establishes that the UFS pad supply vote alone is insufficient.
+
+The factory QMP PHY also uses PMIC i LDO3 for `vdda-qref` and PMIC f LDO1 for
+`vdda-refgen`. The stock PHY powers those circuits before enabling its
+reference clocks. The Lenovo mainline DT already describes both regulators.
+The series 0250–0252 adds these optional SM8750 PHY consumers to the existing
+bulk power operations, with the factory load requests and the current board
+voltage ranges. LDO3 is shared with the display PHYs, and LDO1 is shared with
+the PCIe PHY. The next comparison checks the rail votes and read-only storage
+before attempting another firmware restore.
+[Downstream Qualcomm UFS PHY source](https://github.com/lenovo-basements/android_kernel_lenovo_sm8750/blob/210981a0ad749c30080b853d31bc009d9db0592d/drivers/phy/qualcomm/phy-qcom-ufs.c)
+
 ## CI101 restore results
 
 - An actual `test_resume` image returned the original boot ID and RAM-only

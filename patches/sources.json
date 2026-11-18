@@ -1237,5 +1237,29 @@
     "license": "BSD-3-Clause; original board file license retained",
     "scope": "Experimental active RPMh vote for the existing UFS reference clock pad voltage; no changes to UFS driver, power policy or other boards",
     "hardware_tested": false
+  },
+  "0250-dt-bindings-sm8750-ufs-reference-supplies.patch": {
+    "source": "TB522FU factory DT and stock UFS PHY module, with source comparison",
+    "reference": "https://github.com/lenovo-basements/android_kernel_lenovo_sm8750/blob/210981a0ad749c30080b853d31bc009d9db0592d/drivers/phy/qualcomm/phy-qcom-ufs.c",
+    "sha256": "811d6a8795ca88bf22f5c260216ad014e631daa0478788e4494b6f7c355922b6",
+    "license": "Existing GPL and BSD-licensed source and bindings",
+    "scope": "Optional QREF and REFGEN supply properties for SM8750",
+    "hardware_tested": false
+  },
+  "0251-sm8750-ufs-phy-reference-supplies.patch": {
+    "source": "TB522FU factory DT and stock UFS PHY module, with source comparison",
+    "reference": "https://github.com/lenovo-basements/android_kernel_lenovo_sm8750/blob/210981a0ad749c30080b853d31bc009d9db0592d/drivers/phy/qualcomm/phy-qcom-ufs.c",
+    "sha256": "9824945075315573dbfeb4f94c6473e748709686c2eee4f78e6fe211e5334548",
+    "license": "Existing GPL and BSD-licensed source and bindings",
+    "scope": "Acquire the two named regulator inputs when supplied and include them in the existing PHY power operations",
+    "hardware_tested": false
+  },
+  "0252-tb522fu-ufs-qmp-reference-supplies.patch": {
+    "source": "TB522FU factory DT and stock UFS PHY module, with source comparison",
+    "reference": "https://github.com/lenovo-basements/android_kernel_lenovo_sm8750/blob/210981a0ad749c30080b853d31bc009d9db0592d/drivers/phy/qualcomm/phy-qcom-ufs.c",
+    "sha256": "93b18635300257baf40190a2a04d3fe327eb52fb94017380e56f630392519129",
+    "license": "Existing GPL and BSD-licensed source and bindings",
+    "scope": "Connect the existing regulators to the TB522FU UFS PHY",
+    "hardware_tested": false
   }
 }
