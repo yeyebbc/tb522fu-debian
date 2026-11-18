@@ -3,17 +3,16 @@
 This repository is public. Keep firmware, identifiers, credentials, backups,
 stock partition images and local environment paths out of tracked files.
 
-Current tablet build: Debian 13.7 CI100 on the verified 244 GiB root and
-12 GiB swap. Its PCIe freeze changes (0239–0241) pass the image-free core
-test, native Adreno rendering and Wi-Fi traffic. An actual image diagnostic
-hit a dedicated PCIe wake interrupt and aborted restore. A test with only
-the root port's wake setting disabled wrote and consumed an image, then
-started a fresh boot. The point of reset remains unknown.
-The next build carries Abel Vesa's proposed PM wake IRQ fix (0242). It
-preserves wake IRQs for real sleep and skips arming them during image freeze
-and restore quiesce. Upstream review is open. Use direct swap header reads
-and issue each sysfs power action once. Preserve the working backlight menu
-and real-sleep masks until hibernation restores the saved session reliably.
+Current tablet build: Debian 13.7 CI101 on the verified 244 GiB root and
+12 GiB swap. Both firmware-reboot and in-place hibernation tests returned
+the original boot ID and RAM-only marker with PCIe wake enabled. The
+in-place test recovered Adreno rendering and Wi-Fi. The firmware-reboot
+test failed UFS I/O and GPU rendering, leaving ext4 emergency read-only.
+A fresh boot verified an empty swap header and a writable root. Both CI101
+kernel profiles built. Preserve the working backlight menu and real-sleep
+masks until native storage, display and input work after a firmware restore.
+Capture the next failing restore with a read-only root and volatile logs.
+Use direct swap header reads and issue each sysfs power action once.
 Read docs/hibernation.md before testing.
 
 Active hibernation preparation is documented in docs/hibernation.md. The user

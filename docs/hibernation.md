@@ -1,15 +1,52 @@
-# Disk hibernation preparation
+# Disk hibernation
 
-The next requested test is actual software hibernation: write a memory snapshot
-to storage, power off/reboot, then restore it. The working GNOME backlight-only
-Suspend action is the rollback policy. It does not enter a CPU sleep state.
-No successful hibernation test is claimed yet.
+CI101 restores the saved Linux session across a firmware reboot. The restored
+session is unusable because UFS reads fail and the display stays black. Use the
+working GNOME backlight-only Suspend action during driver work. Keep the real
+sleep targets masked and the hibernation action disabled.
 
-The dedicated partition is now installed and Debian 13.7 boots CI100 with all
+The dedicated partition is now installed and Debian 13.7 boots CI101 with all
 39 supported modules and the retained Adreno/Mesa desktop. The filesystem
 passed full offline checks before and after shrinking; both GPT copies and
 the swap header were verified. Swap is active and the empty-target boot path
 works. Android and the other Linux trial roots were preserved.
+
+## CI101 restore results
+
+- An actual `test_resume` image returned the original boot ID and RAM-only
+  marker. Its swap header acquired image metadata and returned to its empty
+  signature. With all 39 supported modules and PCIe wake enabled, the restored
+  session rendered fresh Adreno frames and passed Wi-Fi gateway traffic.
+- A separate `disk=reboot` test showed the firmware bootloader and returned
+  the same boot ID and RAM marker over USB. The root filesystem went into
+  ext4 emergency read-only mode after UFS I/O errors. Direct swap reads returned
+  `EIO`. GMU clock errors, GPU lockups and a black physical display followed.
+  The repeating GPU errors displaced the earliest restore messages from the
+  kernel ring before collection. The initial UFS failure remains undetermined.
+- A hardware restart returned to ordinary CI101 Debian. Direct reads confirmed
+  the consumed swap signature, the selected boot and Android init_boot hashes
+  matched, and an fsynced root write passed. The partition split is unchanged.
+
+Use a read-only root and a RAM-based logger before repeating the failing
+reboot. Require clean storage reads after restoration before running a test
+with a writable root. Continue to require a physical display and native
+rendering check before power-off testing or enabling the GNOME hibernation action.
+
+The protected CI101 retry remounted ext4 read-only and made its block device
+read-only before entering hibernation. USB returned, but neither the volatile
+logger nor the timed recovery delivered a result. A hardware restart returned
+to a writable root with the swap signature consumed. The protected retry did
+not identify the first failing callback.
+
+Patch 0243 is an SM8750 diagnostic. The cold boot configures nine UFS hardware
+queues and uses system sleep level 3 (sleep/Hibern8). The core's normal
+hibernation restore rewrites the legacy DMA queue addresses. The diagnostic
+uses the existing level 5 path to power down the link, so resume takes the
+host and device reinitialization path that configures the hardware queues.
+Runtime UFS power management and other Qualcomm hosts retain their prior
+policy. The installed build also keeps a 4 MiB kernel log for early restore
+errors. Validate this candidate before attributing the failure to the link
+or the queues.
 
 The first normal logind reboot-mode request on CI98 caused a fresh boot,
 not a restored session. The prior boot ID and RAM-only cookie did not return,
@@ -83,7 +120,8 @@ quiesce and balances the matching disarm on completion or failure.
 The [placement remains under review](https://lists.openwall.net/linux-kernel/2026/11/12/2535).
 The actual PM functions are tested for both phases, ordinary suspend, final
 hibernation poweroff and failure unwind. The prior code fails the freeze
-test. The tablet still needs an image restore test with the new kernel.
+test. Both CI101 kernel profiles built in workflow 44241035598. The actual
+image and firmware-reboot tests are recorded above.
 
 The runtime preflight reads the swap header with aligned direct I/O. Kernel
 snapshot writes bypass the block page cache, so a buffered read can report
@@ -131,7 +169,8 @@ observed automatically. A restored session, physical display, input, hardware
 rendering and retained logs are required before changing the menu action or
 testing power-off hibernation. The 12 GiB target needs a free-space check before
 each request; RAM size alone does not guarantee a sufficiently free swap area.
-Actual kernel freeze/thaw and restore callbacks remain unverified.
+Real shutdown-mode wake and correct operation of all restored devices remain
+unverified.
 
 The dedicated244+12GiB split is now applied. Both GPT copies and the swap header
 were read back, Android re-enumerated both partitions, and the244GiB filesystem

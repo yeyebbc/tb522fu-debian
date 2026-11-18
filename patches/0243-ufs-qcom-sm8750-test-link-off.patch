@@ -1,0 +1,39 @@
+From: Yeye B.B.C. <19569343+yeyebbc@users.noreply.github.com>
+Subject: [PATCH] scsi: ufs: qcom: Test link-off system sleep on SM8750
+
+The TB522FU restores its hibernation image after a firmware reboot,
+then UFS returns I/O errors. Its current system sleep level expects a
+retained Hibern8 link. Test the existing link-off system sleep path on
+SM8750 so resume reinitializes the host, device and queues. Keep its
+runtime level unchanged and leave other Qualcomm hosts on their current
+policy. The test does not establish that the SM8750 PHY loses power.
+
+Signed-off-by: Yeye B.B.C. <19569343+yeyebbc@users.noreply.github.com>
+---
+ drivers/ufs/host/ufs-qcom.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/drivers/ufs/host/ufs-qcom.c b/drivers/ufs/host/ufs-qcom.c
+index 954be9343f42ac14533fb6b585fa1662d0f4c352..c0d452dc4aebfc691948af456d575d89802acedd 100644
+--- a/drivers/ufs/host/ufs-qcom.c
++++ b/drivers/ufs/host/ufs-qcom.c
+@@ -3006,6 +3006,11 @@ static const struct ufs_qcom_drvdata ufs_qcom_sm8550_drvdata = {
+ 	.no_phy_retention = true,
+ };
+ 
++/* Exercise a full link restart across hibernation on SM8750. */
++static const struct ufs_qcom_drvdata ufs_qcom_sm8750_drvdata = {
++	.no_phy_retention = true,
++};
++
+ static const struct ufs_qcom_drvdata ufs_qcom_sa8255p_drvdata = {
+ 	.vops = &ufs_hba_qcom_sa8255p_vops
+ };
+@@ -3014,6 +3019,7 @@ static const struct of_device_id ufs_qcom_of_match[] __maybe_unused = {
+ 	{ .compatible = "qcom,ufshc" },
+ 	{ .compatible = "qcom,sm8550-ufshc", .data = &ufs_qcom_sm8550_drvdata },
+ 	{ .compatible = "qcom,sm8650-ufshc", .data = &ufs_qcom_sm8550_drvdata },
++	{ .compatible = "qcom,sm8750-ufshc", .data = &ufs_qcom_sm8750_drvdata },
+ 	{ .compatible = "qcom,sa8255p-ufshc", .data = &ufs_qcom_sa8255p_drvdata },
+ 	{},
+ };

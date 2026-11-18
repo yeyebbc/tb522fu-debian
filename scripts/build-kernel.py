@@ -263,6 +263,8 @@ def main():
         else:
             cmdline = cmdline.replace(' qcom_scm.probe_edl_return=1', '')
             cmdline = cmdline.replace(' qcom_scm.probe_seconds=600', '')
+            # Keep the first restore errors through repeated device recovery.
+            cmdline += ' log_buf_len=4M'
         # CI24 verified Wi-Fi initialization and real 5 GHz traffic. Both disk
         # profiles now exercise normal coldplug, retaining the accepted keyboard
         # in peripheral tests. Native display coldplug is part of the wake candidate;
@@ -341,6 +343,7 @@ def main():
                              if s.startswith('CONFIG_CMDLINE=')))
     assert 'dyndbg=' not in cmdline
     assert ('msm.dpu_linear_scanout=1' in cmdline.split()) == (args.profile == 'disk-test')
+    assert ('log_buf_len=4M' in cmdline.split()) == (args.profile == 'installed')
     assert 'clk_ignore_unused' in cmdline.split(), 'Retain the verified boot clock policy'
     assert 'pd_ignore_unused' in cmdline.split(), 'Keep the power-domain policy unchanged'
     qos_setting = ('CONFIG_PM_QOS_CPU_SYSTEM_WAKEUP=y' if args.profile == 'disk-test'

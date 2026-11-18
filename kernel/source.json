@@ -125,7 +125,8 @@
     "patches/0239-pci-d3cold-complete-bus-walk.patch",
     "patches/0240-pci-dwc-explicit-force-l2.patch",
     "patches/0241-pci-qcom-hibernation-controller-freeze.patch",
-    "patches/0242-pm-hibernation-freeze-wake-irqs.patch"
+    "patches/0242-pm-hibernation-freeze-wake-irqs.patch",
+    "patches/0243-ufs-qcom-sm8750-test-link-off.patch"
   ],
-  "patched_tree": "ef6037d576ab249740f644ba5eb18e78078ebda1"
+  "patched_tree": "84f02fea460f9c2b9d8d923324e6cd02e462fc0d"
 }
